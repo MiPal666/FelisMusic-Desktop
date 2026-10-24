@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.3.3-dev**
+- Desktop GUI: **0.3.3.5-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - GUI toolkit: PySide6 + QML
 - FelisMusic CLI 1.0.0 je samostatný, zmrazený projekt / referenční implementace.
@@ -160,3 +160,21 @@ Pokud session není platná, obnov ji v samostatném FelisMusic CLI 1.0.0 a GUI 
 - Skladby v detailu nahraného alba přebírají cover alba, pokud nemají vlastní obrázek. Cover se přenese také do přehrávače a přehrávaného seznamu.
 - U nahrané hudby se nepoužívá veřejný YouTube thumbnail podle videoId, protože soukromá ID tímto způsobem obrázek nezpřístupňují.
 - Pokud YouTube Music nevrátí obrázek skladby ani otevřeného alba, zůstane neutrální plocha.
+
+## 0.3.3.4-dev – přednačítání další skladby
+
+- Po spuštění skladby se na pozadí připraví jedna následující skladba z fronty. Při automatickém přechodu se použije hotový soubor z cache; pokud ještě příprava běží, přechod využije stejné stažení.
+- Přednačítání nemění přehrávanou skladbu, neblokuje procházení knihovny a nezobrazuje načítací spinner místo aktivního přehrávače.
+- Chyba přednačítání nepřeruší aktuální skladbu ani neposune frontu. Při přechodu se příprava zkusí znovu běžnou cestou.
+- Při výběru jiné skladby se zruší nepotřebné přednačítání. Dosavadní chování přehrávané skladby během ručního přepínání zůstává zachované.
+- Při zavření aplikace se příprava zruší; cache se odstraní až po skončení audio workeru. Přerušení během získávání metadat může počkat na dokončení právě probíhajícího síťového požadavku.
+- Nejde o garantované gapless přehrávání. Krátká prodleva přepnutí výstupu může zůstat; první nepřipravená skladba stále vyžaduje stažení.
+
+Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unittest discover -s tests -v`.
+
+## 0.3.3.5-dev – ruční přepnutí skladby
+
+- Kliknutí na skladbu a ruční Previous/Next nejdřív zastaví původní audio. Lokální výstup přejde do READY, aby se zachovalo směrování například na HDMI.
+- Nově vybraný řádek během přípravy ukazuje `Připravuji…`; `Hraje` až po spuštění. Pauza a zastavený stav mají odpovídající označení.
+- Nový výběr zneplatní předchozí přípravu, včetně rozpracovaného stahování. Neaktuální požadavek nesmí znovu spustit starou skladbu. Přerušení síťového požadavku na metadata může stále chvíli trvat.
+- Automatický přechod po dohrání dál využívá přednačítání, bez dodatečného zastavování výstupu.

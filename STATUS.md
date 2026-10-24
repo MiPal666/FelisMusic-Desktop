@@ -4,7 +4,7 @@ Aktualizováno: 2026-10-24 (Europe/Prague).
 
 ## Uzavřený a otestovaný základ
 
-Desktop se stále hlásí jako **0.3.3.3-dev**. Základ a následující opravy uživatel proklikal a přijal jako funkční výchozí bod pro další funkce. První Git commit má tento stav zachytit; tento dokument sám nepotvrzuje, že commit již vznikl.
+Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na větvi `main`. Základ a následující opravy uživatel proklikal a přijal jako funkční výchozí bod pro další funkce.
 
 - Knihovna, hledání YT Music / Knihovna / Nahrané, typové filtry a odstranění nepoužitelných výsledků.
 - Lokální přehrávání přes GStreamer, předchozí/další skladba, automatický přechod, seek, hlasitost, mute a hodnocení.
@@ -20,8 +20,27 @@ Desktop se stále hlásí jako **0.3.3.3-dev**. Základ a následující opravy 
 
 ## Další práce
 
+### Otestováno uživatelem: 0.3.3.4-dev
+
+- Přednačítání jedné následující skladby během přehrávání aktuální, s využitím stávající cache.
+- Přehrávání i přednačítání používají jeden sériový audio worker; při přechodu během přípravy se využije stejné stažení.
+- Selhání přednačítání nemění frontu ani aktuální přehrávání. Při zavření se příprava ruší a cache se uklízí až po skončení workeru.
+- V této verzi zůstalo chování staré skladby během ručního výběru jiné zachované; následně uživatel zadal úpravu popsanou níže.
+- Šest offline testů pokrývá přednačtení před dohráním, dohrání během stahování, chybu a opakování přípravy, zneplatnění nepotřebného přednačítání a zavření během přípravy aktuální i příští skladby.
+- Uživatel po skutečném přehrání potvrdil: „výsledek je super“. Tato změna ještě není commitnutá. Git zápis je v prostředí asistenta blokovaný; commit provádí uživatel podle připraveného příkazu a posílá výsledek.
+
+### Otestováno uživatelem: 0.3.3.5-dev
+
+- Při kliknutí na skladbu a ručním Previous/Next se původní audio zastaví před přípravou nové položky, s ponecháním lokálního výstupu v READY kvůli zachování směrování.
+- Řádek během přípravy ukazuje „Připravuji…“, po spuštění „Hraje“, při pauze „Pozastaveno“ a při zastavení „Zastaveno“.
+- Neaktuální stahování a čekání na spuštění se zneplatní novým výběrem. Zastavení a spuštění výstupu se synchronizují, aby starší worker nemohl po novém kliknutí spustit původní skladbu.
+- Automatické dohrání dál používá přednačítání bez dalšího stopu.
+- Prošlo 10 offline testů přehrávání/přednačítání a samostatná kontrola skutečného kliknutí v QML: okamžité zastavení starého audia, příprava nové položky a správná změna označení po spuštění. Uživatel ověřil skutečné přehrávání a potvrdil: „funguje jak má“. Připraveno ke commitu společně s přednačítáním z 0.3.3.4-dev.
+
+### Navazující funkce
+
 - Pokračovat po jednotlivých funkcích: informace o skladbě a samostatná Fronta, kontextové akce, detail interpreta/kolekcí, shuffle, repeat a rádio/mix.
-- Dále obnova session, prefetch/cache, MPRIS a Cast; následně port na Sailfish OS.
+- Dále obnova session, další optimalizace cache, MPRIS a Cast; následně port na Sailfish OS.
 - Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta ještě není hotová.
 - Výchozí výstup při startu zůstává Toto zařízení. CLI 1.0.0 je samostatný zmrazený projekt.
 

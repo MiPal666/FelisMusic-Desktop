@@ -481,7 +481,9 @@ ApplicationWindow {
 
             Label {
                 visible: currentTrack
-                text: "Hraje"
+                text: backend.playerState === "loading" ? "Připravuji…"
+                      : (backend.playerState === "playing" ? "Hraje"
+                         : (backend.playerState === "paused" ? "Pozastaveno" : "Zastaveno"))
                 color: "#b9b0ff"
                 font.pixelSize: 12
                 font.bold: true

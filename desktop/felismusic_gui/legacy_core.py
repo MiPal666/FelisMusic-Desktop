@@ -2305,6 +2305,7 @@ class LocalMediaController:
     def block_until_active(
         self,
         timeout=15,
+        cancelled=None,
     ):
         deadline = (
             time.monotonic()
@@ -2315,6 +2316,8 @@ class LocalMediaController:
             time.monotonic()
             < deadline
         ):
+            if cancelled is not None and cancelled():
+                return
             status = self.status
 
             if status.player_state in (
@@ -2333,6 +2336,8 @@ class LocalMediaController:
                 0.05
             )
 
+        raise RuntimeError("GStreamer nespustil audio včas.")
+
     def pause(self):
         self._finished = False
 
@@ -2348,12 +2353,13 @@ class LocalMediaController:
             Gst.State.PLAYING
         )
 
-    def stop(self):
+    def stop(self, *, keep_output=False):
         self.player.set_state(
-            Gst.State.NULL
+            Gst.State.READY if keep_output else Gst.State.NULL
         )
 
         # GStreamer změnu stavu provádí asynchronně.
+        # READY při přepnutí zastaví audio a zachová směrování výstupu.
         # Při ukončení procesu nechceme zahodit playbin,
         # dokud jeho interní elementy ještě zůstávají PLAYING.
         try:
@@ -3378,7 +3384,11 @@ def _trim_local_cache():
             pass
 
 
-def get_local_audio_source(video_id):
+class AudioPreparationCancelled(Exception):
+    """A background audio preparation is no longer needed."""
+
+
+def get_local_audio_source(video_id, *, cancelled=None):
     """
     Seekovatelný zdroj pro GStreamer.
 
@@ -3389,6 +3399,11 @@ def get_local_audio_source(video_id):
     Cast nadále používá přímou URL.
     """
 
+    def check_cancelled(_progress=None):
+        if cancelled is not None and cancelled():
+            raise AudioPreparationCancelled()
+
+    check_cancelled()
     cached = LOCAL_AUDIO_CACHE.get(
         video_id
     )
@@ -3453,6 +3468,9 @@ def get_local_audio_source(video_id):
         ),
     }
 
+    if cancelled is not None:
+        options["progress_hooks"] = [check_cancelled]
+
     with yt_dlp.YoutubeDL(
         options
     ) as ydl:
@@ -3461,6 +3479,8 @@ def get_local_audio_source(video_id):
             youtube_url,
             download=True,
         )
+
+        check_cancelled()
 
         path = ydl.prepare_filename(
             info

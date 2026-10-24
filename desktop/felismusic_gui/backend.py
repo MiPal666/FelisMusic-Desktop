@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+from threading import Event, Lock, Thread
 from typing import Any
 
 from PySide6.QtCore import (
@@ -152,6 +153,9 @@ class BackendBridge(QObject):
             max_workers=1,
             thread_name_prefix="felismusic-playback",
         )
+        self._closing = Event()
+        self._transport_lock = Lock()
+        self._prefetch_future = None
         self._ytmusic = None
         self._status = "Připravuji backend…"
         self._account_name = "YouTube Music"
@@ -702,8 +706,8 @@ class BackendBridge(QObject):
         self._player_state = state
         self.playerChanged.emit()
 
-    def _start_current_async(self, direction=1):
-        if self._queue is None or self._queue.empty():
+    def _start_current_async(self, direction=1, stop_current=False):
+        if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
 
         if self._local_output is None:
@@ -714,14 +718,28 @@ class BackendBridge(QObject):
             )
             return
 
-        self._playback_generation += 1
+        mc = self._local_output.media_controller
+        with self._transport_lock:
+            self._playback_generation += 1
+            if stop_current:
+                try:
+                    mc.stop(keep_output=True)
+                except Exception as exc:
+                    self._playback_transitioning = False
+                    self._set_player_state("idle")
+                    self.errorOccurred.emit(f"Zastavení původní skladby selhalo: {exc}")
+                    return
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
         generation = self._playback_generation
         self._playback_transitioning = True
         self._set_player_state("loading")
         self._set_status(f"Připravuji audio · {self._player_title}…")
         self.playerChanged.emit()
         queue = self._queue
-        mc = self._local_output.media_controller
+
+        def cancelled():
+            return self._closing.is_set() or generation != self._playback_generation
 
         def work():
             last_error = None
@@ -730,21 +748,26 @@ class BackendBridge(QObject):
                 if song is None:
                     break
                 try:
-                    url, content_type = core.get_local_audio_source(song["videoId"])
-                    if generation != self._playback_generation:
-                        return
-                    artists = core.artist_names(song)
-                    mc.play_media(
-                        url,
-                        content_type,
-                        title=f"{artists} - {song.get('title', '?')}",
-                        stream_type="BUFFERED",
+                    url, content_type = core.get_local_audio_source(
+                        song["videoId"], cancelled=cancelled
                     )
-                    mc.block_until_active(timeout=15)
-                    if generation == self._playback_generation:
+                    artists = core.artist_names(song)
+                    with self._transport_lock:
+                        if cancelled():
+                            return
+                        mc.play_media(
+                            url,
+                            content_type,
+                            title=f"{artists} - {song.get('title', '?')}",
+                            stream_type="BUFFERED",
+                        )
+                    mc.block_until_active(timeout=15, cancelled=cancelled)
+                    if not cancelled():
                         self._playbackReady.emit(generation)
                     return
                 except Exception as exc:
+                    if self._closing.is_set() or generation != self._playback_generation:
+                        return
                     last_error = exc
                     moved = queue.next() if direction >= 0 else queue.previous()
                     if not moved:
@@ -760,9 +783,51 @@ class BackendBridge(QObject):
 
         self._playback_executor.submit(work)
 
+    def _prefetch_next_track(self):
+        """Prepare just the next track, using the same serial audio worker.
+
+        Playback and prefetch never write cookies/cache concurrently. If EOS
+        arrives while prefetch is running, playback follows it and reuses the
+        finished file through get_local_audio_source's normal cache lookup.
+        """
+        if self._closing.is_set() or self._queue is None:
+            return
+        next_index = self._queue.index + 1
+        if next_index >= self._queue.count():
+            return
+        video_id = str(self._queue.tracks[next_index].get("videoId") or "")
+        if not video_id:
+            return
+        generation = self._playback_generation
+
+        def cancelled():
+            # An automatic transition to this track can still use its download.
+            return self._closing.is_set() or (
+                generation != self._playback_generation
+                and self._current_video_id() != video_id
+            )
+
+        def work():
+            if cancelled():
+                return
+            try:
+                print(f"FelisMusic přednačítání: {video_id}")
+                core.get_local_audio_source(video_id, cancelled=cancelled)
+                if not cancelled():
+                    print(f"FelisMusic přednačteno: {video_id}")
+            except core.AudioPreparationCancelled:
+                pass
+            except Exception as exc:
+                # Speculative failure must not affect playback or skip a row.
+                # Normal playback will try this track again when it is needed.
+                if not cancelled():
+                    print(f"FelisMusic přednačítání selhalo ({video_id}): {type(exc).__name__}")
+
+        self._prefetch_future = self._playback_executor.submit(work)
+
     @Slot(int)
     def _apply_playback_ready(self, generation):
-        if generation != self._playback_generation:
+        if self._closing.is_set() or generation != self._playback_generation:
             return
         self._playback_transitioning = False
         self._set_player_from_queue()
@@ -771,6 +836,7 @@ class BackendBridge(QObject):
             f"Přehrávám · {self._player_title}"
         )
         self.playerChanged.emit()
+        self._prefetch_next_track()
 
     @Slot(int, str)
     def _apply_playback_failed(self, generation, message):
@@ -863,7 +929,7 @@ class BackendBridge(QObject):
                 return
             self._queue.index = index
             self._set_player_from_queue()
-            self._start_current_async(direction=1)
+            self._start_current_async(direction=1, stop_current=True)
             return
 
         items = self._source_items((source or "").strip())
@@ -902,7 +968,7 @@ class BackendBridge(QObject):
         self._playing_liked_order = self._liked_order
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
-        self._start_current_async(direction=1)
+        self._start_current_async(direction=1, stop_current=True)
 
     @Slot()
     def togglePlayPause(self):
@@ -929,7 +995,7 @@ class BackendBridge(QObject):
             return
         if self._queue.next():
             self._set_player_from_queue()
-            self._start_current_async(direction=1)
+            self._start_current_async(direction=1, stop_current=True)
 
     @Slot()
     def previousTrack(self):
@@ -937,7 +1003,7 @@ class BackendBridge(QObject):
             return
         if self._queue.previous():
             self._set_player_from_queue()
-            self._start_current_async(direction=-1)
+            self._start_current_async(direction=-1, stop_current=True)
 
     def _seek_to(self, seconds):
         if not self.playerCanSeek or self._local_output is None:
@@ -1899,15 +1965,29 @@ class BackendBridge(QObject):
 
     @Slot()
     def shutdown(self):
-        self._playback_generation += 1
+        if self._closing.is_set():
+            return
+        self._closing.set()
+        self._player_timer.stop()
         try:
-            if self._local_output is not None:
-                self._local_output.media_controller.stop()
+            with self._transport_lock:
+                self._playback_generation += 1
+                if self._local_output is not None:
+                    self._local_output.media_controller.stop()
         except Exception:
             pass
         self._executor.shutdown(wait=False, cancel_futures=True)
         self._playback_executor.shutdown(wait=False, cancel_futures=True)
-        try:
-            core.cleanup_local_cache()
-        except Exception:
-            pass
+
+        # Do not delete cache files while yt-dlp is still writing to them.
+        # This waiter uses no Qt objects and never blocks the GUI thread.
+        executor = self._playback_executor
+
+        def cleanup_after_audio():
+            executor.shutdown(wait=True, cancel_futures=True)
+            try:
+                core.cleanup_local_cache()
+            except Exception:
+                pass
+
+        Thread(target=cleanup_after_audio, name="felismusic-cache-cleanup").start()
