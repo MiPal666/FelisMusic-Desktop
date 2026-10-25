@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.8-dev**
+- Desktop GUI: **0.3.9-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -228,3 +228,15 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - První samostatně testovatelný podkrok obsahuje **jeden blok doporučení**. Průběžné doplňování je následující podkrok 5b, mixy interpreta/kolekce pak 5c.
 
 - Podkrok 5a uživatel otestoval na skutečném přehrávání a přijal 2026-10-25.
+
+## 0.3.9-dev – knihovna skladeb (první část 6a)
+
+- Při otevření nabídky veřejné skladby/videa se na pozadí načte skutečné členství v knihovně. Knihovní položka je zpočátku skrytá; pouze při dostupné akci se na konci menu objeví **Přidat do knihovny** nebo **Odebrat z knihovny**. Ostatní řádky menu se tím neposunou. Kliknutí provede změnu bez dalšího okna.
+- Během zjišťování stavu zůstávají **Přehrát jako další**, **Přidat na konec fronty** a **Spustit mix** aktivní a funkční. Čtení knihovny běží odděleně od hlavních požadavků na YTM, nevyvolává celkové načítání ani nepřerušuje audio.
+- Zavření menu nebo otevření nabídky jiné skladby zneplatní opožděnou odpověď. Každé otevření zjišťuje stav znovu. Pokud YTM ovládání neposkytne nebo se stav nepodaří načíst, položka zůstane skrytá. Soukromé uploady a epizody tuto nabídku nemají.
+- Skladby v otevřeném veřejném albu přebírají jeho známé ID, pokud nemají vlastní konkrétní ID alba. Údaj zůstává zachovaný i ve frontě a umožňuje náhradní zjištění knihovního stavu přes album.
+- Po změně znovu načítáme stav z YTM. Teprve ověřená změna aktualizuje knihovnu. Případná chyba nebo neověřený výsledek se zobrazí; pro nový stav stačí znovu otevřít menu skladby.
+- Změna knihovny nepřerušuje přehrávání, nemění hodnocení a neodebírá skladby z přehrávací fronty. Návrat přes cover respektuje změněný obsah knihovny.
+- Zatím skladby; přidávání/odebírání alb a playlistů, odběry interpretů a kopírování odkazů jsou další samostatné podkroky.
+
+- Finální podobu menu a chování skladeb z alb uživatel ověřil proti webovému YTM a přijal 2026-10-25.

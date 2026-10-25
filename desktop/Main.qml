@@ -130,6 +130,11 @@ ApplicationWindow {
     Connections {
         target: backend
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onSongLibraryChanged() {
+            if (root.currentPage === 1 && root.currentLibrarySection === "songs"
+                    && backend.detailTitle.length === 0)
+                backend.loadLibrarySection("songs", root.currentLibraryOrder)
+        }
         function onRadioStarted() {
             root.currentPage = 5
             Qt.callLater(root.revealQueueRow)
@@ -686,6 +691,19 @@ ApplicationWindow {
         Menu {
             id: trackMenu
             objectName: "trackContextMenu"
+            property int libraryRequest: 0
+            property bool libraryMatches: libraryRequest > 0 && backend.songLibraryMenuState.requestId === libraryRequest
+            onAboutToShow: {
+                if (kind === "song" || kind === "video")
+                    libraryRequest = backend.prepareSongLibrary(trackDelegate.sourceKey, trackDelegate.index)
+            }
+            onClosed: {
+                if (libraryRequest > 0) backend.cancelSongLibraryProbe(libraryRequest)
+                libraryRequest = 0
+            }
+            Component.onDestruction: {
+                if (libraryRequest > 0) backend.cancelSongLibraryProbe(libraryRequest)
+            }
             popupType: Popup.Item
             width: 240
             palette.text: "#eeeeee"
@@ -713,6 +731,17 @@ ApplicationWindow {
                 enabled: backend.playerCanEditQueue && !backend.busy && backend.connected
                 onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
             }
+            // Append the delayed action so existing menu rows do not move.
+            MenuItem {
+                objectName: "songLibraryMenuAction"
+                text: backend.songLibraryMenuState.inLibrary ? "Odebrat z knihovny" : "Přidat do knihovny"
+                visible: (kind === "song" || kind === "video") && trackMenu.libraryMatches
+                         && backend.songLibraryMenuState.available && !backend.songLibraryMenuState.pending
+                height: visible ? implicitHeight : 0
+                enabled: visible && !backend.busy
+                onTriggered: backend.changeSongLibrary(trackMenu.libraryRequest)
+            }
+
         }
     }
 

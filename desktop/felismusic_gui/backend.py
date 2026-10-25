@@ -143,7 +143,10 @@ class BackendBridge(QObject):
     playerTrackChanged = Signal()
     playbackSourceCaptured = Signal()
     radioStarted = Signal()
+    songLibraryMenuChanged = Signal()
+    songLibraryChanged = Signal()
 
+    _songLibraryProbeReady = Signal(int, object, str)
     _resultReady = Signal(str, object)
     _errorReady = Signal(str, str)
     _playbackReady = Signal(int)
@@ -170,6 +173,17 @@ class BackendBridge(QObject):
         self._account_name = "YouTube Music"
         self._busy = False
         self._connected = False
+        self._library_probe_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="felismusic-library-probe")
+        self._library_probe_api = None
+        self._library_probe_headers = {}
+        self._library_probe_future = None
+        self._library_probe_generation = 0
+        self._song_library_action_pending = False
+        self._song_library_menu = {}
+        self._song_library_token = ""
+        self._song_library_item = {}
+        self._library_section = ""
+        self._library_order = ""
         self._detail_title = ""
         self._detail_meta = {}
         self._detail_history = []
@@ -229,6 +243,7 @@ class BackendBridge(QObject):
         self._liked_default_items = []
         self._liked_order = ""
 
+        self._songLibraryProbeReady.connect(self._apply_song_library_probe, Qt.ConnectionType.QueuedConnection)
         self._resultReady.connect(
             self._apply_result,
             Qt.ConnectionType.QueuedConnection,
@@ -582,7 +597,8 @@ class BackendBridge(QObject):
         track = {
             "title": str(item.get("title") or "Bez názvu"),
             "artists": ([{"name": artists}] if artists else []),
-            "album": ({"name": album} if album else None),
+            "album": ({"name": album, "id": item.get("albumId") or ""} if album else None),
+            "albumId": str(item.get("albumId") or ""),
             "duration": str(item.get("duration") or ""),
             "videoId": str(item.get("videoId") or ""),
             "playlistId": str(item.get("playlistId") or ""),
@@ -653,6 +669,10 @@ class BackendBridge(QObject):
         source_key = self.playerQueueSource
         if source_key == "playing":
             return True
+        if page == 1:
+            context = origin.get("context", {})
+            self._library_section = context.get("librarySection", "")
+            self._library_order = context.get("libraryOrder", "")
         snapshots = origin.get("snapshots", self._playing_browse_snapshots)
         sources = [source_key]
         if source_key == "detail":
@@ -1211,6 +1231,148 @@ class BackendBridge(QObject):
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
 
+    @Property("QVariantMap", notify=songLibraryMenuChanged)
+    def songLibraryMenuState(self):
+        return self._song_library_menu
+
+    @staticmethod
+    def _library_song_controls(song):
+        state = song.get("inLibrary")
+        tokens = song.get("feedbackTokens") or {}
+        if not isinstance(state, bool) or not isinstance(tokens, dict):
+            return None
+        token = tokens.get("remove" if state else "add")
+        if not isinstance(token, str) or not token:
+            return None
+        return {"inLibrary": state, "token": token}
+
+    def _fetch_song_library_controls(self, api, video_id, album_id):
+        data = api.get_watch_playlist(videoId=video_id, limit=1)
+        song = next((x for x in data.get("tracks", []) if x.get("videoId") == video_id), {})
+        controls = self._library_song_controls(song)
+        if controls:
+            return controls
+        album = song.get("album") or {}
+        album_id = (album.get("id") if isinstance(album, dict) else "") or album_id
+        if album_id and "privately_owned" not in album_id:
+            data = api.get_album(album_id)
+            song = next((x for x in data.get("tracks", []) if x.get("videoId") == video_id), {})
+            controls = self._library_song_controls(song)
+            if controls:
+                return controls
+        raise RuntimeError("YT Music pro tuto skladbu neposkytlo ovládání knihovny.")
+
+    @Slot(str, int, result=int)
+    def prepareSongLibrary(self, source, index):
+        if self._closing.is_set() or self._ytmusic is None or self._song_library_action_pending:
+            return 0
+        items = self._source_items(source)
+        if not 0 <= index < len(items):
+            return 0
+        item = items[index]
+        if (not item.get("videoId") or self._is_upload(item)
+                or item.get("kind", "song") not in ("song", "video", "")):
+            return 0
+        self._library_probe_generation += 1
+        request = self._library_probe_generation
+        if self._library_probe_future is not None:
+            self._library_probe_future.cancel()
+        self._song_library_item = dict(item)
+        self._song_library_token = ""
+        self._song_library_menu = {"requestId": request, "videoId": item["videoId"],
+                                  "pending": True, "available": False,
+                                  "message": "Zjišťuji stav knihovny…"}
+        self.songLibraryMenuChanged.emit()
+        def work():
+            if self._closing.is_set() or request != self._library_probe_generation:
+                return
+            result, error = {}, ""
+            try:
+                # An independent authenticated client keeps the main API worker
+                # free for Mix/browsing while this read is waiting on the network.
+                if self._library_probe_api is None:
+                    self._library_probe_api = YTMusic(dict(self._library_probe_headers))
+                result = self._fetch_song_library_controls(self._library_probe_api, item["videoId"], item.get("albumId", ""))
+            except Exception as exc:
+                error = str(exc)
+            self._songLibraryProbeReady.emit(request, result, error)
+        self._library_probe_future = self._library_probe_executor.submit(work)
+        return request
+
+    @Slot(int)
+    def cancelSongLibraryProbe(self, request):
+        if request != self._library_probe_generation:
+            return
+        self._library_probe_generation += 1
+        if self._library_probe_future is not None:
+            self._library_probe_future.cancel()
+        self._song_library_menu = {}
+        self._song_library_token = ""
+        self.songLibraryMenuChanged.emit()
+
+    @Slot(int, object, str)
+    def _apply_song_library_probe(self, request, result, error):
+        if self._closing.is_set() or request != self._library_probe_generation:
+            return
+        self._song_library_token = result.get("token", "")
+        self._song_library_menu = dict(self._song_library_menu, pending=False,
+            available=not bool(error), inLibrary=result.get("inLibrary", False), message=error)
+        self.songLibraryMenuChanged.emit()
+
+    @Slot(int)
+    def changeSongLibrary(self, request):
+        state = self._song_library_menu
+        if (self._busy or self._closing.is_set() or request != state.get("requestId")
+                or self._song_library_action_pending or not state.get("available")
+                or state.get("pending") or not self._song_library_token):
+            return
+        wanted = not state["inLibrary"]
+        token = self._song_library_token
+        item = dict(self._song_library_item)
+        api = self._ytmusic
+        self._song_library_action_pending = True
+        self._song_library_menu = dict(state, pending=True, message="Ukládám změnu…")
+        self.songLibraryMenuChanged.emit()
+        def task():
+            api.edit_song_library_status(feedbackTokens=[token])
+            try:
+                controls = self._fetch_song_library_controls(api, item["videoId"], item.get("albumId", ""))
+                if controls["inLibrary"] != wanted:
+                    raise RuntimeError("YT Music zatím nevrátilo požadovaný stav.")
+            except Exception as exc:
+                raise RuntimeError("Požadavek byl odeslán, ale změnu se nepodařilo ověřit. "
+                                   "Znovu otevři nabídku skladby pro načtení stavu. " + str(exc)) from exc
+            return dict(controls, item=item, requestId=request)
+        self._submit("song_library_action", "Ukládám změnu knihovny…", task)
+
+    def _update_song_library_snapshots(self, item, in_library):
+        # Keep original browsing snapshots consistent, without editing the queue.
+        if self._library_section == "songs":
+            items = [x for x in self._library_items_model.snapshot() if x.get("videoId") != item["videoId"]]
+            if in_library:
+                items.insert(0, dict(item))
+            self._library_items_model.set_items(self._sort_normalized(items, self._library_order))
+        if self._queue is None:
+            return
+        updated = {}
+        for song in self._queue.tracks:
+            origin = song.get("_guiOrigin", {})
+            context = origin.get("context", {})
+            if context.get("librarySection") != "songs":
+                continue
+            items = origin.get("snapshots", {}).get("library")
+            if items is None:
+                continue
+            if id(items) not in updated:
+                remaining = [x for x in items if x.get("videoId") != item["videoId"]]
+                if in_library:
+                    remaining.insert(0, dict(item))
+                items[:] = self._sort_normalized(remaining, context.get("libraryOrder"))
+                updated[id(items)] = {x.get("videoId"): i for i, x in enumerate(items)}
+            if origin.get("source") == "library":
+                origin["index"] = updated[id(items)].get(song.get("videoId"), -1)
+        self.playerChanged.emit()
+
     def _radio_queue_marker(self):
         # An explicit queue edit while the API is working supersedes its result.
         return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
@@ -1502,9 +1664,11 @@ class BackendBridge(QObject):
     @Slot(str, object)
     def _apply_result(self, name: str, result: Any):
         emit_initialized = False
+        emit_song_library_changed = False
         try:
             if name == "initialize":
                 self._ytmusic = result["ytmusic"]
+                self._library_probe_headers = dict(result.get("auth_headers") or {})
                 account = result.get("account") or {}
                 new_name = account.get("accountName") or "YouTube Music"
                 if new_name != self._account_name:
@@ -1513,6 +1677,18 @@ class BackendBridge(QObject):
                 self._set_connected(True)
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
+
+            elif name == "song_library_action":
+                self._song_library_action_pending = False
+                state = result["inLibrary"]
+                if result["requestId"] == self._library_probe_generation:
+                    self._song_library_token = result["token"]
+                    self._song_library_menu = dict(self._song_library_menu, pending=False,
+                        available=True, inLibrary=state, message="")
+                    self.songLibraryMenuChanged.emit()
+                self._update_song_library_snapshots(result["item"], state)
+                emit_song_library_changed = True
+                self._set_status("Přidáno do knihovny" if state else "Odebráno z knihovny")
 
             elif name == "radio":
                 self._apply_radio(result)
@@ -1583,9 +1759,21 @@ class BackendBridge(QObject):
 
         if emit_initialized:
             self.initialized.emit()
+        if emit_song_library_changed:
+            self.songLibraryChanged.emit()
 
     @Slot(str, str)
     def _apply_error(self, name: str, message: str):
+        if name == "song_library_action":
+            self._song_library_action_pending = False
+            self._song_library_token = ""
+            self._song_library_menu = dict(self._song_library_menu, pending=False,
+                                           available=False, message=message)
+            self.songLibraryMenuChanged.emit()
+            self._set_busy(False)
+            self._set_status("Změnu knihovny se nepodařilo uložit nebo ověřit")
+            self.errorOccurred.emit(message)
+            return
         if name == "detail":
             self._pending_detail_parent = None
         self._set_busy(False)
@@ -1678,10 +1866,13 @@ class BackendBridge(QObject):
         return str(album or "")
 
     @classmethod
-    def _track(cls, item, upload=False, album_thumbnail=""):
+    def _track(cls, item, upload=False, album_thumbnail="", album_id=""):
         upload = upload or cls._is_upload(item)
         artists = cls._artists(item)
         album = cls._album(item)
+        raw_album = item.get("album")
+        album_id = ((raw_album.get("id") if isinstance(raw_album, dict) else "")
+                    or item.get("albumId") or album_id)
         duration = item.get("duration") or ""
         # Search/library payloads are not fully uniform.  Some rows contain
         # only duration_seconds even though the web UI can show a duration.
@@ -1696,6 +1887,7 @@ class BackendBridge(QObject):
             "subtitle": " · ".join(subtitle_parts),
             "artists": artists,
             "album": album,
+            "albumId": str(album_id or ""),
             "duration": str(duration),
             "videoId": str(item.get("videoId") or ""),
             "playlistId": str(item.get("playlistId") or ""),
@@ -1933,7 +2125,7 @@ class BackendBridge(QObject):
                     account.update(info)
             except Exception:
                 pass
-            return {"ytmusic": ytmusic, "account": account}
+            return {"ytmusic": ytmusic, "account": account, "auth_headers": headers}
 
         self._submit("initialize", "Připojuji k YouTube Music…", task)
 
@@ -2086,6 +2278,10 @@ class BackendBridge(QObject):
             ) or []
             return [self._artist_item(x, "upload_artist") for x in items]
 
+        if self._busy:
+            return
+        self._library_section = section
+        self._library_order = order
         self._library_items_model.clear()
         self.clearDetail()
         self._submit(
@@ -2188,6 +2384,7 @@ class BackendBridge(QObject):
                         x,
                         upload=kind.startswith("upload_"),
                         album_thumbnail=album_thumbnail,
+                        album_id=browse_id if kind == "album" else "",
                     )
                     for x in tracks
                 ],
@@ -2384,6 +2581,7 @@ class BackendBridge(QObject):
                     self._local_output.media_controller.stop()
         except Exception:
             pass
+        self._library_probe_executor.shutdown(wait=False, cancel_futures=True)
         self._executor.shutdown(wait=False, cancel_futures=True)
         self._playback_executor.shutdown(wait=False, cancel_futures=True)
 

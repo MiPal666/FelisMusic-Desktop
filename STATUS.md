@@ -73,7 +73,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Prošlo 38 offline testů: 26 původních + 12 pro vkládání, přehrávání, přenačítání, duplicity, smíšené zdroje, pauzu, Stop a Repeat. QML ověřeno klikáním na obě varianty menu a jejich akce při 1280×800 i 900×600; zahrnutý návrat přes cover mezi vloženým albem a původním seznamem.
 - Uživatel 2026-10-25 potvrdil funkčnost přehrání jako další a přidání do fronty. Na jeho návrh byla odstraněna duplicitní akce Přehrát odtud; přidání má přesnější název Přidat na konec fronty. Uživatel potvrdil i upravené menu. Podkrok je přijatý a uložený v commitu `a284740`. Akce pro celé kolekce, zbývající akce skladbového menu a odebírání/přesouvání položek zatím neimplementované.
 
-### Otestováno uživatelem, čeká na commit: 0.3.7-dev – interpret (podkrok 4a)
+### Otestováno uživatelem: 0.3.7-dev – interpret (podkrok 4a)
 
 - Uživatel po commitu `a284740` výslovně zvolil krok 4 a potvrdil zavřenou aplikaci. Zbývající podkroky 3 zůstávají otevřené.
 - Veřejný interpret z knihovny i hledání: části Skladby / Alba / Singly a EP. Uživatel původní variantu otestoval, následně schválil automatické načítání celých dostupných seznamů a řazení místo tlačítka Zobrazit vše. Skladby se načítají při otevření interpreta, ostatní části při prvním přepnutí. Používáme skutečné browseId/params z odpovědi YTM a `limit=None`; bez odkazu na rozšíření zobrazíme všechny dodané položky. Další přepnutí používá uložená data.
@@ -82,9 +82,9 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Snapshot původu přehrávání zahrnuje detail interpreta a návratovou historii alba. Cover je obnovuje; hodnocení se propisuje i do částí a historie. Procházení nepřerušuje zvuk ani nemění frontu.
 - Nahraní interpreti zachovávají soukromý endpoint a seznam skladeb. Veřejné části jim nevyrábíme podle názvu.
 - Prošlo 49 offline testů (38 původních + 11 pro interpreta a řazení). QML ověřeno klikáním při 1280×800 a 900×600: automatické načítání částí, řazení, otevření alba, Zpět, prázdná část a spuštění skladby; opět prošly i kontroly menu/fronty a smíšeného původu přes cover.
-- Uživatel potvrdil funkčnost včetně automatického načítání a řazení. Řazení skladeb podle roku jsme po ověření dostupných údajů výslovně vynechali; roky zůstávají pouze u alb a singlů/EP. Čeká na commit. Hlavičky kolekcí a odkazy skladba → album → interpret (4b/4c), Shuffle a Mix nejsou tímto podkrokem dokončené.
+- Uživatel potvrdil funkčnost včetně automatického načítání a řazení. Řazení skladeb podle roku jsme po ověření dostupných údajů výslovně vynechali; roky zůstávají pouze u alb a singlů/EP. Uloženo společně s Mixem ze skladby v commitu `635fb27`. Hlavičky kolekcí a odkazy skladba → album → interpret (4b/4c), Shuffle a Mix nejsou tímto podkrokem dokončené.
 
-### Otestováno uživatelem, čeká na commit: 0.3.8-dev – Mix ze skladby (podkrok 5a)
+### Otestováno uživatelem: 0.3.8-dev – Mix ze skladby (podkrok 5a)
 
 - Uživatel po přijetí detailu interpreta výslovně zadal krok 5 a oznámil zavírání aplikace. Hlavičky kolekcí a odkazy z kroku 4b/4c zůstávají otevřené; změny 0.3.7-dev dosud nejsou commitnuté.
 - Spustit mix v nabídce veřejné skladby/videa. Využívá CLI `get_radio_block`, `unique_new_radio_tracks` a testovací omezení bloků. Seed je první, doporučení bez neplatných/duplicitních videoId; prázdná doporučení skončí srozumitelnou chybou.
@@ -92,7 +92,20 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Po dobu API požadavku je původní fronta/stav platný. Výsledek ověřuje generaci přehrávání a identitu/obsah fronty. Stop, jiný výběr a vložení položky během požadavku potlačí opožděný výsledek i jeho chybu. Běžná chyba mixu nemění přehrávání.
 - Původ skladeb mixu odkazuje na živou Frontu; cover ji otevře bez obnovování zastaralého snapshotu. Nahrané skladby a epizody nemají akci mixu.
 - Prošlo 59 offline testů (49 dosavadních + 10 pro rádio). QML ověřeno skutečným klikáním při 1280×800 a 900×600: nabídka, mix aktuální/jiné skladby, zobrazení fronty, cover a nepřítomnost akce u uploadů.
-- Uživatel 2026-10-25 potvrdil funkčnost na skutečném YTM a audiu. Podkrok 5a je přijatý a čeká na commit společně s přijatým detailem interpreta 0.3.7-dev. Zatím jeden blok doporučení; automatické doplňování 5b a mixy interpreta/kolekce 5c dosud neimplementované.
+- Uživatel 2026-10-25 potvrdil funkčnost na skutečném YTM a audiu. Podkrok 5a je přijatý a uložený společně s detailem interpreta 0.3.7-dev v commitu `635fb27`. Zatím jeden blok doporučení; automatické doplňování 5b a mixy interpreta/kolekce 5c dosud neimplementované.
+
+### Otestováno uživatelem, čeká na commit: 0.3.9-dev – knihovna skladeb (první část 6a)
+
+- Uživatel výslovně zvolil krok 6 a potvrdil vypnutou aplikaci. Zbývající nabídky kolekcí 3b, fronta 3c, hlavičky/navigace 4b/4c a rádio 5b/5c zůstávají otevřené.
+- Původní variantu s dialogem uživatel otestoval jako funkční, následně schválil přímou akci v menu a výslovně požadoval provozuschopnost ostatních akcí během zjišťování stavu. Před touto úpravou potvrdil zavřenou aplikaci.
+- Po porovnání s webovým YTM uživatel přijal dostupnost akcí podle vrácených údajů. Následně schválil skrytí knihovní položky během zjišťování i při nedostupném ovládání a opravu předání ID alba; před úpravou potvrdil zavřenou aplikaci.
+- Menu nyní knihovní položku zpočátku skrývá. Pouze při potvrzené dostupné akci se na konci objeví Přidat/Odebrat podle skutečného stavu; bez dialogu a bez posunu stávajících akcí. Samostatný jednovláknový executor a vlastní autentizovaný YTMusic klient pro čtení uvolňují hlavní API worker pro Mix a další požadavky. Čtení nezvedá globální busy ani nemění stavový text přehrávání.
+- Každé menu má identifikátor požadavku. Zavření, zánik delegátu nebo jiné menu zneplatní starou odpověď; čekající zbytečné úlohy se ruší. Nepodporovaný stav nebo chyba čtení ponechá knihovní položku skrytou. Uploady a epizody vynechané.
+- Skladby otevřeného veřejného alba přebírají známé browseId alba jako albumId, pokud nemají vlastní konkrétní ID. Normalizace a fronta ID zachovávají; regresní test ověřuje skutečnou cestu otevření alba → fronta → náhradní dotaz na album.
+- Nejprve `get_watch_playlist(videoId, limit=1)`; pokud chybí ovládání, dotaz na skutečné albumId a přesná shoda videoId v `get_album`. Bez stavu a správného feedback tokenu nedovolíme zápis. Používá `edit_song_library_status`, nikoli `rate_song`. Po zápisu nezávisle ověří stav; neověřený výsledek nehlásí jako úspěch. Chyba zápisu/ověření se zobrazí, členství není odhadované podle Like.
+- Přehrávání, pozice, pauza/Stop, hodnocení a obsah fronty se změnou členství nemění. Ověřená změna aktualizuje knihovní seznam a původní snapshoty pro cover včetně indexů. Viditelná sekce Knihovna/Skladby se znovu načte ze serveru.
+- Prošlo 75 offline testů (59 před knihovnou + 16 pro knihovnu včetně souběhu, rušení a předání ID alba). QML ověřeno klikáním při 1280×800 a 900×600: během zablokovaného čtení skutečně použity obě vkládací akce a Mix, pak přímé přidání/odebrání bez dialogu a ignorování staré odpovědi při změně menu. Ověřené skrytí položky během čekání i po odpovědi bez dostupné akce. Předchozí kontroly ověřily také obnovení seznamu/cover a uploady.
+- Uživatel 2026-10-25 potvrdil finální menu i chování skladeb z alba křížovým porovnáním s webovým YTM. První část 6a je přijatá a čeká na commit. Alba/playlisty v knihovně, odběry interpretů a kopírování odkazů dosud nejsou implementované.
 
 ## Pracovní domluva
 

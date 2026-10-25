@@ -58,7 +58,7 @@ První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát
 
 Na výslovný pokyn uživatele jsme po skladbovém menu přešli ke kroku 4. Zbývající části kroku 3 zůstávají plánované.
 
-V 0.3.7-dev je první podkrok 4a uživatelsky otestovaný a přijatý (čeká na commit): části interpreta s automatickým načtením celých dostupných seznamů, výchozím řazením A–Z a volbou dalších pořadí, otevření alba a návrat k interpretovi. Přehrávání skladeb z řádků funguje stávajícím způsobem; samostatné akce pro celou kolekci, Shuffle a Mix zůstávají navazující práce.
+V 0.3.7-dev je první podkrok 4a uživatelsky otestovaný a přijatý (commit `635fb27`): části interpreta s automatickým načtením celých dostupných seznamů, výchozím řazením A–Z a volbou dalších pořadí, otevření alba a návrat k interpretovi. Přehrávání skladeb z řádků funguje stávajícím způsobem; samostatné akce pro celou kolekci, Shuffle a Mix zůstávají navazující práce.
 
 **4a – Interpret:** nejposlouchanější skladby, dostupné rozšíření seznamu, alba a singly/EP. Nabídky Přehrát/Náhodně podle dostupného zdroje; Mix dopojit v následujícím kroku.
 
@@ -70,7 +70,7 @@ V 0.3.7-dev je první podkrok 4a uživatelsky otestovaný a přijatý (čeká na
 
 ## 5. Rádio / Mix
 
-Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůstávají otevřené. V 0.3.8-dev je uživatelsky otestovaný a přijatý podkrok 5a (čeká na commit): Mix ze skladby přes CLI rádio, zachování audia aktuálního seedu, přesměrování přednačítání a pojistky proti opožděným výsledkům. Zatím jeden blok doporučení; 5b/5c následují samostatně.
+Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůstávají otevřené. V 0.3.8-dev je uživatelsky otestovaný a přijatý podkrok 5a (commit `635fb27`): Mix ze skladby přes CLI rádio, zachování audia aktuálního seedu, přesměrování přednačítání a pojistky proti opožděným výsledkům. Zatím jeden blok doporučení; 5b/5c následují samostatně.
 
 **5a – Aktuální nebo vybraná skladba:** zapojit vytvoření rádia z CLI a ukázat, že se přehrává rádio.
 
@@ -81,6 +81,8 @@ Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůst
 **Přijetí:** rádio přehraje více doplněných bloků bez konce na původní dávce. Fronta, aktuální skladba a přepnutí zpět na běžný playlist zůstávají konzistentní.
 
 ## 6. Knihovna, odběry a odkazy
+
+Na výslovný pokyn uživatele jsme po commitu `635fb27` přešli ke kroku 6. Podkroky 5b/5c a dříve nedokončené části plánu zůstávají otevřené. V 0.3.9-dev je uživatelsky otestovaná a přijatá první část 6a (čeká na commit): přímá akce Přidat/Odebrat v menu skladby podle skutečného členství, nezávislé načítání stavu bez blokování ostatních akcí, změna přes feedback tokeny a ověření výsledku bez změny hodnocení nebo fronty. Původní dialog uživatel otestoval. Finální varianta skrývá knihovní položku do potvrzení dostupné akce, při nedostupnosti ji vůbec nezobrazuje a doplňuje předání ID alba skladbám; uživatel potvrdil shodu s webovým YTM křížovým testem. Alba a playlisty jsou následující část 6a; odběry a odkazy 6b/6c zatím nehotové.
 
 **6a – Knihovna:** přidání/odebrání podporovaných skladeb, alb a playlistů. Rozlišovat hodnocení Like/Dislike, členství v knihovně a členství v playlistu.
 
