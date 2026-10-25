@@ -148,6 +148,8 @@ class BackendBridge(QObject):
     songLibraryChanged = Signal()
     playlistSaveChanged = Signal()
     playlistSaveRequested = Signal()
+    emptyPlaylistChanged = Signal()
+    emptyPlaylistRequested = Signal()
     playlistsChanged = Signal(str)
 
     _songLibraryProbeReady = Signal(int, object, str)
@@ -185,6 +187,10 @@ class BackendBridge(QObject):
         self._song_library_action_pending = False
         self._song_library_menu = {}
         self._song_library_token = ""
+        self._empty_playlist_state = {}
+        # Confirmed creations may precede their appearance in YTM's library.
+        # Keep their cards until a library response contains the actual IDs.
+        self._pending_created_playlists = {}
         self._playlist_save_state = {}
         self._playlist_save_items = []
         self._playlist_save_item = {}
@@ -1238,6 +1244,51 @@ class BackendBridge(QObject):
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
 
+    @Property("QVariantMap", notify=emptyPlaylistChanged)
+    def emptyPlaylistState(self):
+        return self._empty_playlist_state
+
+    @Slot(result=bool)
+    def beginEmptyPlaylist(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None:
+            return False
+        self._empty_playlist_state = {"pending": False, "completed": False,
+                                      "locked": False, "error": False, "message": ""}
+        self.emptyPlaylistChanged.emit()
+        self.emptyPlaylistRequested.emit()
+        return True
+
+    @Slot(str, result=bool)
+    def createEmptyPlaylist(self, title):
+        state = self._empty_playlist_state
+        if (self._busy or self._closing.is_set() or self._ytmusic is None or not state
+                or state.get("pending") or state.get("completed") or state.get("locked")):
+            return False
+        title = str(title or "").strip()
+        if not title or "<" in title or ">" in title:
+            self._empty_playlist_state = dict(state, error=True, message="Vyplň název playlistu bez znaků < a >.")
+            self.emptyPlaylistChanged.emit()
+            return False
+        self._empty_playlist_state = dict(state, pending=True, error=False, message="Vytvářím prázdný playlist…")
+        self.emptyPlaylistChanged.emit()
+        api = self._ytmusic
+        def task():
+            try:
+                # No video_ids/source_playlist: creation is independent of the
+                # selected song, browsing page and playback queue.
+                playlist_id = api.create_playlist(title, "", privacy_status="PRIVATE")
+                if not isinstance(playlist_id, str) or not playlist_id.strip():
+                    raise RuntimeError("Creation not confirmed")
+                return {"pending": False, "completed": True, "locked": True,
+                        "error": False, "playlistId": playlist_id, "title": title,
+                        "message": f"Vytvořen prázdný playlist: {title}"}
+            except Exception as exc:
+                print(f"FelisMusic vytvoření prázdného playlistu: {type(exc).__name__}")
+                return {"pending": False, "completed": False, "locked": True, "error": True,
+                        "message": "Vytvoření playlistu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlisty ve webovém YTM."}
+        self._submit("playlist_create_empty", "Vytvářím prázdný playlist…", task)
+        return True
+
     @Property("QVariantMap", notify=playlistSaveChanged)
     def playlistSaveState(self):
         return self._playlist_save_state
@@ -1867,6 +1918,17 @@ class BackendBridge(QObject):
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
 
+            elif name == "playlist_create_empty":
+                self._empty_playlist_state = result
+                self.emptyPlaylistChanged.emit()
+                self._set_status(result["message"])
+                if result.get("completed"):
+                    changed_playlist_id = result["playlistId"]
+                    self._pending_created_playlists[changed_playlist_id] = self._playlist({
+                        "playlistId": changed_playlist_id, "title": result["title"],
+                        "count": 0, "owned": True,
+                    })
+
             elif name == "playlist_save_choices":
                 self._playlist_save_state = dict(self._playlist_save_state, targets=result, pending=False)
                 self.playlistSaveChanged.emit()
@@ -1928,6 +1990,14 @@ class BackendBridge(QObject):
                 self._set_status(f"Playlisty · {len(result)}")
 
             elif name.startswith("library:"):
+                if name == "library:playlists":
+                    received_ids = {item.get("playlistId") for item in result}
+                    for playlist_id in received_ids:
+                        self._pending_created_playlists.pop(playlist_id, None)
+                    result = self._sort_normalized(
+                        list(reversed(list(self._pending_created_playlists.values()))) + list(result),
+                        self._library_order,
+                    )
                 self._library_items_model.set_items(result)
                 label = {
                     "library:playlists": "Playlisty",

@@ -135,6 +135,15 @@ ApplicationWindow {
                     && backend.detailTitle.length === 0)
                 backend.loadLibrarySection("songs", root.currentLibraryOrder)
         }
+        function onEmptyPlaylistRequested() {
+            emptyPlaylistName.text = ""
+            emptyPlaylistDialog.open()
+            emptyPlaylistName.forceActiveFocus()
+        }
+        function onEmptyPlaylistChanged() {
+            if (backend.emptyPlaylistState.completed && !backend.emptyPlaylistState.pending)
+                emptyPlaylistDialog.close()
+        }
         function onPlaylistSaveChanged() {
             var state = backend.playlistSaveState
             if (state.completed && state.verified && !state.pending)
@@ -175,6 +184,75 @@ ApplicationWindow {
             color: "#eeeeee"
             wrapMode: Text.WordWrap
             padding: 18
+        }
+    }
+
+    Dialog {
+        id: emptyPlaylistDialog
+        objectName: "emptyPlaylistDialog"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 520)
+        padding: 18
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label {
+            text: "Nový prázdný playlist"
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            TextField {
+                id: emptyPlaylistName
+                objectName: "emptyPlaylistName"
+                Layout.fillWidth: true
+                placeholderText: "Název playlistu"
+                color: "white"
+                placeholderTextColor: "#999999"
+                enabled: !backend.busy && !backend.emptyPlaylistState.locked
+                background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
+                onAccepted: if (emptyPlaylistSubmit.enabled) backend.createEmptyPlaylist(text)
+            }
+            Label {
+                text: "Playlist vznikne jako soukromý, bez skladeb."
+                color: "#aaaaaa"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                objectName: "emptyPlaylistMessage"
+                text: backend.emptyPlaylistState.message || ""
+                color: backend.emptyPlaylistState.error ? "#ffaaaa" : "#cccccc"
+                visible: text.length > 0
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            BusyIndicator {
+                running: !!backend.emptyPlaylistState.pending
+                visible: running
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+        footer: DialogButtonBox {
+            background: Item { }
+            PlayerTextButton {
+                id: emptyPlaylistSubmit
+                objectName: "emptyPlaylistSubmit"
+                text: "Vytvořit"
+                implicitWidth: 105
+                enabled: !backend.busy && !backend.emptyPlaylistState.pending
+                         && !backend.emptyPlaylistState.completed && !backend.emptyPlaylistState.locked
+                         && emptyPlaylistName.text.trim().length > 0
+                onClicked: backend.createEmptyPlaylist(emptyPlaylistName.text)
+            }
+            PlayerTextButton {
+                objectName: "emptyPlaylistClose"
+                text: "Zavřít"
+                implicitWidth: 85
+                onClicked: emptyPlaylistDialog.close()
+            }
         }
     }
 
@@ -1227,6 +1305,49 @@ ApplicationWindow {
                     font.bold: true
                 }
                 Item { Layout.fillWidth: true }
+                Button {
+                    id: libraryMenuButton
+                    objectName: "libraryPlaylistMenuButton"
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    visible: !isMix && root.currentPage === 1 && root.currentLibrarySection === "playlists"
+                    enabled: backend.connected && !backend.busy
+                    hoverEnabled: true
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Možnosti playlistů"
+                    onClicked: libraryMenu.popup(libraryMenuButton, width - libraryMenu.width, height)
+                    background: Rectangle {
+                        radius: 4
+                        color: libraryMenuButton.hovered ? "#3b3b3b" : "#222222"
+                    }
+                    contentItem: Canvas {
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.fillStyle = "#dddddd"
+                            for (var i = 0; i < 3; ++i) {
+                                ctx.beginPath()
+                                ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
+                                ctx.fill()
+                            }
+                        }
+                    }
+                    Menu {
+                        id: libraryMenu
+                        objectName: "libraryPlaylistMenu"
+                        popupType: Popup.Item
+                        width: 220
+                        palette.text: "#eeeeee"
+                        palette.windowText: "#eeeeee"
+                        palette.highlight: "#6757b8"
+                        background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+                        MenuItem {
+                            objectName: "newEmptyPlaylistAction"
+                            text: "Nový playlist…"
+                            enabled: backend.connected && !backend.busy
+                            onTriggered: backend.beginEmptyPlaylist()
+                        }
+                    }
+                }
                 Label {
                     text: items.count + " položek"
                     color: "#888888"

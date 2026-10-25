@@ -10,7 +10,7 @@ from PySide6.QtQml import QQmlApplicationEngine
 from felismusic_gui.backend import BackendBridge
 
 
-VERSION = "0.3.12-dev"
+VERSION = "0.3.13-dev"
 
 
 def main():

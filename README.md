@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.12-dev**
+- Desktop GUI: **0.3.13-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -272,3 +272,11 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Jde o úpravu rozložení; ukládání, pořadí/duplicity, přehrávání, fronta i návraty fungují stejně. Další metadata hlaviček a akce kolekcí zůstávají navazujícími podkroky.
 
 - Kompaktní hlavičky a přesun akcí do menu uživatel otestoval a přijal 2026-10-25.
+
+## 0.3.13-dev – nový prázdný playlist (první část 7b)
+
+- V přehledu **Knihovna → Playlisty** je nabídka **⋮ → Nový playlist…**. Samostatný dialog vytvoří soukromý playlist se zadaným názvem a bez skladeb, nezávisle na přehrávání i dříve vybraných skladbách.
+- Prázdný název a znaky < > se odmítnou; stejné názvy více playlistů jsou povolené. Enter v názvu provede stejnou akci jako Vytvořit.
+- Po potvrzeném vytvoření se dialog zavře a přehled playlistů se znovu načte. Potvrzený nový playlist zůstane viditelný i při opožděné odpovědi knihovny YTM; po jeho načtení ze serveru se karta nahradí skutečnými údaji podle ID, bez duplicity. Nový playlist lze otevřít i s nulovým počtem skladeb a vrátit se přes Zpět.
+- Při nepotvrzeném výsledku zůstane stručná zpráva a opakované odeslání je blokované do nového otevření, aby nevznikla další kopie. Zavření formuláře bez odeslání nic nevytvoří.
+- Název/popisy/viditelnost existujících playlistů, další viditelnosti nového playlistu, odebrání/přesouvání položek a smazání jsou následující podkroky.

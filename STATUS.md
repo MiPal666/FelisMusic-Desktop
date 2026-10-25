@@ -131,13 +131,23 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Prošlo 95 offline testů (89 dosavadních + 6 pro dávky/kolekce). QML ověřeno klikáním při 1280×800 a 900×600: tlačítko kolekce, počet/pořadí, výchozí a povolené duplicity, vytvoření playlistu z výběru, skrytí na albové části interpreta, zachování audia/fronty.
 - Uživatel potvrdil funkčnost celé této části, následně ověřil dostupnost i u nahraných seznamů. Druhá část 7a je přijatá a uložená v commitu `b114cea`. Následuje samostatná úprava rozložení popsaná níže. Prázdný playlist/úpravy údajů 7b, úpravy položek 7c a smazání 7d následují samostatně; dříve odložené kroky zůstávají otevřené.
 
-### Otestováno uživatelem, čeká na commit: 0.3.12-dev – kompaktní hlavičky a menu kolekcí
+### Otestováno uživatelem: 0.3.12-dev – kompaktní hlavičky a menu kolekcí
 
 - Uživatel potvrdil commit `b114cea`, zavřenou aplikaci a povolil domluvenou úpravu vzhledu.
 - Sdílená QML CollectionHeader pro detail hledání, knihovny a mixů: Zpět, název s elipsou a počet aktuálně zobrazených položek, vpravo ⋮. Menu obsahuje stávající Přidat seznam do playlistu…; není-li zapojená akce dostupná, ⋮ je skryté. Odstraněné samostatné akční tlačítko na dalším řádku.
 - ArtistNavigation používá Flow: záložky a řazení na jednom řádku, při užší ploše se řazení zalomí. Pořadí a logika akcí, backend, playback queue a audio se neměnily.
 - Prošlo všech 95 dosavadních offline testů. QML ověřeno při 1280×800 a 900×600: menu kolekce a celé uložení včetně duplicit/nového playlistu, přepínání interpreta, dlouhý název, návraty z knihovny/hledání/mixů, zachování audia/fronty. Zalomení řazení ověřeno také v uměle zúžené testovací ploše.
-- Uživatel 2026-10-25 potvrdil funkčnost úpravy. Mezikrok vzhledu je přijatý a čeká na commit. Metadata typu rok/autor/cover a další akce kolekcí zůstávají plánované, stejně jako zbytek kroku 7 a starší otevřené podkroky.
+- Uživatel 2026-10-25 potvrdil funkčnost úpravy. Mezikrok vzhledu je přijatý a uložený v commitu `543732c`. Metadata typu rok/autor/cover a další akce kolekcí zůstávají plánované, stejně jako zbytek kroku 7 a starší otevřené podkroky.
+
+### Otestováno uživatelem: 0.3.13-dev – nový prázdný playlist (první část 7b)
+
+- Uživatel po commitu `543732c` potvrdil zavřenou aplikaci a povolil pokračování vytvořením prázdného playlistu.
+- Nabídka ⋮ → Nový playlist… v přehledu Knihovna/Playlisty otevře samostatný formulář. `create_playlist(title, "", privacy_status=PRIVATE)` bez video_ids/source_playlist; nikdy nepoužije skladby z výběru ani playback queue.
+- Ověřuje neprázdný název bez < >, názvovou jedinečnost nevynucuje. Úspěch podle vráceného playlistId zavře formulář a obnoví knihovní přehled. Samotné potvrzení vytvoření se neváže na kontrolní parser obsahu prázdného playlistu.
+- Chyba/nepotvrzený výsledek má stručnou zprávu a zablokuje opakované odeslání; dvojklik a nové otevření během zápisu odmítnuté. Další pokus až po novém otevření a kontrole skutečného stavu. Audio, fronta, pozice a hodnocení nezměněné.
+- Prošlo 101 offline testů (95 dosavadních + 6 pro prázdný playlist). QML ověřeno při 1280×800 a 900×600: umístění tlačítka, validace, vytvoření/obnova přehledu, otevření prázdné karty a Zpět, zrušení, chyba a blokování opakování, zachování audia/fronty.
+- Uživatel ověřil vytvoření, ale nahlásil opožděné zobrazení karty až po ruční obnově. Po potvrzení zavřené aplikace upraveno: potvrzené nově vytvořené karty se uchovají v paměti do prvního skutečného výskytu ID v knihovní odpovědi; respektují řazení a shodné názvy, po převzetí serverových údajů nevzniká duplicita ani obnovení později smazané karty. Tlačítko nahrazeno nabídkou ⋮. Prošlo 103 offline testů a QML kontrola při 1280×800/900×600 včetně trvale opožděného knihovního přehledu, vytvoření přes menu, otevření prázdné karty, chyb a zachování audia/fronty.
+- Uživatel 2026-10-25 potvrdil funkčnost finální opravy. První část 7b je přijatá a čeká na commit. Úpravy názvu/popisu/viditelnosti a další viditelnosti při tvorbě jsou další část 7b; úpravy obsahu/pořadí 7c, smazání 7d a starší otevřené části plánu zůstávají nedokončené.
 
 ## Pracovní domluva
 
