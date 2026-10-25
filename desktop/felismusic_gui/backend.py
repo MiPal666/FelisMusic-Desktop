@@ -1,3 +1,4 @@
+from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
 from typing import Any
@@ -141,6 +142,7 @@ class BackendBridge(QObject):
     playerChanged = Signal()
     playerTrackChanged = Signal()
     playbackSourceCaptured = Signal()
+    radioStarted = Signal()
 
     _resultReady = Signal(str, object)
     _errorReady = Signal(str, str)
@@ -169,6 +171,9 @@ class BackendBridge(QObject):
         self._busy = False
         self._connected = False
         self._detail_title = ""
+        self._detail_meta = {}
+        self._detail_history = []
+        self._pending_detail_parent = None
 
         self._local_output = core.create_local_output()
         self._queue = None
@@ -467,6 +472,104 @@ class BackendBridge(QObject):
     def detailTitle(self):
         return self._detail_title
 
+    @Property("QVariantMap", notify=detailTitleChanged)
+    def detailMeta(self):
+        return self._detail_meta
+
+    def _detail_state(self):
+        return deepcopy({"title": self._detail_title,
+                         "tracks": self._detail_tracks_model.snapshot(),
+                         "meta": self._detail_meta, "history": self._detail_history})
+
+    def _restore_detail_state(self, state):
+        self._detail_title = state.get("title", "")
+        self._detail_meta = deepcopy(state.get("meta", {}))
+        self._detail_history = deepcopy(state.get("history", []))
+        self._detail_tracks_model.set_items(state.get("tracks", []))
+        self.detailTitleChanged.emit()
+
+    @Slot()
+    def backDetail(self):
+        if self._busy:
+            return
+        if self._detail_history:
+            self._restore_detail_state(self._detail_history[-1])
+        else:
+            self.clearDetail()
+
+    @Slot(int)
+    def openDetailItem(self, index):
+        items = self._detail_tracks_model.snapshot()
+        if self._busy or not 0 <= index < len(items):
+            return
+        item = items[index]
+        if item.get("kind") != "album" or not item.get("browseId"):
+            return
+        self._pending_detail_parent = self._detail_state()
+        self.openLibraryItem("album", item["browseId"], "", item["title"])
+
+    @classmethod
+    def _artist_sorted_items(cls, meta):
+        section = meta["section"]
+        items = meta["sections"].get(section, [])
+        order = meta.get("orders", {}).get(section, "a_to_z")
+        if order not in ("newest", "oldest"):
+            return cls._sort_normalized(items, order)
+        # Missing dates stay last in both directions; equal years retain YTM order.
+        dated, undated = [], []
+        for item in items:
+            year = str(item.get("year") or "")
+            (dated if year.isdigit() else undated).append(item)
+        dated.sort(key=lambda item: int(item["year"]), reverse=order == "newest")
+        return dated + undated
+
+    def _load_artist_section(self, api, meta, section):
+        pointer = meta.get("pointers", {}).get(section, {})
+        if pointer.get("browseId"):
+            if section == "songs":
+                data = api.get_playlist(pointer["browseId"], limit=None)
+                items = [self._track(x) for x in core.usable_tracks(data.get("tracks") or [])]
+            else:
+                data = api.get_artist_albums(pointer["browseId"], pointer["params"], limit=None)
+                items = [self._album_item(x) for x in data if x.get("browseId")]
+            meta["sections"][section] = items
+            meta["pointers"].pop(section, None)
+        meta["section"] = section
+        return self._artist_sorted_items(meta)
+
+    @Slot(str)
+    def selectArtistSection(self, section):
+        if self._busy or self._detail_meta.get("kind") != "artist":
+            return
+        if section not in ("songs", "albums", "singles"):
+            return
+        meta = deepcopy(self._detail_meta)
+        title = self._detail_title
+        if section in meta.get("pointers", {}):
+            def task():
+                items = self._load_artist_section(self._require_ytmusic(), meta, section)
+                return {"title": title, "tracks": items, "meta": meta}
+            self._submit("detail", "Načítám celý seznam…", task)
+        else:
+            meta["section"] = section
+            self._detail_meta = meta
+            self._detail_tracks_model.set_items(self._artist_sorted_items(meta))
+            self.detailTitleChanged.emit()
+
+    @Slot(str)
+    def setArtistOrder(self, order):
+        if self._busy or self._detail_meta.get("kind") != "artist":
+            return
+        section = self._detail_meta["section"]
+        allowed = {"a_to_z", "z_to_a", "default"}
+        if section != "songs":
+            allowed.update(("newest", "oldest"))
+        if order not in allowed:
+            return
+        self._detail_meta.setdefault("orders", {})[section] = order
+        self._detail_tracks_model.set_items(self._artist_sorted_items(self._detail_meta))
+        self.detailTitleChanged.emit()
+
     # ------------------------------------------------------------------
     # Local playback
     # ------------------------------------------------------------------
@@ -530,6 +633,7 @@ class BackendBridge(QObject):
         return {
             "source": source, "index": index, "snapshots": snapshots,
             "detail_title": self._detail_title if source == "detail" else "",
+            "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._liked_order, "context": dict(context or {}),
         }
 
@@ -547,6 +651,8 @@ class BackendBridge(QObject):
             return False
         origin = self._current_origin()
         source_key = self.playerQueueSource
+        if source_key == "playing":
+            return True
         snapshots = origin.get("snapshots", self._playing_browse_snapshots)
         sources = [source_key]
         if source_key == "detail":
@@ -559,11 +665,10 @@ class BackendBridge(QObject):
             if model is not None:
                 model.set_items(snapshots.get(source, []))
         title = origin.get("detail_title", self._playing_detail_title) if source_key == "detail" else ""
-        if title != self._detail_title:
-            self._detail_title = title
-            self.detailTitleChanged.emit()
-        if source_key != "detail":
-            self._detail_tracks_model.clear()
+        state = {}
+        if source_key == "detail":
+            state = origin.get("detail_state") or {"title": title, "tracks": snapshots.get("detail", [])}
+        self._restore_detail_state(state)
         if source_key == "liked":
             self._liked_order = origin.get("liked_order", self._playing_liked_order)
         return True
@@ -678,6 +783,27 @@ class BackendBridge(QObject):
             for item in items:
                 if str(item.get("videoId") or "") == video_id:
                     item["likeStatus"] = status
+
+        # Artist tabs and navigation history contain additional song snapshots.
+        seen = set()
+        def update_detail(value):
+            if not isinstance(value, (dict, list)) or id(value) in seen:
+                return
+            seen.add(id(value))
+            if isinstance(value, dict):
+                if str(value.get("videoId") or "") == video_id:
+                    value["likeStatus"] = status
+                for child in value.values():
+                    update_detail(child)
+            else:
+                for child in value:
+                    update_detail(child)
+        update_detail(self._detail_meta)
+        update_detail(self._detail_history)
+        update_detail(self._pending_detail_parent)
+        if self._queue is not None:
+            for song in self._queue.tracks:
+                update_detail(song.get("_guiOrigin", {}).get("detail_state"))
 
     def _resolve_rating_async(self, video_id, generation):
         ytmusic = self._ytmusic
@@ -1076,6 +1202,7 @@ class BackendBridge(QObject):
         origin = {
             "source": self._queue_source, "snapshots": self._playing_browse_snapshots,
             "detail_title": self._playing_detail_title,
+            "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._playing_liked_order, "context": {},
         }
         for song, original_index in zip(self._queue.tracks, source_indices):
@@ -1083,6 +1210,78 @@ class BackendBridge(QObject):
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
+
+    def _radio_queue_marker(self):
+        # An explicit queue edit while the API is working supersedes its result.
+        return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
+
+    @Slot(str, int, result=bool)
+    def startRadioFrom(self, source, index):
+        if self._busy or not self.playerCanEditQueue or self._ytmusic is None:
+            return False
+        items = self._source_items(source)
+        if not 0 <= index < len(items):
+            return False
+        item = items[index]
+        if (not item.get("videoId") or self._is_upload(item)
+                or item.get("kind", "song") not in ("song", "video", "")):
+            return False
+        seed = self._playback_track(item)
+        generation = self._playback_generation
+        marker = self._radio_queue_marker()
+        api = self._ytmusic
+        def task():
+            result = {"generation": generation, "marker": marker}
+            try:
+                # Reuse the CLI's YTM request, filtering and test block limit.
+                block = core.get_radio_block(api, seed["videoId"])
+                queue = core.PlaybackQueue([seed])
+                rest = core.unique_new_radio_tracks(queue, block, seed["videoId"])
+                if not rest:
+                    raise RuntimeError("YouTube Music nevrátilo žádné další skladby pro mix.")
+                tracks = [seed] + [self._playback_track(self._track(song)) for song in rest]
+                result["tracks"] = core.limit_radio_tracks_for_test(tracks)
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+        self._submit("radio", f"Vytvářím Mix · {seed['title']}…", task)
+        return True
+
+    def _apply_radio(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()):
+            return
+        if result.get("error"):
+            self._set_status("Mix se nepodařilo vytvořit")
+            self.errorOccurred.emit(result["error"])
+            return
+        tracks = result["tracks"]
+        current = self._queue.current() if self.playerHasTrack else None
+        keep_audio = (current is not None and current.get("videoId") == tracks[0]["videoId"]
+                      and self._player_state in ("playing", "paused"))
+        if keep_audio:
+            tracks[0] = dict(current)
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._queue = core.PlaybackQueue(tracks, name=f"Mix: {tracks[0]['title']}", radio_active=True)
+        self._queue_source = "playing"
+        self._queue_source_indices = list(range(len(tracks)))
+        self._playing_browse_snapshots = {}
+        for index, song in enumerate(self._queue.tracks):
+            song["_guiOrigin"] = {"source": "playing", "index": index, "context": {"page": 5}}
+        self._sync_queue_model()
+        if keep_audio:
+            # Do not reset time, rating or transport state for the current seed.
+            self._player_track_marker = (id(self._queue), 0, tracks[0]["videoId"])
+            self.playerChanged.emit()
+            self.playerTrackChanged.emit()
+            self._prefetch_next_track()
+        else:
+            self._set_player_from_queue()
+            self._start_current_async(direction=1, stop_current=True)
+        self._set_status(f"{self._queue.name} · {self._queue.count()} skladeb")
+        self.radioStarted.emit()
 
     @Slot(str, int, bool, "QVariantMap", result=bool)
     def enqueueFrom(self, source, index, play_next, context):
@@ -1315,6 +1514,9 @@ class BackendBridge(QObject):
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
 
+            elif name == "radio":
+                self._apply_radio(result)
+
             elif name == "mixes":
                 self._mixes_model.set_items(result)
                 self._set_status(f"Mixy pro vás · {len(result)}")
@@ -1362,13 +1564,17 @@ class BackendBridge(QObject):
                 self._set_status(f"Výsledků hledání · {len(result)}")
 
             elif name == "detail":
+                if self._pending_detail_parent is not None:
+                    self._detail_history.append(self._pending_detail_parent)
+                    self._pending_detail_parent = None
                 title = result.get("title") or "Fronta"
                 tracks = result.get("tracks") or []
-                if title != self._detail_title:
-                    self._detail_title = title
-                    self.detailTitleChanged.emit()
+                self._detail_title = title
+                self._detail_meta = result.get("meta") or {}
                 self._detail_tracks_model.set_items(tracks)
-                self._set_status(f"{title} · {len(tracks)} skladeb")
+                self.detailTitleChanged.emit()
+                label = "položek" if self._detail_meta.get("section") in ("albums", "singles") else "skladeb"
+                self._set_status(f"{title} · {len(tracks)} {label}")
 
         finally:
             # initialized is deliberately emitted only after busy=False so the
@@ -1380,6 +1586,8 @@ class BackendBridge(QObject):
 
     @Slot(str, str)
     def _apply_error(self, name: str, message: str):
+        if name == "detail":
+            self._pending_detail_parent = None
         self._set_busy(False)
         if name == "initialize":
             self._ytmusic = None
@@ -1447,7 +1655,9 @@ class BackendBridge(QObject):
 
     @staticmethod
     def _artists(item):
-        artists = item.get("artists") or []
+        artists = item.get("artists") or item.get("artist") or []
+        if isinstance(artists, dict):
+            artists = [artists]
         if isinstance(artists, str):
             return artists
         values = []
@@ -1533,6 +1743,7 @@ class BackendBridge(QObject):
             "kind": kind,
             "title": str(item.get("title") or "Bez názvu"),
             "subtitle": subtitle,
+            "year": str(year or ""),
             "artists": artists,
             "album": "",
             "duration": "",
@@ -1899,6 +2110,7 @@ class BackendBridge(QObject):
             tracks = []
             detail_title = title
             album_thumbnail = ""
+            meta = {}
 
             if kind == "album":
                 if not browse_id:
@@ -1915,6 +2127,18 @@ class BackendBridge(QObject):
                 tracks = core.usable_tracks(
                     (data.get("songs") or {}).get("results") or []
                 )
+                sections = {"songs": [self._track(x) for x in tracks]}
+                pointers = {}
+                for section in ("songs", "albums", "singles"):
+                    block = data.get(section) or {}
+                    if section != "songs":
+                        sections[section] = [self._album_item(x) for x in block.get("results", []) if x.get("browseId")]
+                    if block.get("browseId") and (section == "songs" or block.get("params")):
+                        pointers[section] = {key: block[key] for key in ("browseId", "params") if key in block}
+                meta = {"kind": "artist", "section": "songs", "sections": sections,
+                        "pointers": pointers, "orders": {}, "thumbnail": self._thumbnail(data)}
+                self._load_artist_section(ytmusic, meta, "songs")
+
 
             elif kind == "channel":
                 if not browse_id:
@@ -1958,7 +2182,8 @@ class BackendBridge(QObject):
 
             return {
                 "title": detail_title,
-                "tracks": [
+                "meta": meta,
+                "tracks": self._artist_sorted_items(meta) if kind == "artist" else [
                     self._track(
                         x,
                         upload=kind.startswith("upload_"),
@@ -2144,10 +2369,7 @@ class BackendBridge(QObject):
 
     @Slot()
     def clearDetail(self):
-        if self._detail_title:
-            self._detail_title = ""
-            self.detailTitleChanged.emit()
-        self._detail_tracks_model.clear()
+        self._restore_detail_state({})
 
     @Slot()
     def shutdown(self):

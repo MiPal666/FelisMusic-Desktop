@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.6-dev**
+- Desktop GUI: **0.3.8-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -209,3 +209,22 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Počet položek se zobrazuje u Fronty v levé navigaci. Vložení používá změnu jednoho řádku modelu, nikoli reset celé fronty; přednačítání se přeplánuje, pokud se skutečně změnila následující skladba.
 - Každý výskyt ve frontě si uchovává vlastní zdroj i navigaci. Ve smíšené frontě tak cover vrací album/playlist právě vybrané skladby, včetně původního řazení a výsledků hledání.
 - Tato etapa zahrnuje skladby v seznamech a ve Frontě. Akce pro celé kolekce, odebrání a přesouvání budou samostatné podkroky.
+
+## 0.3.7-dev – detail interpreta (podkrok 4a)
+
+- Veřejný interpret z knihovny nebo hledání má části **Skladby**, **Alba**, **Singly a EP**. Při otevření se načte celý dostupný seznam skladeb; alba a singly/EP při prvním přepnutí na danou část. Pokud YTM poskytuje odkaz na úplný seznam, načte se automaticky. Jinak používáme všechny položky dodané serverem. Načtené části zůstávají uložené při přepínání; tlačítko Zobrazit vše již není potřeba.
+- Výchozí řazení je **A–Z**, dále lze vybrat **Z–A** a **Původní pořadí YTM**. Alba a singly/EP lze řadit také **od nejnovějších / nejstarších**, položky bez roku zůstávají na konci. Každá část si během procházení pamatuje vlastní řazení; změna řazení nepřestavuje již přehrávanou frontu.
+- Kliknutí na album nebo single/EP otevře skladby alba. **Zpět** vrací interpreta se zvolenou částí, řazením a již načtenými položkami; další návrat vede do knihovny nebo výsledků hledání.
+- Prázdná část zůstane otevřená s vysvětlením. Procházení nemění přehrávanou frontu; kliknutí na skladbu ji spouští jako dosud. Cover přehrávače obnoví i části interpreta a návrat z jeho alba.
+- Nahraný interpret používá nadále soukromý seznam skladeb; veřejnou diskografii mu nedohledáváme podle názvu.
+- Podkrok uživatel otestoval a přijal. Hlavičky kolekcí a přechody skladba → album → interpret budou pokračováním 4b/4c; Shuffle a Mix zůstávají samostatně plánované.
+
+## 0.3.8-dev – Mix ze skladby (podkrok 5a)
+
+- Nabídka „⋮“ / pravé tlačítko u veřejné skladby nebo videa obsahuje **Spustit mix**. Používá stejné vytváření rádia jako CLI; nahraným soukromým skladbám a epizodám tuto akci nenabízíme.
+- Po úspěšném načtení nahradí dosavadní frontu mixem začínajícím vybranou skladbou a otevře **Frontu** s názvem **Mix: název skladby**. Pokud vybraná skladba již hraje nebo je pozastavená, pokračuje ze stejného místa a zachová pauzu. Jiná nebo zastavená skladba se spustí od začátku.
+- Během vytváření se dosavadní fronta ani označení aktuální skladby nemění. Chyba ponechá původní přehrávání. Stop, jiný výběr nebo vložení položky do fronty během čekání zneplatní opožděný výsledek mixu.
+- Doporučení jsou z YTM, nepřehratelné položky a duplicitní videoId se filtrují. Zachovává se repeat a přednačítání následující skladby. Cover u skladeb mixu otevře jeho aktuální frontu.
+- První samostatně testovatelný podkrok obsahuje **jeden blok doporučení**. Průběžné doplňování je následující podkrok 5b, mixy interpreta/kolekce pak 5c.
+
+- Podkrok 5a uživatel otestoval na skutečném přehrávání a přijal 2026-10-25.

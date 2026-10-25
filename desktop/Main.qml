@@ -130,6 +130,10 @@ ApplicationWindow {
     Connections {
         target: backend
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onRadioStarted() {
+            root.currentPage = 5
+            Qt.callLater(root.revealQueueRow)
+        }
         function onErrorOccurred(message) {
             root.errorText = message
             errorDialog.open()
@@ -459,6 +463,11 @@ ApplicationWindow {
     }
 
     function showPlayingList() {
+        if (backend.playerQueueSource === "playing") {
+            currentPage = 5
+            Qt.callLater(root.revealQueueRow)
+            return
+        }
         var context = backend.playerSourceContext
         if (context.page === undefined)
             context = playbackContext
@@ -619,7 +628,7 @@ ApplicationWindow {
             cursorShape: {
                 if (sourceKey === "search")
                     return actionable ? Qt.PointingHandCursor : Qt.ArrowCursor
-                return videoId.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
+                return videoId.length > 0 || (sourceKey === "detail" && kind === "album") ? Qt.PointingHandCursor : Qt.ArrowCursor
             }
             onClicked: function(event) {
                 if (event.button === Qt.RightButton) {
@@ -636,6 +645,8 @@ ApplicationWindow {
                         backend.playFrom("search", index)
                     else
                         backend.openSearchResult(index)
+                } else if (sourceKey === "detail" && kind === "album") {
+                    backend.openDetailItem(index)
                 } else if (videoId.length > 0 && sourceKey.length > 0) {
                     backend.playFrom(sourceKey, index)
                 }
@@ -695,6 +706,65 @@ ApplicationWindow {
                 enabled: backend.playerCanEditQueue
                 onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, false, root.navigationContext())
             }
+            MenuItem {
+                text: "Spustit mix"
+                visible: kind === "song" || kind === "video"
+                height: visible ? implicitHeight : 0
+                enabled: backend.playerCanEditQueue && !backend.busy && backend.connected
+                onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
+            }
+        }
+    }
+
+    component ArtistNavigation: ColumnLayout {
+        visible: backend.detailMeta.kind === "artist"
+        spacing: 6
+        RowLayout {
+            Layout.fillWidth: true
+            Repeater {
+                model: [{key: "songs", label: "Skladby"},
+                        {key: "albums", label: "Alba"},
+                        {key: "singles", label: "Singly a EP"}]
+                Button {
+                    required property var modelData
+                    text: modelData.label
+                    objectName: "artistSection-" + modelData.key
+                    checkable: true
+                    checked: backend.detailMeta.section === modelData.key
+                    enabled: !backend.busy
+                    onClicked: backend.selectArtistSection(modelData.key)
+                }
+            }
+        }
+        ComboBox {
+            id: artistOrder
+            objectName: "artistOrder"
+            Layout.preferredWidth: 240
+            enabled: !backend.busy
+            textRole: "label"
+            valueRole: "key"
+            model: backend.detailMeta.section === "songs"
+                   ? [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
+                      {key: "default", label: "Původní pořadí YTM"}]
+                   : [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
+                      {key: "default", label: "Původní pořadí YTM"},
+                      {key: "newest", label: "Od nejnovějších"},
+                      {key: "oldest", label: "Od nejstarších"}]
+            currentIndex: {
+                var meta = backend.detailMeta
+                var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
+                for (var i = 0; i < model.length; ++i)
+                    if (model[i].key === order) return i
+                return 0
+            }
+            onActivated: backend.setArtistOrder(currentValue)
+        }
+        Label {
+            visible: backend.detailTracksModel.count === 0
+            text: "V této části nejsou dostupné žádné položky."
+            color: "#aaaaaa"
+            wrapMode: Text.WordWrap
+            Layout.fillWidth: true
         }
     }
 
@@ -1206,17 +1276,21 @@ ApplicationWindow {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Button {
-                                            text: "← Výsledky"
-                                            onClicked: backend.clearDetail()
+                                            text: backend.detailMeta.kind === "artist" ? "← Výsledky" : "← Zpět"
+                                            enabled: !backend.busy
+                                            onClicked: backend.backDetail()
                                         }
                                         Label {
                                             text: backend.detailTitle
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
                                             color: "white"
                                             font.pixelSize: 25
                                             font.bold: true
                                         }
                                         Item { Layout.fillWidth: true }
                                     }
+                                    ArtistNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: searchDetailList
                                         Layout.fillWidth: true
@@ -1255,7 +1329,7 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 Layout.fillHeight: true
-                                sourceComponent: backend.detailTracksModel.count > 0
+                                sourceComponent: backend.detailTitle.length > 0
                                                  ? libraryDetailComponent
                                                  : ((root.currentLibrarySection === "songs"
                                                      || root.currentLibrarySection === "upload_songs")
@@ -1291,17 +1365,21 @@ ApplicationWindow {
                                     RowLayout {
                                         Layout.fillWidth: true
                                         Button {
-                                            text: "← " + root.currentLibraryLabel
-                                            onClicked: backend.clearDetail()
+                                            text: "← Zpět"
+                                            enabled: !backend.busy
+                                            onClicked: backend.backDetail()
                                         }
                                         Label {
                                             text: backend.detailTitle
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
                                             color: "white"
                                             font.pixelSize: 27
                                             font.bold: true
                                         }
                                         Item { Layout.fillWidth: true }
                                     }
+                                    ArtistNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: libraryDetailList
                                         Layout.fillWidth: true
@@ -1408,6 +1486,8 @@ ApplicationWindow {
                                         Button { text: "← Mixy"; onClicked: backend.clearDetail() }
                                         Label {
                                             text: backend.detailTitle
+                                            Layout.fillWidth: true
+                                            elide: Text.ElideRight
                                             color: "white"
                                             font.pixelSize: 27
                                             font.bold: true

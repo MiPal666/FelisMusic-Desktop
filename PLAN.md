@@ -46,7 +46,7 @@ Cover nadále vrací původní kolekci s původní navigací. Fronta ukazuje akt
 
 **3a – Skladba:** nabídka „⋮“ a pravé tlačítko, Přehrát jako další, Přidat na konec fronty, Info a dostupné hodnocení.
 
-První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát jako další / Přidat na konec fronty, včetně zachování navigace ve smíšené frontě. Uživatel potvrdil vkládání do fronty; na jeho návrh byla odstraněna duplicitní akce Přehrát odtud. Upravené menu je také uživatelsky potvrzené; čeká na commit. Další akce nabídky a následující podkroky dosud nejsou hotové.
+První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát jako další / Přidat na konec fronty, včetně zachování navigace ve smíšené frontě. Uživatel potvrdil vkládání do fronty; na jeho návrh byla odstraněna duplicitní akce Přehrát odtud. Upravené menu je také uživatelsky potvrzené; uloženo v commitu `a284740`. Další akce nabídky a následující podkroky dosud nejsou hotové.
 
 **3b – Kolekce:** Přehrát, Náhodně, celou kolekci přehrát jako další nebo přidat na konec. Akce přidá skladby ve správném pořadí a nepřeruší aktuální audio.
 
@@ -55,6 +55,10 @@ První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát
 **Přijetí:** „jako další“ znamená hned za aktuální skladbu, „do fronty“ znamená na konec. Duplicitní výskyty stejné skladby se dají rozlišit. Menu obsahuje jen skutečně zapojené a dostupné akce.
 
 ## 4. Detail interpreta a dokončení detailů kolekcí
+
+Na výslovný pokyn uživatele jsme po skladbovém menu přešli ke kroku 4. Zbývající části kroku 3 zůstávají plánované.
+
+V 0.3.7-dev je první podkrok 4a uživatelsky otestovaný a přijatý (čeká na commit): části interpreta s automatickým načtením celých dostupných seznamů, výchozím řazením A–Z a volbou dalších pořadí, otevření alba a návrat k interpretovi. Přehrávání skladeb z řádků funguje stávajícím způsobem; samostatné akce pro celou kolekci, Shuffle a Mix zůstávají navazující práce.
 
 **4a – Interpret:** nejposlouchanější skladby, dostupné rozšíření seznamu, alba a singly/EP. Nabídky Přehrát/Náhodně podle dostupného zdroje; Mix dopojit v následujícím kroku.
 
@@ -65,6 +69,8 @@ První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát
 **Přijetí:** procházení detailů nemění přehrávání; cover stále vrací skutečný původ aktuální kolekce. Nahraná hudba používá své soukromé identifikátory a dostupné akce.
 
 ## 5. Rádio / Mix
+
+Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůstávají otevřené. V 0.3.8-dev je uživatelsky otestovaný a přijatý podkrok 5a (čeká na commit): Mix ze skladby přes CLI rádio, zachování audia aktuálního seedu, přesměrování přednačítání a pojistky proti opožděným výsledkům. Zatím jeden blok doporučení; 5b/5c následují samostatně.
 
 **5a – Aktuální nebo vybraná skladba:** zapojit vytvoření rádia z CLI a ukázat, že se přehrává rádio.
 
