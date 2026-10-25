@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.14-dev**
+- Desktop GUI: **0.3.15-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -288,3 +288,9 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Před uložením se znovu ověřuje vlastnictví přesné identity playlistu. Po potvrzení zápisu YTM se formulář zavře a aktualizuje název detailu i již načtené karty. Obsah, fronta ani audio se tím nepřestavují.
 - Nepotvrzený zápis ponechá stručné oznámení a zablokuje další odeslání z téhož formuláře; další pokus až po jeho zavření a novém načtení údajů. Zrušení formuláře nic nezapisuje.
 - Vytvoření prázdného playlistu zůstává soukromé; další viditelnost lze nastavit následnou úpravou. Odebrání/přesouvání skladeb a smazání playlistu následují samostatně.
+
+## 0.3.15-dev – viditelnost při vytvoření playlistu (dokončení 7b)
+
+- Všechny způsoby vytvoření nového playlistu nabízejí **Soukromý / Neveřejný (přístup přes odkaz) / Veřejný**: prázdný playlist, playlist ze skladby i z celé kolekce.
+- Každé nové otevření formuláře začíná volbou Soukromý. Vybraná viditelnost se odešle přímo při vytvoření v jednom požadavku se skladbami, pokud jsou vybrané.
+- V režimu přidávání do existujícího playlistu je volba skrytá a jeho viditelnost se nemění. Následná úprava viditelnosti zůstává dostupná přes Upravit playlist….

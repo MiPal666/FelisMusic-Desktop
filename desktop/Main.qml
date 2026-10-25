@@ -148,6 +148,7 @@ ApplicationWindow {
         }
         function onEmptyPlaylistRequested() {
             emptyPlaylistName.text = ""
+            emptyPlaylistPrivacy.currentIndex = 0
             emptyPlaylistDialog.open()
             emptyPlaylistName.forceActiveFocus()
         }
@@ -163,6 +164,7 @@ ApplicationWindow {
         function onPlaylistSaveRequested() {
             playlistSave.newMode = (backend.playlistSaveState.targets || []).length === 0
             playlistName.text = ""
+            playlistNewPrivacy.currentIndex = 0
             playlistDuplicates.checked = false
             playlistChoice.currentIndex = playlistChoice.count > 0 ? 0 : -1
             playlistSave.open()
@@ -196,6 +198,13 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             padding: 18
         }
+    }
+
+    component PlaylistPrivacyChoice: ComboBox {
+        readonly property string privacyValue: ["PRIVATE", "UNLISTED", "PUBLIC"][currentIndex] || ""
+        Layout.fillWidth: true
+        model: ["Soukromý", "Neveřejný (přístup přes odkaz)", "Veřejný"]
+        Accessible.name: "Viditelnost playlistu"
     }
 
     Dialog {
@@ -299,10 +308,15 @@ ApplicationWindow {
                 placeholderTextColor: "#999999"
                 enabled: !backend.busy && !backend.emptyPlaylistState.locked
                 background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
-                onAccepted: if (emptyPlaylistSubmit.enabled) backend.createEmptyPlaylist(text)
+                onAccepted: if (emptyPlaylistSubmit.enabled) backend.createEmptyPlaylist(text, emptyPlaylistPrivacy.privacyValue)
+            }
+            PlaylistPrivacyChoice {
+                id: emptyPlaylistPrivacy
+                objectName: "emptyPlaylistPrivacy"
+                enabled: !backend.busy && !backend.emptyPlaylistState.locked
             }
             Label {
-                text: "Playlist vznikne jako soukromý, bez skladeb."
+                text: "Playlist vznikne bez skladeb."
                 color: "#aaaaaa"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -331,7 +345,7 @@ ApplicationWindow {
                 enabled: !backend.busy && !backend.emptyPlaylistState.pending
                          && !backend.emptyPlaylistState.completed && !backend.emptyPlaylistState.locked
                          && emptyPlaylistName.text.trim().length > 0
-                onClicked: backend.createEmptyPlaylist(emptyPlaylistName.text)
+                onClicked: backend.createEmptyPlaylist(emptyPlaylistName.text, emptyPlaylistPrivacy.privacyValue)
             }
             PlayerTextButton {
                 objectName: "emptyPlaylistClose"
@@ -388,7 +402,7 @@ ApplicationWindow {
                 }
                 Button {
                     objectName: "playlistNewMode"
-                    text: "Nový soukromý playlist"
+                    text: "Nový playlist"
                     checkable: true
                     checked: playlistSave.newMode
                     enabled: playlistSave.canSave
@@ -429,10 +443,16 @@ ApplicationWindow {
                 placeholderTextColor: "#999999"
                 background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
             }
+            PlaylistPrivacyChoice {
+                id: playlistNewPrivacy
+                objectName: "playlistNewPrivacy"
+                visible: !playlistSave.duplicateResult && playlistSave.newMode
+                enabled: playlistSave.canSave
+            }
             Label {
                 text: backend.playlistSaveState.collection
-                      ? "Playlist vznikne jako soukromý. Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit."
-                      : "Playlist vznikne jako soukromý a bude obsahovat vybranou skladbu."
+                      ? "Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit."
+                      : "Playlist bude obsahovat vybranou skladbu."
                 visible: !playlistSave.duplicateResult && playlistSave.newMode && !backend.playlistSaveState.completed
                 color: "#aaaaaa"
                 wrapMode: Text.WordWrap
@@ -464,7 +484,7 @@ ApplicationWindow {
                 enabled: playlistSave.canSave && (playlistSave.newMode
                          ? playlistName.text.trim().length > 0 : playlistChoice.currentIndex >= 0)
                 onClicked: {
-                    if (playlistSave.newMode) backend.createPlaylistWithSong(playlistName.text)
+                    if (playlistSave.newMode) backend.createPlaylistWithSong(playlistName.text, playlistNewPrivacy.privacyValue)
                     else backend.saveSongToPlaylist(playlistChoice.currentValue, playlistDuplicates.checked)
                 }
             }

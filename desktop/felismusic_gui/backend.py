@@ -1262,10 +1262,15 @@ class BackendBridge(QObject):
         return True
 
     @Slot(str, result=bool)
-    def createEmptyPlaylist(self, title):
+    @Slot(str, str, result=bool)
+    def createEmptyPlaylist(self, title, privacy="PRIVATE"):
         state = self._empty_playlist_state
         if (self._busy or self._closing.is_set() or self._ytmusic is None or not state
                 or state.get("pending") or state.get("completed") or state.get("locked")):
+            return False
+        if privacy not in ("PRIVATE", "UNLISTED", "PUBLIC"):
+            self._empty_playlist_state = dict(state, error=True, message="Vyber platnou viditelnost playlistu.")
+            self.emptyPlaylistChanged.emit()
             return False
         title = str(title or "").strip()
         if not title or "<" in title or ">" in title:
@@ -1279,7 +1284,7 @@ class BackendBridge(QObject):
             try:
                 # No video_ids/source_playlist: creation is independent of the
                 # selected song, browsing page and playback queue.
-                playlist_id = api.create_playlist(title, "", privacy_status="PRIVATE")
+                playlist_id = api.create_playlist(title, "", privacy_status=privacy)
                 if not isinstance(playlist_id, str) or not playlist_id.strip():
                     raise RuntimeError("Creation not confirmed")
                 return {"pending": False, "completed": True, "locked": True,
@@ -1459,7 +1464,7 @@ class BackendBridge(QObject):
                 "error": False, "playlistId": target["playlistId"], "detail": after,
                 "verification": target}
 
-    def _save_playlist_song(self, api, items, playlist_id, new_title, duplicates):
+    def _save_playlist_song(self, api, items, playlist_id, new_title, duplicates, privacy="PRIVATE"):
         attempted = False
         requested = [item["videoId"] for item in items]
         try:
@@ -1467,7 +1472,7 @@ class BackendBridge(QObject):
                 video_ids = list(dict.fromkeys(requested))
                 before_counts = Counter()
                 attempted = True
-                result = api.create_playlist(new_title, "", privacy_status="PRIVATE", video_ids=video_ids)
+                result = api.create_playlist(new_title, "", privacy_status=privacy, video_ids=video_ids)
                 if not isinstance(result, str) or not result.strip():
                     raise RuntimeError("Creation not confirmed")
                 playlist_id = result
@@ -1534,25 +1539,30 @@ class BackendBridge(QObject):
         self._begin_playlist_save(playlist_id, "", bool(duplicates))
 
     @Slot(str)
-    def createPlaylistWithSong(self, title):
+    @Slot(str, str)
+    def createPlaylistWithSong(self, title, privacy="PRIVATE"):
         state = self._playlist_save_state
         if (self._busy or self._closing.is_set() or not self._playlist_save_item
                 or state.get("pending") or state.get("completed") or state.get("locked")):
+            return
+        if privacy not in ("PRIVATE", "UNLISTED", "PUBLIC"):
+            self._playlist_save_state = dict(state, error=True, message="Vyber platnou viditelnost playlistu.")
+            self.playlistSaveChanged.emit()
             return
         title = str(title or "").strip()
         if not title or "<" in title or ">" in title:
             self._playlist_save_state = dict(state, error=True, message="Vyplň název playlistu bez znaků < a >.")
             self.playlistSaveChanged.emit()
             return
-        self._begin_playlist_save("", title, False)
+        self._begin_playlist_save("", title, False, privacy)
 
-    def _begin_playlist_save(self, playlist_id, title, duplicates):
+    def _begin_playlist_save(self, playlist_id, title, duplicates, privacy="PRIVATE"):
         items = [dict(x) for x in self._playlist_save_items]
         api = self._ytmusic
         self._playlist_save_state = dict(self._playlist_save_state, pending=True, message="Ukládám…", error=False)
         self.playlistSaveChanged.emit()
         self._submit("playlist_save_write", "Ukládám skladbu do playlistu…",
-                     lambda: self._save_playlist_song(api, items, playlist_id, title, duplicates))
+                     lambda: self._save_playlist_song(api, items, playlist_id, title, duplicates, privacy))
 
     @Property("QVariantMap", notify=songLibraryMenuChanged)
     def songLibraryMenuState(self):

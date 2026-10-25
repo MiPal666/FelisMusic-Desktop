@@ -156,7 +156,15 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Formulář upravuje název, víceřádkový popis a PRIVATE/UNLISTED/PUBLIC; dovoluje vymazání popisu. Instalovaná ytmusicapi při prázdném description přeskakuje akci, proto tato větev používá stejný browse/edit_playlist endpoint s explicitní prázdnou ACTION_SET_PLAYLIST_DESCRIPTION a dalšími dvěma akcemi v jednom požadavku. Neprázdný popis používá veřejné edit_playlist.
 - Zápis je vázaný na ID načtené formulářem a před ním se znovu ověřuje owned=True. Úspěch potvrzuje STATUS_SUCCEEDED; pak se zavře formulář a upraví název detailu, údaje již načtených karet a případná čekající karta nového playlistu. Fronta, audio a pozice se nemění. Neověřený zápis má stručnou zprávu a blokuje opakované odeslání; chyba před zápisem ponechá možnost dalšího pokusu. Syrové odpovědi se nevypisují.
 - Prošlo 111 offline testů (103 předchozích + 8 pro metadata) a QML kontrola při 1280×800 a 900×600: vlastní prázdný playlist, aktuální údaje, skutečné ovládání volby viditelnosti, změna/zavření, zrušení, vymazání popisu, chyba a blokování dalšího odeslání, nepřítomnost menu u prázdného cizího playlistu a zachování audia/fronty.
-- Uživatel 2026-10-25 potvrdil funkčnost úpravy údajů playlistu. Tato část 7b je přijatá a čeká na commit. Následně domluveno doplnění výběru Soukromý/Neveřejný/Veřejný při všech způsobech vytvoření nového playlistu (prázdný, ze skladby, z kolekce), s výchozím Soukromý. Další viditelnosti přímo při tvorbě dosud nezapojené; obsah/pořadí 7c, smazání 7d a starší otevřené části plánu následují samostatně.
+- Uživatel 2026-10-25 potvrdil funkčnost úpravy údajů playlistu. Tato část 7b je přijatá a uložená v commitu `39ab6cc`. Následně domluveno doplnění výběru Soukromý/Neveřejný/Veřejný při všech způsobech vytvoření nového playlistu (prázdný, ze skladby, z kolekce), s výchozím Soukromý. Další viditelnosti přímo při tvorbě dosud nezapojené; obsah/pořadí 7c, smazání 7d a starší otevřené části plánu následují samostatně.
+
+### Otestováno uživatelem: 0.3.15-dev – viditelnost při vytvoření playlistu (dokončení 7b)
+
+- Uživatel potvrdil commit `39ab6cc` a povolil doplnění výběru viditelnosti ve všech způsobech vytvoření playlistu.
+- Sdílený QML výběr Soukromý/Neveřejný (přístup přes odkaz)/Veřejný v dialogu prázdného playlistu i v režimu Nový playlist při ukládání skladby/kolekce. Při každém otevření reset na Soukromý. V existujícím playlistu se volba nezobrazuje a viditelnost se nemění.
+- Backend přijímá jen PRIVATE/UNLISTED/PUBLIC, neplatné hodnoty odmítne před zápisem a umožní opravu. Volba se zachytí při odeslání a předá create_playlist přímo, bez následného editování. Dosavadní volání bez druhého argumentu zůstávají soukromá. Obsah, pořadí, duplicity a předchozí ověřování výsledku zachované.
+- Prošlo 114 offline testů (111 dosavadních + 3 pro volby ve všech cestách a neplatné hodnoty). Kontrola QML při 1280×800 a 900×600 pokrývá všechny tři viditelnosti ve všech třech cestách, výchozí reset na soukromý, skrytí v existujícím playlistu a zachování audia/fronty.
+- Uživatel 2026-10-25 potvrdil funkčnost výběru viditelnosti. Podkrok 7b je přijatý a čeká na commit. Odebrání/přesun položek 7c, smazání 7d a starší otevřené podkroky zůstávají nedokončené.
 
 ## Pracovní domluva
 

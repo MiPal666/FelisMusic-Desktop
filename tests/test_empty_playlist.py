@@ -129,3 +129,14 @@ class EmptyPlaylistTests(support.AudioPlaybackTestCase):
         self.api.get_library_albums.return_value = []
         self.b.loadLibrarySection('albums', ''); self.ready()
         self.assertEqual(self.b.libraryItemsModel.count, 0)
+
+    def test_creation_privacy_choices_and_invalid_value_before_write(self):
+        for privacy in ('PRIVATE', 'UNLISTED', 'PUBLIC'):
+            self.b.beginEmptyPlaylist()
+            self.assertTrue(self.b.createEmptyPlaylist('Empty', privacy)); self.ready()
+            self.api.create_playlist.assert_called_with('Empty', '', privacy_status=privacy)
+        self.b.beginEmptyPlaylist(); calls = self.api.create_playlist.call_count
+        for privacy in ('', 'private', 'INVALID'):
+            self.assertFalse(self.b.createEmptyPlaylist('Empty', privacy))
+        self.assertEqual(self.api.create_playlist.call_count, calls)
+        self.assertFalse(self.b.emptyPlaylistState['locked'])

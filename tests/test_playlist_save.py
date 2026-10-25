@@ -287,3 +287,29 @@ class PlaylistSaveTests(support.AudioPlaybackTestCase):
         self.b.detailTracksModel.set_items([dict(kind='album', browseId='album')])
         self.assertFalse(self.b.detailCanSavePlaylist)
         self.assertFalse(self.b.openCollectionPlaylistSave())
+
+    def test_creation_privacy_choices_from_song_and_collection(self):
+        self.start('A', 'B'); queue = self.b._queue
+        for collection in (False, True):
+            for privacy in ('PRIVATE', 'UNLISTED', 'PUBLIC'):
+                if collection:
+                    self.collection(['C', 'A', 'C'])
+                else:
+                    self.open()
+                self.b.createPlaylistWithSong('Chosen privacy', privacy); self.ready()
+                self.api.create_playlist.assert_called_with(
+                    'Chosen privacy', '', privacy_status=privacy,
+                    video_ids=['C', 'A'] if collection else ['A'])
+                self.assertTrue(self.b.playlistSaveState['verified'])
+        self.api.add_playlist_items.assert_not_called()
+        self.assertIs(self.b._queue, queue)
+        self.assertEqual(self.played, ['A'])
+
+    def test_invalid_creation_privacy_does_not_write_and_allows_correction(self):
+        self.start('A'); self.open()
+        for privacy in ('', 'private', 'INVALID'):
+            self.b.createPlaylistWithSong('New', privacy)
+        self.api.create_playlist.assert_not_called()
+        self.assertFalse(self.b.playlistSaveState['locked'])
+        self.b.createPlaylistWithSong('New', 'PUBLIC'); self.ready()
+        self.assertTrue(self.b.playlistSaveState['verified'])
