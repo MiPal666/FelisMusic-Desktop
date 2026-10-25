@@ -82,7 +82,7 @@ Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůst
 
 ## 6. Knihovna, odběry a odkazy
 
-Na výslovný pokyn uživatele jsme po commitu `635fb27` přešli ke kroku 6. Podkroky 5b/5c a dříve nedokončené části plánu zůstávají otevřené. V 0.3.9-dev je uživatelsky otestovaná a přijatá první část 6a (čeká na commit): přímá akce Přidat/Odebrat v menu skladby podle skutečného členství, nezávislé načítání stavu bez blokování ostatních akcí, změna přes feedback tokeny a ověření výsledku bez změny hodnocení nebo fronty. Původní dialog uživatel otestoval. Finální varianta skrývá knihovní položku do potvrzení dostupné akce, při nedostupnosti ji vůbec nezobrazuje a doplňuje předání ID alba skladbám; uživatel potvrdil shodu s webovým YTM křížovým testem. Alba a playlisty jsou následující část 6a; odběry a odkazy 6b/6c zatím nehotové.
+Na výslovný pokyn uživatele jsme po commitu `635fb27` přešli ke kroku 6. Podkroky 5b/5c a dříve nedokončené části plánu zůstávají otevřené. V 0.3.9-dev je uživatelsky otestovaná a přijatá první část 6a (commit `c3de56b`): přímá akce Přidat/Odebrat v menu skladby podle skutečného členství, nezávislé načítání stavu bez blokování ostatních akcí, změna přes feedback tokeny a ověření výsledku bez změny hodnocení nebo fronty. Původní dialog uživatel otestoval. Finální varianta skrývá knihovní položku do potvrzení dostupné akce, při nedostupnosti ji vůbec nezobrazuje a doplňuje předání ID alba skladbám; uživatel potvrdil shodu s webovým YTM křížovým testem. Alba a playlisty jsou následující část 6a; odběry a odkazy 6b/6c zatím nehotové.
 
 **6a – Knihovna:** přidání/odebrání podporovaných skladeb, alb a playlistů. Rozlišovat hodnocení Like/Dislike, členství v knihovně a členství v playlistu.
 
@@ -93,6 +93,8 @@ Na výslovný pokyn uživatele jsme po commitu `635fb27` přešli ke kroku 6. Po
 **Přijetí:** změny se ověří proti skutečnému YTM a promítnou do příslušné části GUI. Při chybě se stav vrátí nebo se zobrazí jasné selhání. Soukromým uploadům se nevyrábí neplatný veřejný odkaz.
 
 ## 7. Správa playlistů – součást 1.0
+
+Na výslovný pokyn uživatele po commitu `c3de56b` přecházíme ke kroku 7. V 0.3.10-dev čeká na uživatelský test první část 7a: uložení jedné skladby do vlastního playlistu, výslovná volba duplicit a vytvoření nového soukromého playlistu se skladbou. Ukládání celých kolekcí, obecná tvorba/úpravy údajů, pořadí/odebírání a smazání zatím neimplementované. Zbývající části kroku 6 a dřívějšího plánu zůstávají otevřené.
 
 **7a – Přidávání:** dialog pro výběr vlastního editovatelného playlistu, přidání skladby i celé kolekce; možnost vytvořit nový playlist přímo při ukládání. Výslovně vyřešit duplicity.
 

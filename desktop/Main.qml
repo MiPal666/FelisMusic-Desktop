@@ -135,6 +135,18 @@ ApplicationWindow {
                     && backend.detailTitle.length === 0)
                 backend.loadLibrarySection("songs", root.currentLibraryOrder)
         }
+        function onPlaylistSaveRequested() {
+            playlistSave.newMode = (backend.playlistSaveState.targets || []).length === 0
+            playlistName.text = ""
+            playlistDuplicates.checked = false
+            playlistChoice.currentIndex = playlistChoice.count > 0 ? 0 : -1
+            playlistSave.open()
+        }
+        function onPlaylistsChanged(playlistId) {
+            if (root.currentPage === 1 && root.currentLibrarySection === "playlists"
+                    && backend.detailTitle.length === 0)
+                backend.loadLibrarySection("playlists", root.currentLibraryOrder)
+        }
         function onRadioStarted() {
             root.currentPage = 5
             Qt.callLater(root.revealQueueRow)
@@ -158,6 +170,127 @@ ApplicationWindow {
             color: "#eeeeee"
             wrapMode: Text.WordWrap
             padding: 18
+        }
+    }
+
+    Dialog {
+        id: playlistSave
+        objectName: "playlistSaveDialog"
+        property bool newMode: false
+        property bool canSave: !backend.busy && !backend.playlistSaveState.pending
+                               && !backend.playlistSaveState.completed && !backend.playlistSaveState.locked
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 580)
+        padding: 18
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label {
+            text: "Přidat do playlistu"
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                text: backend.playlistSaveState.title || ""
+                color: "white"
+                font.bold: true
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            RowLayout {
+                Button {
+                    text: "Existující playlist"
+                    checkable: true
+                    checked: !playlistSave.newMode
+                    enabled: playlistSave.canSave && playlistChoice.count > 0
+                    onClicked: playlistSave.newMode = false
+                }
+                Button {
+                    objectName: "playlistNewMode"
+                    text: "Nový soukromý playlist"
+                    checkable: true
+                    checked: playlistSave.newMode
+                    enabled: playlistSave.canSave
+                    onClicked: playlistSave.newMode = true
+                }
+            }
+            ComboBox {
+                id: playlistChoice
+                objectName: "playlistChoice"
+                Layout.fillWidth: true
+                visible: !playlistSave.newMode
+                enabled: playlistSave.canSave
+                model: backend.playlistSaveState.targets || []
+                textRole: "title"
+                valueRole: "playlistId"
+            }
+            CheckBox {
+                id: playlistDuplicates
+                objectName: "playlistDuplicates"
+                text: "Povolit další výskyt stejné skladby"
+                visible: !playlistSave.newMode
+                enabled: playlistSave.canSave
+                contentItem: Text {
+                    text: playlistDuplicates.text
+                    color: "#dddddd"
+                    leftPadding: playlistDuplicates.indicator.width + playlistDuplicates.spacing
+                    verticalAlignment: Text.AlignVCenter
+                }
+            }
+            TextField {
+                id: playlistName
+                objectName: "playlistNewName"
+                Layout.fillWidth: true
+                visible: playlistSave.newMode
+                enabled: playlistSave.canSave
+                placeholderText: "Název nového playlistu"
+                color: "white"
+                placeholderTextColor: "#999999"
+                background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
+            }
+            Label {
+                text: "Playlist vznikne jako soukromý a bude obsahovat vybranou skladbu."
+                visible: playlistSave.newMode && !backend.playlistSaveState.completed
+                color: "#aaaaaa"
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            Label {
+                objectName: "playlistSaveMessage"
+                text: backend.playlistSaveState.message || ""
+                color: backend.playlistSaveState.error ? "#ffaaaa" : "#cccccc"
+                visible: text.length > 0
+                wrapMode: Text.WordWrap
+                Layout.fillWidth: true
+            }
+            BusyIndicator {
+                running: !!backend.playlistSaveState.pending
+                visible: running
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+        footer: DialogButtonBox {
+            background: Item { }
+            PlayerTextButton {
+                objectName: "playlistSaveSubmit"
+                implicitWidth: 155
+                text: playlistSave.newMode ? "Vytvořit a přidat" : "Přidat"
+                enabled: playlistSave.canSave && (playlistSave.newMode
+                         ? playlistName.text.trim().length > 0 : playlistChoice.currentIndex >= 0)
+                onClicked: {
+                    if (playlistSave.newMode) backend.createPlaylistWithSong(playlistName.text)
+                    else backend.saveSongToPlaylist(playlistChoice.currentValue, playlistDuplicates.checked)
+                }
+            }
+            PlayerTextButton {
+                objectName: "playlistSaveClose"
+                implicitWidth: 85
+                text: "Zavřít"
+                onClicked: playlistSave.close()
+            }
         }
     }
 
@@ -723,6 +856,13 @@ ApplicationWindow {
                 text: "Přidat na konec fronty"
                 enabled: backend.playerCanEditQueue
                 onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, false, root.navigationContext())
+            }
+            MenuItem {
+                text: "Přidat do playlistu…"
+                visible: kind === "song" || kind === "video" || kind === "upload_song"
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.openPlaylistSave(trackDelegate.sourceKey, trackDelegate.index)
             }
             MenuItem {
                 text: "Spustit mix"

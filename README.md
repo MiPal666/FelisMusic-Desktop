@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.9-dev**
+- Desktop GUI: **0.3.10-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -240,3 +240,12 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Zatím skladby; přidávání/odebírání alb a playlistů, odběry interpretů a kopírování odkazů jsou další samostatné podkroky.
 
 - Finální podobu menu a chování skladeb z alb uživatel ověřil proti webovému YTM a přijal 2026-10-25.
+
+## 0.3.10-dev – uložení skladby do playlistu (první část 7a)
+
+- Nabídka skladby obsahuje **Přidat do playlistu…**. Dialog nabídne vlastní playlisty účtu; před zápisem se znovu ověří, že je vybraný playlist vlastní a upravitelný. Používá se přesné videoId vybrané skladby, také u uploadů; změna přehrávané skladby výběr v dialogu nepřesměruje.
+- Duplicity jsou ve výchozím stavu vypnuté: pokud už playlist obsahuje stejné videoId, nic nepřidáme a oznámíme to. **Povolit další výskyt stejné skladby** dovolí další kopii.
+- **Nový soukromý playlist** vytvoří playlist se zadaným názvem rovnou s vybranou skladbou. Popis a další viditelnosti patří do navazujících úprav údajů playlistu.
+- Obsah po zápisu znovu načteme a ověříme přidaný výskyt. Při nejasném výsledku se zápis automaticky neopakuje; dialog upozorní na kontrolu playlistu před novým pokusem. Již vytvořený playlist se při chybě následného ověření nevydává za neexistující.
+- Uložení nepřeruší audio, nemění přehrávací frontu, pozici ani hodnocení. Právě otevřený cílový playlist zobrazí ověřený obsah; přehrávací fronta zůstává samostatná.
+- Tato část zatím ukládá jednotlivou skladbu. Celé kolekce, přejmenování, popis/viditelnost, odebrání/přesun položek a smazání vlastního playlistu budou samostatné podkroky.

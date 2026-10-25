@@ -94,7 +94,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Prošlo 59 offline testů (49 dosavadních + 10 pro rádio). QML ověřeno skutečným klikáním při 1280×800 a 900×600: nabídka, mix aktuální/jiné skladby, zobrazení fronty, cover a nepřítomnost akce u uploadů.
 - Uživatel 2026-10-25 potvrdil funkčnost na skutečném YTM a audiu. Podkrok 5a je přijatý a uložený společně s detailem interpreta 0.3.7-dev v commitu `635fb27`. Zatím jeden blok doporučení; automatické doplňování 5b a mixy interpreta/kolekce 5c dosud neimplementované.
 
-### Otestováno uživatelem, čeká na commit: 0.3.9-dev – knihovna skladeb (první část 6a)
+### Otestováno uživatelem: 0.3.9-dev – knihovna skladeb (první část 6a)
 
 - Uživatel výslovně zvolil krok 6 a potvrdil vypnutou aplikaci. Zbývající nabídky kolekcí 3b, fronta 3c, hlavičky/navigace 4b/4c a rádio 5b/5c zůstávají otevřené.
 - Původní variantu s dialogem uživatel otestoval jako funkční, následně schválil přímou akci v menu a výslovně požadoval provozuschopnost ostatních akcí během zjišťování stavu. Před touto úpravou potvrdil zavřenou aplikaci.
@@ -105,7 +105,17 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Nejprve `get_watch_playlist(videoId, limit=1)`; pokud chybí ovládání, dotaz na skutečné albumId a přesná shoda videoId v `get_album`. Bez stavu a správného feedback tokenu nedovolíme zápis. Používá `edit_song_library_status`, nikoli `rate_song`. Po zápisu nezávisle ověří stav; neověřený výsledek nehlásí jako úspěch. Chyba zápisu/ověření se zobrazí, členství není odhadované podle Like.
 - Přehrávání, pozice, pauza/Stop, hodnocení a obsah fronty se změnou členství nemění. Ověřená změna aktualizuje knihovní seznam a původní snapshoty pro cover včetně indexů. Viditelná sekce Knihovna/Skladby se znovu načte ze serveru.
 - Prošlo 75 offline testů (59 před knihovnou + 16 pro knihovnu včetně souběhu, rušení a předání ID alba). QML ověřeno klikáním při 1280×800 a 900×600: během zablokovaného čtení skutečně použity obě vkládací akce a Mix, pak přímé přidání/odebrání bez dialogu a ignorování staré odpovědi při změně menu. Ověřené skrytí položky během čekání i po odpovědi bez dostupné akce. Předchozí kontroly ověřily také obnovení seznamu/cover a uploady.
-- Uživatel 2026-10-25 potvrdil finální menu i chování skladeb z alba křížovým porovnáním s webovým YTM. První část 6a je přijatá a čeká na commit. Alba/playlisty v knihovně, odběry interpretů a kopírování odkazů dosud nejsou implementované.
+- Uživatel 2026-10-25 potvrdil finální menu i chování skladeb z alba křížovým porovnáním s webovým YTM. První část 6a je přijatá a uložená v commitu `c3de56b`. Alba/playlisty v knihovně, odběry interpretů a kopírování odkazů dosud nejsou implementované.
+
+### Připraveno k uživatelskému testu: 0.3.10-dev – uložení skladby do playlistu (první část 7a)
+
+- Uživatel potvrdil commit `c3de56b`, zavřenou aplikaci a výslovně zvolil krok 7. Zbývající části kroku 6 a dřívějšího plánu zůstávají otevřené.
+- Přidat do playlistu… v menu skladby/videa/uploadu. Dialog načte všechny vlastní playlisty (`get_library_playlists(limit=None)`, owned=True); cizí, neznámé a automatické cíle se nenabízejí. Před zápisem nový `get_playlist(limit=None)` ověří vlastnictví i duplicity.
+- Výchozí přesné duplicity podle videoId se nepřidají, dialog to oznámí. Výslovné Povolit další výskyt zapne `duplicates=True`. Přidání přes `add_playlist_items`, následný úplný dotaz ověřuje nárůst počtu výskytů vybraného videoId. Obsah se neodvozuje z názvu.
+- Vytvoření nového soukromého playlistu se skladbou jedním `create_playlist(..., privacy_status=PRIVATE, video_ids=[id])`, následná kontrola obsahu. Prázdný název a < > odmítnuté. Při nejasném výsledku po zahájeném zápisu se opakované odeslání zablokuje do nového otevření; pokud už playlist vznikl, zpráva to výslovně uvede.
+- Volba skladby zůstává navázaná na původní výběr. Audio, pozice, hodnocení a playback queue se nemění. Aktuálně prohlížený cílový playlist dostane ověřený obsah bez přestavění playback queue; přehled playlistů se při zobrazení obnoví.
+- Prošlo 86 offline testů (75 původních + 11 pro ukládání do playlistu). QML ověřeno klikáním při 1280×800 a 900×600: nabídka, výběr vlastního cíle, duplicity a opt-in dalšího výskytu, vytvoření soukromého playlistu a zachování audia/fronty.
+- Čeká na skutečný test YTM a commit. Přidání kolekcí (zbytek 7a), obecná tvorba/prázdný playlist a přejmenování/popisy/viditelnost (7b), odebrání/přesun (7c) a smazání (7d) dosud nehotové.
 
 ## Pracovní domluva
 
