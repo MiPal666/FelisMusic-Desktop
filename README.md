@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.15-dev**
+- Desktop GUI: **0.3.16-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -294,3 +294,13 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Všechny způsoby vytvoření nového playlistu nabízejí **Soukromý / Neveřejný (přístup přes odkaz) / Veřejný**: prázdný playlist, playlist ze skladby i z celé kolekce.
 - Každé nové otevření formuláře začíná volbou Soukromý. Vybraná viditelnost se odešle přímo při vytvoření v jednom požadavku se skladbami, pokud jsou vybrané.
 - V režimu přidávání do existujícího playlistu je volba skrytá a jeho viditelnost se nemění. Následná úprava viditelnosti zůstává dostupná přes Upravit playlist….
+
+## 0.3.16-dev – odebrání výskytu skladby z playlistu (první část 7c)
+
+- V detailu vlastního playlistu nabízí menu skladby **Odebrat z tohoto playlistu**. Akce vyžaduje skutečné videoId i setVideoId konkrétního výskytu; dvě stejné skladby se nerozlišují podle názvu ani samotného videoId.
+- Před odebráním se znovu načte playlist, ověří vlastnictví a shoda výskytu. Pokud už položka chybí, pouze se obnoví seznam. Chyba ověření nic nezapisuje; nepotvrzený zápis zobrazí stručnou zprávu s pokynem ke kontrole obsahu.
+- Potvrzené odebrání aktualizuje detail. Při běžném odstranění jediného řádku zachovává rolování; opožděná odpověď YTM odebraný výskyt nevrátí do seznamu. Poslední skladbu lze odebrat a ponechat prázdný playlist.
+- Fronta se po potvrzeném odebrání synchronizuje pro původní výskyty převzaté z tohoto playlistu: čekající položka zmizí hned, právě hrající či pozastavená může dohrát a pak se vyřadí. Ručně přidané skladby (i kopie stejného výskytu) a fronta jiného playlistu zůstávají zachované. Aktuální čas a audio se při synchronizaci neresetují.
+- Odebraný aktuální výskyt se znovu neopakuje ani v Repeat One; po dohrání pokračuje další skladba, Repeat All dovoluje návrat na začátek zbývající fronty. Next/Previous, výběr jiné položky a Stop ho také vyřadí při opuštění. Odebraná zastavená položka zmizí ihned. Přednačítání se přesměruje na skutečného nástupce.
+- Návrat přes cover ukáže upravený playlist a zbývající výskyty mají správné pozice. Odebrání z knihovny je samostatná akce; v samotné Frontě se odebrání z uloženého playlistu nenabízí.
+- Změna pořadí skladeb je další samostatná část 7c; smazání celého playlistu následuje v 7d.

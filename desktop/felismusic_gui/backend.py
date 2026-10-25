@@ -43,6 +43,7 @@ class DictListModel(QAbstractListModel):
         "browseId",
         "thumbnail",
         "likeStatus",
+        "setVideoId",
     )
 
     def __init__(self, parent=None):
@@ -99,6 +100,12 @@ class DictListModel(QAbstractListModel):
         self.beginInsertRows(QModelIndex(), row, row)
         self._items.insert(row, dict(item))
         self.endInsertRows()
+        self.countChanged.emit()
+
+    def remove_item(self, row):
+        self.beginRemoveRows(QModelIndex(), row, row)
+        self._items.pop(row)
+        self.endRemoveRows()
         self.countChanged.emit()
 
     def snapshot(self):
@@ -191,6 +198,7 @@ class BackendBridge(QObject):
         self._song_library_token = ""
         self._empty_playlist_state = {}
         self._playlist_edit_state = {}
+        self._pending_removed_playlist_items = {}
         # Confirmed creations may precede their appearance in YTM's library.
         # Keep their cards until a library response contains the actual IDs.
         self._pending_created_playlists = {}
@@ -617,6 +625,7 @@ class BackendBridge(QObject):
             "albumId": str(item.get("albumId") or ""),
             "duration": str(item.get("duration") or ""),
             "videoId": str(item.get("videoId") or ""),
+            "setVideoId": str(item.get("setVideoId") or ""),
             "playlistId": str(item.get("playlistId") or ""),
             "browseId": str(item.get("browseId") or ""),
             "isAvailable": True,
@@ -720,7 +729,83 @@ class BackendBridge(QObject):
             return self._detail_title or "Fronta"
         return "Knihovna"
 
+    def _prune_removed_queue_tracks(self, drop_current=False, direction=1, preserve_audio=False):
+        """Drop playlist removals without rebuilding queue songs or their order."""
+        if self._queue is None or self._queue.empty():
+            return False
+        queue = self._queue
+        current = queue.current()
+        old_index = queue.index
+        removed = [i for i, song in enumerate(queue.tracks)
+                   if song.get("_guiRemoveAfterPlayback") and (drop_current or song is not current)]
+        if not removed:
+            return False
+        removed_set = set(removed)
+        kept = [song for i, song in enumerate(queue.tracks) if i not in removed_set]
+        indices = [self._queue_source_indices[i] if i < len(self._queue_source_indices) else -1
+                   for i in range(queue.count()) if i not in removed_set]
+        current_removed = old_index in removed_set
+        if current_removed:
+            # Forward successor shifts into the removed current row's position.
+            insertion = sum(i < old_index for i in range(queue.count()) if i not in removed_set)
+            target = insertion if direction > 0 else insertion - 1
+            moved = 0 <= target < len(kept)
+            if not moved and kept and self._repeat_mode == "all":
+                target = 0 if direction > 0 else len(kept) - 1
+                moved = True
+            queue.index = max(0, min(target, len(kept) - 1))
+        else:
+            queue.index = next(i for i, song in enumerate(kept) if song is current)
+            moved = True
+        queue.tracks[:] = kept
+        self._queue_source_indices = indices
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._sync_queue_model()
+        # A shifted row index does not mean that audio/time/rating changed.
+        if preserve_audio and not current_removed:
+            self._player_track_marker = (id(queue), queue.index if kept else -1,
+                                         self._current_video_id())
+        self.playerChanged.emit()
+        return moved
+
+    def _sync_removed_playlist_queue_item(self, playlist_id, set_video_id):
+        if self._queue is None:
+            return
+        changed = False
+        current = self._queue.current()
+        keep_current = self._player_state in ("playing", "paused", "loading")
+        for song in self._queue.tracks:
+            if song.get("_guiPlaylistBinding") == (playlist_id, set_video_id):
+                song["_guiRemoveAfterPlayback"] = True
+                changed = True
+        if not changed:
+            return
+        current_removed = bool(current and current.get("_guiRemoveAfterPlayback") and not keep_current)
+        self._prune_removed_queue_tracks(drop_current=not keep_current, preserve_audio=True)
+        if current_removed:
+            self._set_player_from_queue()
+        # Deferring just the current row also changes repeat-one's successor.
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        if not self._playback_transitioning and self._player_state in ("playing", "paused"):
+            self._prefetch_next_track()
+        self.playerChanged.emit()
+
+    def _leave_removed_current(self, direction, stop_current=False):
+        moved = self._prune_removed_queue_tracks(drop_current=True, direction=direction)
+        self._set_player_from_queue()
+        if moved:
+            self._start_current_async(direction=direction, stop_current=stop_current)
+        else:
+            if stop_current and self._local_output is not None:
+                self._local_output.media_controller.stop(keep_output=True)
+            self._set_player_state("idle")
+
     def _set_player_from_queue(self):
+        self._prune_removed_queue_tracks()
         song = self._queue.current() if self._queue is not None else None
 
         # playerChanged se používá i pro čas/hlasitost a běží několikrát za
@@ -1039,13 +1124,18 @@ class BackendBridge(QObject):
         self._playback_executor.submit(work)
 
     def _next_prefetch_id(self):
-        if self._queue is None or self._queue.empty() or self._repeat_mode == "one":
+        if self._queue is None or self._queue.empty():
+            return ""
+        removing_current = self._queue.current().get("_guiRemoveAfterPlayback")
+        if self._repeat_mode == "one" and not removing_current:
             return ""
         next_index = self._queue.index + 1
         if next_index >= self._queue.count():
             if self._repeat_mode != "all":
                 return ""
             next_index = 0
+        if removing_current and next_index == self._queue.index:
+            return ""
         return str(self._queue.tracks[next_index].get("videoId") or "")
 
     def _prefetch_next_track(self):
@@ -1107,6 +1197,9 @@ class BackendBridge(QObject):
             return
         self._playback_transitioning = False
         self._set_player_state("idle")
+        if self._queue and any(x.get("_guiRemoveAfterPlayback") for x in self._queue.tracks):
+            self._prune_removed_queue_tracks(drop_current=True)
+            self._set_player_from_queue()
         self.playerChanged.emit()
         self.errorOccurred.emit(
             "Skladbu se nepodařilo přehrát:\n" + message
@@ -1170,6 +1263,9 @@ class BackendBridge(QObject):
             self._player_state = "paused"
             changed = True
         elif state == "IDLE" and idle_reason == "FINISHED" and self._player_state != "idle":
+            if self._queue.current().get("_guiRemoveAfterPlayback"):
+                self._leave_removed_current(1)
+                return
             advance = self._repeat_mode == "one"
             if not advance:
                 advance = self._queue.next()
@@ -1215,7 +1311,10 @@ class BackendBridge(QObject):
                 continue
             if original_index == index:
                 start_index = len(playable)
-            playable.append(self._playback_track(item))
+            track = self._playback_track(item)
+            if source == "detail" and self._detail_meta.get("kind") == "playlist" and item.get("setVideoId"):
+                track["_guiPlaylistBinding"] = (self._detail_meta["playlistId"], item["setVideoId"])
+            playable.append(track)
             source_indices.append(original_index)
 
         if start_index is None or not playable:
@@ -1296,6 +1395,66 @@ class BackendBridge(QObject):
                         "message": "Vytvoření playlistu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlisty ve webovém YTM."}
         self._submit("playlist_create_empty", "Vytvářím prázdný playlist…", task)
         return True
+
+    @Slot(str, str, result=bool)
+    def removeDetailPlaylistItem(self, video_id, set_video_id):
+        if (self._busy or self._closing.is_set() or self._ytmusic is None
+                or not self.detailCanEditPlaylist or not video_id or not set_video_id):
+            return False
+        if not any(x.get("videoId") == video_id and x.get("setVideoId") == set_video_id
+                   for x in self._detail_tracks_model.snapshot()):
+            return False
+        playlist_id = self._detail_meta["playlistId"]
+        api = self._ytmusic
+        def task():
+            attempted = False
+            try:
+                data = api.get_playlist(playlist_id, limit=None)
+                if data.get("owned") is not True:
+                    raise ValueError("Not owned")
+                tracks = data.get("tracks") or []
+                matches = [x for x in tracks if x.get("setVideoId") == set_video_id]
+                if matches:
+                    if len(matches) != 1 or matches[0].get("videoId") != video_id:
+                        raise ValueError("Occurrence mismatch")
+                    attempted = True
+                    response = api.remove_playlist_items(playlist_id, [
+                        {"videoId": video_id, "setVideoId": set_video_id}])
+                    status = response.get("status") if isinstance(response, dict) else response
+                    if status != "STATUS_SUCCEEDED":
+                        raise RuntimeError("Removal not confirmed")
+                remaining = [x for x in tracks if x.get("setVideoId") != set_video_id]
+                return {"ok": True, "playlistId": playlist_id, "setVideoId": set_video_id,
+                        "card": self._playlist(dict(data, playlistId=playlist_id, count=len(remaining))),
+                        "detail": {"title": data.get("title") or "Playlist",
+                                   "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True},
+                                   "tracks": [self._track(x) for x in core.usable_tracks(remaining)]},
+                        "message": "Skladba odebrána z playlistu." if matches else "Položka už v playlistu není. Seznam obnoven."}
+            except Exception as exc:
+                print(f"FelisMusic odebrání z playlistu: {type(exc).__name__}")
+                return {"ok": False, "message": (
+                    "Odebrání se nepodařilo potvrdit. Obnov playlist a zkontroluj jeho obsah."
+                    if attempted else "Nelze ověřit položku nebo vlastnictví playlistu. Nic nebylo změněno.")}
+        self._submit("playlist_remove_item", "Odebírám skladbu z playlistu…", task)
+        return True
+
+    def _update_playlist_browse_snapshots(self, detail):
+        """Refresh saved browsing views, leaving the actual playback queue intact."""
+        playlist_id = detail["meta"]["playlistId"]
+        tracks = detail["tracks"]
+        positions = {x.get("setVideoId"): i for i, x in enumerate(tracks) if x.get("setVideoId")}
+        for song in self._queue.tracks if self._queue else []:
+            origin = song.get("_guiOrigin", {})
+            state = origin.get("detail_state", {})
+            if origin.get("source") != "detail" or state.get("meta", {}).get("playlistId") != playlist_id:
+                continue
+            # Origins may share snapshots/state; the queue song retains its own
+            # occurrence ID even when its row has just been removed from YTM.
+            origin["index"] = positions.get(song.get("setVideoId"), -1)
+            origin.setdefault("snapshots", {})["detail"] = deepcopy(tracks)
+            state.update(title=detail["title"], tracks=deepcopy(tracks), meta=dict(detail["meta"]))
+            origin["detail_title"] = detail["title"]
+        self.playerChanged.emit()
 
     @Property(bool, notify=detailTitleChanged)
     def detailCanEditPlaylist(self):
@@ -1839,6 +1998,9 @@ class BackendBridge(QObject):
                 self.playerChanged.emit()
                 self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
                 return
+        if self._queue.current().get("_guiRemoveAfterPlayback"):
+            self._prune_removed_queue_tracks(drop_current=True)
+            self._set_player_from_queue()
         self._set_status("Přehrávání zastaveno")
         self.playerChanged.emit()
 
@@ -1865,6 +2027,9 @@ class BackendBridge(QObject):
     def nextTrack(self):
         if self._queue is None or self._playback_transitioning:
             return
+        if self._queue.current() and self._queue.current().get("_guiRemoveAfterPlayback"):
+            self._leave_removed_current(1, stop_current=True)
+            return
         moved = self._queue.next()
         if not moved and self._repeat_mode == "all" and not self._queue.empty():
             self._queue.index = 0
@@ -1876,6 +2041,9 @@ class BackendBridge(QObject):
     @Slot()
     def previousTrack(self):
         if self._queue is None or self._playback_transitioning:
+            return
+        if self._queue.current() and self._queue.current().get("_guiRemoveAfterPlayback"):
+            self._leave_removed_current(-1, stop_current=True)
             return
         moved = self._queue.previous()
         if not moved and self._repeat_mode == "all" and not self._queue.empty():
@@ -2014,6 +2182,38 @@ class BackendBridge(QObject):
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
 
+            elif name == "playlist_remove_item":
+                if result["ok"]:
+                    playlist_id = result["playlistId"]
+                    self._pending_removed_playlist_items.setdefault(playlist_id, set()).add(result["setVideoId"])
+                    detail = result["detail"]
+                    removed = self._pending_removed_playlist_items[playlist_id]
+                    detail["tracks"] = [x for x in detail["tracks"] if x.get("setVideoId") not in removed]
+                    if self._detail_meta.get("playlistId") == playlist_id:
+                        self._detail_title = detail["title"]
+                        self._detail_meta = detail["meta"]
+                        old = self._detail_tracks_model.snapshot()
+                        remaining = [x for x in old if x.get("setVideoId") not in removed]
+                        if remaining == detail["tracks"]:
+                            for i in range(len(old) - 1, -1, -1):
+                                if old[i].get("setVideoId") in removed:
+                                    self._detail_tracks_model.remove_item(i)
+                        else:
+                            self._detail_tracks_model.set_items(detail["tracks"])
+                        self.detailTitleChanged.emit()
+                    card = result["card"]
+                    for model in (self._library_items_model, self._playlists_model):
+                        cards = model.snapshot()
+                        if any(x.get("playlistId") == playlist_id for x in cards):
+                            model.set_items([dict(card) if x.get("playlistId") == playlist_id else x for x in cards])
+                    if playlist_id in self._pending_created_playlists:
+                        self._pending_created_playlists[playlist_id] = card
+                    self._update_playlist_browse_snapshots(detail)
+                    self._sync_removed_playlist_queue_item(playlist_id, result["setVideoId"])
+                else:
+                    self.errorOccurred.emit(result["message"])
+                self._set_status(result["message"])
+
             elif name == "playlist_edit_read":
                 self._playlist_edit_state = result
                 self.playlistEditChanged.emit()
@@ -2140,6 +2340,15 @@ class BackendBridge(QObject):
                 self._set_status(f"Výsledků hledání · {len(result)}")
 
             elif name == "detail":
+                playlist_id = result.get("meta", {}).get("playlistId")
+                if playlist_id and "playlistOccurrenceIds" in result:
+                    pending = self._pending_removed_playlist_items.get(playlist_id, set())
+                    pending.intersection_update(result["playlistOccurrenceIds"])
+                    if pending:
+                        result["tracks"] = [x for x in result["tracks"] if x.get("setVideoId") not in pending]
+                    else:
+                        self._pending_removed_playlist_items.pop(playlist_id, None)
+                    self._update_playlist_browse_snapshots(result)
                 if self._pending_detail_parent is not None:
                     self._detail_history.append(self._pending_detail_parent)
                     self._pending_detail_parent = None
@@ -2302,6 +2511,7 @@ class BackendBridge(QObject):
             "albumId": str(album_id or ""),
             "duration": str(duration),
             "videoId": str(item.get("videoId") or ""),
+            "setVideoId": str(item.get("setVideoId") or ""),
             "playlistId": str(item.get("playlistId") or ""),
             "browseId": str(item.get("browseId") or ""),
             "thumbnail": (
@@ -2466,6 +2676,7 @@ class BackendBridge(QObject):
             "playlistId": str(core.playlist_id_from_item(item) or ""),
             "browseId": str(item.get("browseId") or ""),
             "videoId": str(item.get("videoId") or ""),
+            "setVideoId": str(item.get("setVideoId") or ""),
             "thumbnail": cls._thumbnail(item),
             "likeStatus": "",
         }
@@ -2972,6 +3183,7 @@ class BackendBridge(QObject):
             return {
                 "title": data.get("title") or title,
                 "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": data.get("owned") is True},
+                "playlistOccurrenceIds": [x.get("setVideoId") for x in data.get("tracks") or []],
                 "tracks": [self._track(x) for x in tracks],
             }
 

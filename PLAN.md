@@ -108,7 +108,7 @@ V 0.3.13-dev je uživatelsky otestovaná a přijatá první část 7b: vytvořen
 
 **7d – Smazání:** pouze u vlastního editovatelného playlistu a s potvrzením. U cizích a automatických playlistů nabídnout jen dostupné akce; odebrání z knihovny nesmí být prezentované jako smazání playlistu.
 
-Úprava uloženého playlistu se nesmí nečekaně promítnout jako přestavění právě hrající fronty. Fronta a uložený playlist jsou dvě různé věci.
+Úprava uloženého playlistu nesmí přestavět celou právě hrající frontu. Na následné přání uživatele se potvrzené odebrání konkrétního původního výskytu synchronizuje do fronty: čekající pryč ihned, aktuální dohraje a pak se vyřadí. Ručně přidané položky a jejich pořadí zůstávají zachované.
 
 **Přijetí:** na testovacím vlastním playlistu projít vytvoření, přidání, duplicity, přesun, odebrání, přejmenování i smazání a změny ověřit v YTM. Prověřit nedostatečná oprávnění a chybu sítě.
 
@@ -156,4 +156,6 @@ Play, Pause, PlayPause, Next, Previous, metadata, cover, délka a správné stav
 
 V 0.3.14-dev je uživatelsky otestovaná a přijatá další část 7b: úprava názvu, popisu (včetně vymazání) a viditelnosti vlastního playlistu přes menu detailu. Čerstvé načtení údajů i ověření vlastnictví před zápisem, vazba na ID formuláře, aktualizace zobrazení bez přestavby fronty. Prošlo 111 offline testů a QML kontrola v obou velikostech. Uloženo v commitu `39ab6cc`. Následuje výběr Soukromý/Neveřejný/Veřejný při vytvoření prázdného playlistu i ze skladby/kolekce, s výchozím Soukromý. Další viditelnosti přímo při tvorbě, 7c a 7d dosud nehotové.
 
-V 0.3.15-dev je uživatelsky otestované a přijaté dokončení 7b: výběr Soukromý/Neveřejný/Veřejný přímo při vytvoření prázdného playlistu i při ukládání skladby/kolekce do nového playlistu. Výchozí Soukromý při každém otevření; existující playlist nemění viditelnost. Prošlo 114 offline testů a QML kontrola všech kombinací při 1280×800 a 900×600. Uživatel potvrdil funkčnost, čeká na commit. Následuje samostatně 7c.
+V 0.3.15-dev je uživatelsky otestované a přijaté dokončení 7b: výběr Soukromý/Neveřejný/Veřejný přímo při vytvoření prázdného playlistu i při ukládání skladby/kolekce do nového playlistu. Výchozí Soukromý při každém otevření; existující playlist nemění viditelnost. Prošlo 114 offline testů a QML kontrola všech kombinací při 1280×800 a 900×600. Uživatel potvrdil funkčnost, uloženo v commitu `413ba83`. Následuje samostatně 7c.
+
+V 0.3.16-dev je uživatelsky otestovaná a přijatá první část 7c: odebrání konkrétního výskytu skladby z detailu vlastního playlistu podle videoId/setVideoId s čerstvou kontrolou vlastnictví. Uživatel ověřil odebrání a následně schválil doplnění synchronizace: čekající původní výskyt zmizí i z fronty, aktuální může dohrát a pak se vyřadí; ručně přidané skladby, jejich pořadí a aktuální audio/čas se zachovají. Správný návrat přes cover a ochrana proti opožděnému návratu odebrané položky. Prošlo 135 offline testů a aktualizovaná QML kontrola při 1280×800/900×600. Uživatel ověřil i finální synchronizaci, celek čeká na commit. Změna pořadí a smazání celého playlistu následují samostatně.

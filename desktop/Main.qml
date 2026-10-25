@@ -860,6 +860,7 @@ ApplicationWindow {
         required property string duration
         required property string thumbnail
         required property string videoId
+        required property string setVideoId
         required property string kind
         required property string playlistId
         required property string browseId
@@ -1081,6 +1082,15 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.playerCanEditQueue && !backend.busy && backend.connected
                 onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
+            }
+            MenuItem {
+                objectName: "playlistRemoveItemAction"
+                text: "Odebrat z tohoto playlistu"
+                visible: trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
+                         && videoId.length > 0 && setVideoId.length > 0
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.removeDetailPlaylistItem(videoId, setVideoId)
             }
             // Append the delayed action so existing menu rows do not move.
             MenuItem {
