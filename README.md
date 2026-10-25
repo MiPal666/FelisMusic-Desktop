@@ -246,6 +246,9 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Nabídka skladby obsahuje **Přidat do playlistu…**. Dialog nabídne vlastní playlisty účtu; před zápisem se znovu ověří, že je vybraný playlist vlastní a upravitelný. Používá se přesné videoId vybrané skladby, také u uploadů; změna přehrávané skladby výběr v dialogu nepřesměruje.
 - Duplicity jsou ve výchozím stavu vypnuté: pokud už playlist obsahuje stejné videoId, nic nepřidáme a oznámíme to. **Povolit další výskyt stejné skladby** dovolí další kopii.
 - **Nový soukromý playlist** vytvoří playlist se zadaným názvem rovnou s vybranou skladbou. Popis a další viditelnosti patří do navazujících úprav údajů playlistu.
-- Obsah po zápisu znovu načteme a ověříme přidaný výskyt. Při nejasném výsledku se zápis automaticky neopakuje; dialog upozorní na kontrolu playlistu před novým pokusem. Již vytvořený playlist se při chybě následného ověření nevydává za neexistující.
+- Po potvrzeném zápisu ověřujeme obsah až třemi kontrolními načteními s krátkým odstupem. Pokud obsah stále není dostupný, zpráva rozliší potvrzené vytvoření/přidání od neověřeného obsahu. **Ověřit znovu** opakuje pouze čtení; nevytvoří další playlist ani znovu nepřidá skladbu. Chybová zpráva nezobrazuje dlouhé technické odpovědi YTM. Při nepotvrzeném zápisu zůstává další odeslání blokované do nového otevření.
+- Po ověřeném úspěchu se ukládací okno samo zavře; zpráva zůstane ve stavové liště. Nepovolená duplicita zobrazí výrazné oznámení Duplicitní skladba a jediné tlačítko OK. Chyby a neověřený obsah ponechají okno otevřené, případně s Ověřit znovu; úspěšné dodatečné ověření ho zavře také.
 - Uložení nepřeruší audio, nemění přehrávací frontu, pozici ani hodnocení. Právě otevřený cílový playlist zobrazí ověřený obsah; přehrávací fronta zůstává samostatná.
 - Tato část zatím ukládá jednotlivou skladbu. Celé kolekce, přejmenování, popis/viditelnost, odebrání/přesun položek a smazání vlastního playlistu budou samostatné podkroky.
+
+- Uživatel 2026-10-25 potvrdil celý tento podkrok včetně ověřování a finálního chování dialogu. Playlisty mohou mít stejný název; operace používají jejich jedinečná ID.

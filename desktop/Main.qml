@@ -135,6 +135,11 @@ ApplicationWindow {
                     && backend.detailTitle.length === 0)
                 backend.loadLibrarySection("songs", root.currentLibraryOrder)
         }
+        function onPlaylistSaveChanged() {
+            var state = backend.playlistSaveState
+            if (state.completed && state.verified && !state.pending)
+                playlistSave.close()
+        }
         function onPlaylistSaveRequested() {
             playlistSave.newMode = (backend.playlistSaveState.targets || []).length === 0
             playlistName.text = ""
@@ -177,6 +182,7 @@ ApplicationWindow {
         id: playlistSave
         objectName: "playlistSaveDialog"
         property bool newMode: false
+        property bool duplicateResult: !!backend.playlistSaveState.duplicate
         property bool canSave: !backend.busy && !backend.playlistSaveState.pending
                                && !backend.playlistSaveState.completed && !backend.playlistSaveState.locked
         modal: true
@@ -185,7 +191,7 @@ ApplicationWindow {
         padding: 18
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
-            text: "Přidat do playlistu"
+            text: playlistSave.duplicateResult ? "Duplicitní skladba" : "Přidat do playlistu"
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -201,6 +207,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
             }
             RowLayout {
+                visible: !playlistSave.duplicateResult
                 Button {
                     text: "Existující playlist"
                     checkable: true
@@ -221,7 +228,7 @@ ApplicationWindow {
                 id: playlistChoice
                 objectName: "playlistChoice"
                 Layout.fillWidth: true
-                visible: !playlistSave.newMode
+                visible: !playlistSave.duplicateResult && !playlistSave.newMode
                 enabled: playlistSave.canSave
                 model: backend.playlistSaveState.targets || []
                 textRole: "title"
@@ -231,7 +238,7 @@ ApplicationWindow {
                 id: playlistDuplicates
                 objectName: "playlistDuplicates"
                 text: "Povolit další výskyt stejné skladby"
-                visible: !playlistSave.newMode
+                visible: !playlistSave.duplicateResult && !playlistSave.newMode
                 enabled: playlistSave.canSave
                 contentItem: Text {
                     text: playlistDuplicates.text
@@ -244,7 +251,7 @@ ApplicationWindow {
                 id: playlistName
                 objectName: "playlistNewName"
                 Layout.fillWidth: true
-                visible: playlistSave.newMode
+                visible: !playlistSave.duplicateResult && playlistSave.newMode
                 enabled: playlistSave.canSave
                 placeholderText: "Název nového playlistu"
                 color: "white"
@@ -253,7 +260,7 @@ ApplicationWindow {
             }
             Label {
                 text: "Playlist vznikne jako soukromý a bude obsahovat vybranou skladbu."
-                visible: playlistSave.newMode && !backend.playlistSaveState.completed
+                visible: !playlistSave.duplicateResult && playlistSave.newMode && !backend.playlistSaveState.completed
                 color: "#aaaaaa"
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -261,7 +268,9 @@ ApplicationWindow {
             Label {
                 objectName: "playlistSaveMessage"
                 text: backend.playlistSaveState.message || ""
-                color: backend.playlistSaveState.error ? "#ffaaaa" : "#cccccc"
+                color: backend.playlistSaveState.error ? "#ffaaaa" : "#eeeeee"
+                font.pixelSize: playlistSave.duplicateResult ? 20 : 13
+                font.bold: playlistSave.duplicateResult
                 visible: text.length > 0
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
@@ -276,6 +285,7 @@ ApplicationWindow {
             background: Item { }
             PlayerTextButton {
                 objectName: "playlistSaveSubmit"
+                visible: !backend.playlistSaveState.completed && !backend.playlistSaveState.locked
                 implicitWidth: 155
                 text: playlistSave.newMode ? "Vytvořit a přidat" : "Přidat"
                 enabled: playlistSave.canSave && (playlistSave.newMode
@@ -286,9 +296,17 @@ ApplicationWindow {
                 }
             }
             PlayerTextButton {
+                objectName: "playlistSaveRecheck"
+                implicitWidth: 130
+                text: "Ověřit znovu"
+                visible: !!backend.playlistSaveState.canRecheck
+                enabled: !backend.busy && !backend.playlistSaveState.pending
+                onClicked: backend.recheckPlaylistSave()
+            }
+            PlayerTextButton {
                 objectName: "playlistSaveClose"
                 implicitWidth: 85
-                text: "Zavřít"
+                text: playlistSave.duplicateResult ? "OK" : "Zavřít"
                 onClicked: playlistSave.close()
             }
         }
