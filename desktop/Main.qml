@@ -912,56 +912,132 @@ ApplicationWindow {
         }
     }
 
-    component CollectionSaveAction: Button {
-        text: "Přidat seznam do playlistu…"
-        objectName: "collectionPlaylistSave"
-        visible: backend.detailCanSavePlaylist
-        enabled: !backend.busy && backend.connected
-        onClicked: backend.openCollectionPlaylistSave()
+    component CollectionHeader: RowLayout {
+        property string backText: "← Zpět"
+        signal goBack()
+        Layout.fillWidth: true
+        spacing: 10
+        Button {
+            text: parent.backText
+            enabled: !backend.busy
+            onClicked: parent.goBack()
+        }
+        ColumnLayout {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            spacing: 2
+            Label {
+                objectName: "collectionTitle"
+                text: backend.detailTitle
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                color: "white"
+                font.pixelSize: 24
+                font.bold: true
+                elide: Text.ElideRight
+            }
+            Label {
+                text: backend.detailTracksModel.count +
+                      (backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs"
+                       ? " položek" : " skladeb")
+                color: "#999999"
+                font.pixelSize: 12
+            }
+        }
+        Button {
+            id: collectionMenuButton
+            objectName: "collectionMenuButton"
+            Layout.preferredWidth: 36
+            Layout.preferredHeight: 36
+            visible: backend.detailCanSavePlaylist
+            enabled: !backend.busy && backend.connected
+            hoverEnabled: true
+            ToolTip.visible: hovered
+            ToolTip.text: "Možnosti kolekce"
+            onClicked: collectionMenu.popup(collectionMenuButton, width - collectionMenu.width, height)
+            background: Rectangle {
+                radius: 4
+                color: collectionMenuButton.hovered ? "#3b3b3b" : "#222222"
+            }
+            contentItem: Canvas {
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.fillStyle = "#dddddd"
+                    for (var i = 0; i < 3; ++i) {
+                        ctx.beginPath()
+                        ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
+                        ctx.fill()
+                    }
+                }
+            }
+        }
+        Menu {
+            id: collectionMenu
+            objectName: "collectionContextMenu"
+            popupType: Popup.Item
+            width: 260
+            palette.text: "#eeeeee"
+            palette.windowText: "#eeeeee"
+            palette.highlight: "#6757b8"
+            background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+            MenuItem {
+                objectName: "collectionPlaylistSave"
+                text: "Přidat seznam do playlistu…"
+                enabled: backend.detailCanSavePlaylist && !backend.busy
+                onTriggered: backend.openCollectionPlaylistSave()
+            }
+        }
     }
 
     component ArtistNavigation: ColumnLayout {
         visible: backend.detailMeta.kind === "artist"
         spacing: 6
-        RowLayout {
+        Flow {
+            objectName: "artistNavigationFlow"
             Layout.fillWidth: true
-            Repeater {
-                model: [{key: "songs", label: "Skladby"},
-                        {key: "albums", label: "Alba"},
-                        {key: "singles", label: "Singly a EP"}]
-                Button {
-                    required property var modelData
-                    text: modelData.label
-                    objectName: "artistSection-" + modelData.key
-                    checkable: true
-                    checked: backend.detailMeta.section === modelData.key
-                    enabled: !backend.busy
-                    onClicked: backend.selectArtistSection(modelData.key)
+            Layout.preferredHeight: childrenRect.height
+            spacing: 8
+            Row {
+                spacing: 6
+                height: artistOrder.implicitHeight
+                Repeater {
+                    model: [{key: "songs", label: "Skladby"},
+                            {key: "albums", label: "Alba"},
+                            {key: "singles", label: "Singly a EP"}]
+                    Button {
+                        required property var modelData
+                        text: modelData.label
+                        objectName: "artistSection-" + modelData.key
+                        checkable: true
+                        checked: backend.detailMeta.section === modelData.key
+                        enabled: !backend.busy
+                        onClicked: backend.selectArtistSection(modelData.key)
+                    }
                 }
             }
-        }
-        ComboBox {
-            id: artistOrder
-            objectName: "artistOrder"
-            Layout.preferredWidth: 240
-            enabled: !backend.busy
-            textRole: "label"
-            valueRole: "key"
-            model: backend.detailMeta.section === "songs"
-                   ? [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
-                      {key: "default", label: "Původní pořadí YTM"}]
-                   : [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
-                      {key: "default", label: "Původní pořadí YTM"},
-                      {key: "newest", label: "Od nejnovějších"},
-                      {key: "oldest", label: "Od nejstarších"}]
-            currentIndex: {
-                var meta = backend.detailMeta
-                var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
-                for (var i = 0; i < model.length; ++i)
-                    if (model[i].key === order) return i
-                return 0
+            ComboBox {
+                id: artistOrder
+                objectName: "artistOrder"
+                width: Math.min(240, parent.width)
+                enabled: !backend.busy
+                textRole: "label"
+                valueRole: "key"
+                model: backend.detailMeta.section === "songs"
+                       ? [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
+                          {key: "default", label: "Původní pořadí YTM"}]
+                       : [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
+                          {key: "default", label: "Původní pořadí YTM"},
+                          {key: "newest", label: "Od nejnovějších"},
+                          {key: "oldest", label: "Od nejstarších"}]
+                currentIndex: {
+                    var meta = backend.detailMeta
+                    var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
+                    for (var i = 0; i < model.length; ++i)
+                        if (model[i].key === order) return i
+                    return 0
+                }
+                onActivated: backend.setArtistOrder(currentValue)
             }
-            onActivated: backend.setArtistOrder(currentValue)
         }
         Label {
             visible: backend.detailTracksModel.count === 0
@@ -1477,25 +1553,10 @@ ApplicationWindow {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     spacing: 12
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Button {
-                                            text: backend.detailMeta.kind === "artist" ? "← Výsledky" : "← Zpět"
-                                            enabled: !backend.busy
-                                            onClicked: backend.backDetail()
-                                        }
-                                        Label {
-                                            text: backend.detailTitle
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            color: "white"
-                                            font.pixelSize: 25
-                                            font.bold: true
-                                        }
-                                        Item { Layout.fillWidth: true }
+                                    CollectionHeader {
+                                        onGoBack: backend.backDetail()
                                     }
                                     ArtistNavigation { Layout.fillWidth: true }
-                                    CollectionSaveAction { }
                                     ListView {
                                         id: searchDetailList
                                         Layout.fillWidth: true
@@ -1567,25 +1628,10 @@ ApplicationWindow {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     spacing: 12
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Button {
-                                            text: "← Zpět"
-                                            enabled: !backend.busy
-                                            onClicked: backend.backDetail()
-                                        }
-                                        Label {
-                                            text: backend.detailTitle
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            color: "white"
-                                            font.pixelSize: 27
-                                            font.bold: true
-                                        }
-                                        Item { Layout.fillWidth: true }
+                                    CollectionHeader {
+                                        onGoBack: backend.backDetail()
                                     }
                                     ArtistNavigation { Layout.fillWidth: true }
-                                    CollectionSaveAction { }
                                     ListView {
                                         id: libraryDetailList
                                         Layout.fillWidth: true
@@ -1687,20 +1733,10 @@ ApplicationWindow {
                                 ColumnLayout {
                                     anchors.fill: parent
                                     anchors.margins: 22
-                                    RowLayout {
-                                        Layout.fillWidth: true
-                                        Button { text: "← Mixy"; onClicked: backend.clearDetail() }
-                                        Label {
-                                            text: backend.detailTitle
-                                            Layout.fillWidth: true
-                                            elide: Text.ElideRight
-                                            color: "white"
-                                            font.pixelSize: 27
-                                            font.bold: true
-                                        }
-                                        Item { Layout.fillWidth: true }
+                                    CollectionHeader {
+                                        backText: "← Mixy"
+                                        onGoBack: backend.clearDetail()
                                     }
-                                    CollectionSaveAction { }
                                     ListView {
                                         id: mixDetailList
                                         Layout.fillWidth: true

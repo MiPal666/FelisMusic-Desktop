@@ -121,7 +121,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Ověřený úspěch nyní zavře ukládací dialog, zpráva zůstane ve stavové liště. U nepovolené duplicity jsou vstupy skryté, zobrazené výrazné oznámení a pouze OK. Při chybě či neověřeném obsahu dialog zůstává otevřený; úspěšné Ověřit znovu ho také zavře. Kontrola QML při 1280×800 a 900×600 zahrnuje všechny tyto větve i povolenou duplicitu a zachování audia/fronty; 89 offline testů prochází.
 - Uživatel 2026-10-25 potvrdil i finální dokončení dialogu jako funkční. První část 7a je přijatá; opravy a testy jsou uložené v commitu `cb4ce81`. YTM dovoluje shodné názvy playlistů, aplikace pracuje s jejich jedinečnými ID a názvovou jedinečnost nevynucuje. Přidání kolekcí (zbytek 7a), obecná tvorba/prázdný playlist a přejmenování/popisy/viditelnost (7b), odebrání/přesun (7c) a smazání (7d) dosud nehotové.
 
-### Otestováno uživatelem, čeká na commit: 0.3.11-dev – uložení seznamu do playlistu (druhá část 7a)
+### Otestováno uživatelem: 0.3.11-dev – uložení seznamu do playlistu (druhá část 7a)
 
 - Uživatel potvrdil commit `cb4ce81` a zavřenou aplikaci, pokračujeme druhou částí 7a.
 - Přidat seznam do playlistu… v otevřených detailech se skladbami (album, playlist, část Skladby interpreta; také dostupné nahrané seznamy/mixy). Počet a pořadí vycházejí ze zachyceného modelu, bez odkazů odhadovaných podle názvu. Akce je skrytá na seznamech alb/singlů bez skladeb. Playlisty načítány celé přes limit=None.
@@ -129,7 +129,15 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Kontrolní načtení ověřuje minimální výsledný počet všech přidávaných videoId, včetně více stejných výskytů. Neúplné potvrzení zachová možnost čtecího Ověřit znovu, bez opakování zápisu. Úspěšná stavová zpráva uvádí přidáno/vynecháno.
 - Zůstává zachovaná kontrola vlastnictví, vazba dialogu na původní výběr, automatické zavření po ověřeném úspěchu a nezávislost playback queue/audia.
 - Prošlo 95 offline testů (89 dosavadních + 6 pro dávky/kolekce). QML ověřeno klikáním při 1280×800 a 900×600: tlačítko kolekce, počet/pořadí, výchozí a povolené duplicity, vytvoření playlistu z výběru, skrytí na albové části interpreta, zachování audia/fronty.
-- Uživatel potvrdil funkčnost celé této části, následně ověřil dostupnost i u nahraných seznamů. Druhá část 7a je přijatá a čeká na commit. Po něm je domluvená samostatná úprava rozložení: kompaktní hlavička a akce kolekce pod tlačítkem ⋮; implementace vzhledu zatím nezačala. Prázdný playlist/úpravy údajů 7b, úpravy položek 7c a smazání 7d následují samostatně; dříve odložené kroky zůstávají otevřené.
+- Uživatel potvrdil funkčnost celé této části, následně ověřil dostupnost i u nahraných seznamů. Druhá část 7a je přijatá a uložená v commitu `b114cea`. Následuje samostatná úprava rozložení popsaná níže. Prázdný playlist/úpravy údajů 7b, úpravy položek 7c a smazání 7d následují samostatně; dříve odložené kroky zůstávají otevřené.
+
+### Otestováno uživatelem, čeká na commit: 0.3.12-dev – kompaktní hlavičky a menu kolekcí
+
+- Uživatel potvrdil commit `b114cea`, zavřenou aplikaci a povolil domluvenou úpravu vzhledu.
+- Sdílená QML CollectionHeader pro detail hledání, knihovny a mixů: Zpět, název s elipsou a počet aktuálně zobrazených položek, vpravo ⋮. Menu obsahuje stávající Přidat seznam do playlistu…; není-li zapojená akce dostupná, ⋮ je skryté. Odstraněné samostatné akční tlačítko na dalším řádku.
+- ArtistNavigation používá Flow: záložky a řazení na jednom řádku, při užší ploše se řazení zalomí. Pořadí a logika akcí, backend, playback queue a audio se neměnily.
+- Prošlo všech 95 dosavadních offline testů. QML ověřeno při 1280×800 a 900×600: menu kolekce a celé uložení včetně duplicit/nového playlistu, přepínání interpreta, dlouhý název, návraty z knihovny/hledání/mixů, zachování audia/fronty. Zalomení řazení ověřeno také v uměle zúžené testovací ploše.
+- Uživatel 2026-10-25 potvrdil funkčnost úpravy. Mezikrok vzhledu je přijatý a čeká na commit. Metadata typu rok/autor/cover a další akce kolekcí zůstávají plánované, stejně jako zbytek kroku 7 a starší otevřené podkroky.
 
 ## Pracovní domluva
 

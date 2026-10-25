@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.11-dev**
+- Desktop GUI: **0.3.12-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -263,3 +263,12 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Další podkroky: prázdný playlist, úpravy názvu/popisu/viditelnosti, odebírání/přesuny a smazání vlastních playlistů.
 
 - Druhou část 7a uživatel otestoval a přijal 2026-10-25, včetně dostupnosti u nahraných seznamů.
+
+## 0.3.12-dev – kompaktní hlavičky kolekcí
+
+- Detail alba, playlistu, interpreta a mixu sdílí jednu kompaktní hlavičku: **Zpět**, název a počet položek, vpravo **⋮** pro akce celé kolekce. Dlouhý název se zkrátí, ovladače zůstávají viditelné.
+- **Přidat seznam do playlistu…** je nyní uvnitř této nabídky; samostatné velké tlačítko pod hlavičkou je odstraněné. Nabídka se zobrazí jen tam, kde je dostupná zapojená akce. Nabídky u jednotlivých skladeb zůstávají samostatné.
+- U interpreta jsou **Skladby / Alba / Singly a EP** a řazení vedle sebe; při nedostatku šířky se řazení zalomí pod záložky. Seznam tak dostává více svislého místa.
+- Jde o úpravu rozložení; ukládání, pořadí/duplicity, přehrávání, fronta i návraty fungují stejně. Další metadata hlaviček a akce kolekcí zůstávají navazujícími podkroky.
+
+- Kompaktní hlavičky a přesun akcí do menu uživatel otestoval a přijal 2026-10-25.
