@@ -107,7 +107,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Prošlo 75 offline testů (59 před knihovnou + 16 pro knihovnu včetně souběhu, rušení a předání ID alba). QML ověřeno klikáním při 1280×800 a 900×600: během zablokovaného čtení skutečně použity obě vkládací akce a Mix, pak přímé přidání/odebrání bez dialogu a ignorování staré odpovědi při změně menu. Ověřené skrytí položky během čekání i po odpovědi bez dostupné akce. Předchozí kontroly ověřily také obnovení seznamu/cover a uploady.
 - Uživatel 2026-10-25 potvrdil finální menu i chování skladeb z alba křížovým porovnáním s webovým YTM. První část 6a je přijatá a uložená v commitu `c3de56b`. Alba/playlisty v knihovně, odběry interpretů a kopírování odkazů dosud nejsou implementované.
 
-### Otestováno uživatelem, čeká na commit opravy: 0.3.10-dev – uložení skladby do playlistu (první část 7a)
+### Otestováno uživatelem: 0.3.10-dev – uložení skladby do playlistu (první část 7a)
 
 - Uživatel potvrdil commit `c3de56b`, zavřenou aplikaci a výslovně zvolil krok 7. Zbývající části kroku 6 a dřívějšího plánu zůstávají otevřené.
 - Přidat do playlistu… v menu skladby/videa/uploadu. Dialog načte všechny vlastní playlisty (`get_library_playlists(limit=None)`, owned=True); cizí, neznámé a automatické cíle se nenabízejí. Před zápisem nový `get_playlist(limit=None)` ověří vlastnictví i duplicity.
@@ -119,12 +119,22 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Prošlo 89 offline testů (75 původních + 14 pro ukládání a ověřování playlistů). QML ověřeno klikáním při 1280×800 a 900×600: nabídka, výběr vlastního cíle, duplicity a opt-in dalšího výskytu, vytvoření soukromého playlistu a zachování audia/fronty. Navíc ověřeno stručné zobrazení neověřeného obsahu a úspěšné ruční Ověřit znovu po simulované chybě parseru bez opakování zápisu.
 - Uživatel potvrdil, že po opravě vzniká playlist bez chyby a se skladbou, funguje přidání do existujícího playlistu i obě varianty duplicit. Následně schválil automatické zavření po ověřeném úspěchu a výrazné potvrzení duplicity přes OK; před úpravou potvrdil zavřenou aplikaci.
 - Ověřený úspěch nyní zavře ukládací dialog, zpráva zůstane ve stavové liště. U nepovolené duplicity jsou vstupy skryté, zobrazené výrazné oznámení a pouze OK. Při chybě či neověřeném obsahu dialog zůstává otevřený; úspěšné Ověřit znovu ho také zavře. Kontrola QML při 1280×800 a 900×600 zahrnuje všechny tyto větve i povolenou duplicitu a zachování audia/fronty; 89 offline testů prochází.
-- Uživatel 2026-10-25 potvrdil i finální dokončení dialogu jako funkční. První část 7a je přijatá; opravy a testy čekají na commit. YTM dovoluje shodné názvy playlistů, aplikace pracuje s jejich jedinečnými ID a názvovou jedinečnost nevynucuje. Přidání kolekcí (zbytek 7a), obecná tvorba/prázdný playlist a přejmenování/popisy/viditelnost (7b), odebrání/přesun (7c) a smazání (7d) dosud nehotové.
+- Uživatel 2026-10-25 potvrdil i finální dokončení dialogu jako funkční. První část 7a je přijatá; opravy a testy jsou uložené v commitu `cb4ce81`. YTM dovoluje shodné názvy playlistů, aplikace pracuje s jejich jedinečnými ID a názvovou jedinečnost nevynucuje. Přidání kolekcí (zbytek 7a), obecná tvorba/prázdný playlist a přejmenování/popisy/viditelnost (7b), odebrání/přesun (7c) a smazání (7d) dosud nehotové.
+
+### Otestováno uživatelem, čeká na commit: 0.3.11-dev – uložení seznamu do playlistu (druhá část 7a)
+
+- Uživatel potvrdil commit `cb4ce81` a zavřenou aplikaci, pokračujeme druhou částí 7a.
+- Přidat seznam do playlistu… v otevřených detailech se skladbami (album, playlist, část Skladby interpreta; také dostupné nahrané seznamy/mixy). Počet a pořadí vycházejí ze zachyceného modelu, bez odkazů odhadovaných podle názvu. Akce je skrytá na seznamech alb/singlů bez skladeb. Playlisty načítány celé přes limit=None.
+- Výchozí režim vynechá existující videoId a opakování uvnitř výběru; výslovné povolení duplicit zachová všechny výskyty. Zbývající skladby se odešlou v původním pořadí. Nový soukromý playlist vytvořen jedním požadavkem bez opakujících se videoId. Celý duplicitní výběr zobrazí výrazné potvrzení přes OK.
+- Kontrolní načtení ověřuje minimální výsledný počet všech přidávaných videoId, včetně více stejných výskytů. Neúplné potvrzení zachová možnost čtecího Ověřit znovu, bez opakování zápisu. Úspěšná stavová zpráva uvádí přidáno/vynecháno.
+- Zůstává zachovaná kontrola vlastnictví, vazba dialogu na původní výběr, automatické zavření po ověřeném úspěchu a nezávislost playback queue/audia.
+- Prošlo 95 offline testů (89 dosavadních + 6 pro dávky/kolekce). QML ověřeno klikáním při 1280×800 a 900×600: tlačítko kolekce, počet/pořadí, výchozí a povolené duplicity, vytvoření playlistu z výběru, skrytí na albové části interpreta, zachování audia/fronty.
+- Uživatel potvrdil funkčnost celé této části, následně ověřil dostupnost i u nahraných seznamů. Druhá část 7a je přijatá a čeká na commit. Po něm je domluvená samostatná úprava rozložení: kompaktní hlavička a akce kolekce pod tlačítkem ⋮; implementace vzhledu zatím nezačala. Prázdný playlist/úpravy údajů 7b, úpravy položek 7c a smazání 7d následují samostatně; dříve odložené kroky zůstávají otevřené.
 
 ## Pracovní domluva
 
 - Řešit jeden problém za druhým.
-- Před změnami aplikace upozornit uživatele na zavření aplikace; uživatel potvrzuje, že lze upravovat. Při pouhém čtení může aplikace běžet.
+- Před změnami aplikace upozornit uživatele na zavření aplikace; uživatel potvrzuje, že lze upravovat. Při pouhém čtení může aplikace běžet. Příprava příkazu pro commit a zápis přijetí do dokumentace nevyžadují další pokyn; na potvrzení čekat až před programováním aplikace.
 - Po změně stručně popsat výsledek, ověření a co má uživatel vyzkoušet.
 - Shellové příkazy pro uživatele psát vždy na jediném řádku.
 - Git má zachytit přijatý základ a potom přehledné dokončené změny; první commit je výslovně autorizovaný. Push ani publikace nebyly zadány.

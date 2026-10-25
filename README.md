@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.10-dev**
+- Desktop GUI: **0.3.11-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -252,3 +252,14 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Tato část zatím ukládá jednotlivou skladbu. Celé kolekce, přejmenování, popis/viditelnost, odebrání/přesun položek a smazání vlastního playlistu budou samostatné podkroky.
 
 - Uživatel 2026-10-25 potvrdil celý tento podkrok včetně ověřování a finálního chování dialogu. Playlisty mohou mít stejný název; operace používají jejich jedinečná ID.
+
+## 0.3.11-dev – uložení otevřeného seznamu do playlistu (druhá část 7a)
+
+- V detailu alba/playlistu a v části Skladby u interpreta je **Přidat seznam do playlistu…**. Uloží přehratelné skladby právě zobrazeného seznamu v jeho pořadí; dialog ukazuje počet vybraných skladeb. Na části Alba/Singly interpreta se akce nezobrazuje.
+- Playlisty načítáme celé s `limit=None`. U ostatních zdrojů se ukládá dostupný zobrazený obsah; výběr se zachytí při otevření ukládání a další procházení ho nezmění.
+- Bez povolených duplicit se vynechají videoId již přítomná v cíli i opakování uvnitř výběru, pořadí zbývajících skladeb se zachová. S volbou **Povolit opakované výskyty skladeb** se přidá každý výskyt. Pokud není co přidat, zobrazí se potvrzení duplicit přes OK.
+- Nový soukromý playlist obsahuje vybraný seznam bez duplicit a v zobrazeném pořadí. Po uložení se ověřuje počet výskytů každého přidávaného videoId; neúplný výsledek nenahlásíme jako plně ověřený a Ověřit znovu stále pouze čte.
+- Audio a přehrávací fronta se nemění. Ověřený úspěch okno zavře; stavová zpráva u kolekcí uvádí počet přidaných skladeb a vynechaných duplicit.
+- Další podkroky: prázdný playlist, úpravy názvu/popisu/viditelnosti, odebírání/přesuny a smazání vlastních playlistů.
+
+- Druhou část 7a uživatel otestoval a přijal 2026-10-25, včetně dostupnosti u nahraných seznamů.

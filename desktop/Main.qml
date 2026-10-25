@@ -191,7 +191,9 @@ ApplicationWindow {
         padding: 18
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
-            text: playlistSave.duplicateResult ? "Duplicitní skladba" : "Přidat do playlistu"
+            text: playlistSave.duplicateResult
+                  ? (backend.playlistSaveState.collection ? "Duplicitní skladby" : "Duplicitní skladba")
+                  : "Přidat do playlistu"
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -205,6 +207,11 @@ ApplicationWindow {
                 font.bold: true
                 wrapMode: Text.WordWrap
                 Layout.fillWidth: true
+            }
+            Label {
+                visible: !!backend.playlistSaveState.collection
+                text: "Počet vybraných skladeb: " + (backend.playlistSaveState.selectionCount || 0)
+                color: "#aaaaaa"
             }
             RowLayout {
                 visible: !playlistSave.duplicateResult
@@ -237,7 +244,7 @@ ApplicationWindow {
             CheckBox {
                 id: playlistDuplicates
                 objectName: "playlistDuplicates"
-                text: "Povolit další výskyt stejné skladby"
+                text: backend.playlistSaveState.collection ? "Povolit opakované výskyty skladeb" : "Povolit další výskyt stejné skladby"
                 visible: !playlistSave.duplicateResult && !playlistSave.newMode
                 enabled: playlistSave.canSave
                 contentItem: Text {
@@ -259,7 +266,9 @@ ApplicationWindow {
                 background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
             }
             Label {
-                text: "Playlist vznikne jako soukromý a bude obsahovat vybranou skladbu."
+                text: backend.playlistSaveState.collection
+                      ? "Playlist vznikne jako soukromý. Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit."
+                      : "Playlist vznikne jako soukromý a bude obsahovat vybranou skladbu."
                 visible: !playlistSave.duplicateResult && playlistSave.newMode && !backend.playlistSaveState.completed
                 color: "#aaaaaa"
                 wrapMode: Text.WordWrap
@@ -903,6 +912,14 @@ ApplicationWindow {
         }
     }
 
+    component CollectionSaveAction: Button {
+        text: "Přidat seznam do playlistu…"
+        objectName: "collectionPlaylistSave"
+        visible: backend.detailCanSavePlaylist
+        enabled: !backend.busy && backend.connected
+        onClicked: backend.openCollectionPlaylistSave()
+    }
+
     component ArtistNavigation: ColumnLayout {
         visible: backend.detailMeta.kind === "artist"
         spacing: 6
@@ -1478,6 +1495,7 @@ ApplicationWindow {
                                         Item { Layout.fillWidth: true }
                                     }
                                     ArtistNavigation { Layout.fillWidth: true }
+                                    CollectionSaveAction { }
                                     ListView {
                                         id: searchDetailList
                                         Layout.fillWidth: true
@@ -1567,6 +1585,7 @@ ApplicationWindow {
                                         Item { Layout.fillWidth: true }
                                     }
                                     ArtistNavigation { Layout.fillWidth: true }
+                                    CollectionSaveAction { }
                                     ListView {
                                         id: libraryDetailList
                                         Layout.fillWidth: true
@@ -1681,6 +1700,7 @@ ApplicationWindow {
                                         }
                                         Item { Layout.fillWidth: true }
                                     }
+                                    CollectionSaveAction { }
                                     ListView {
                                         id: mixDetailList
                                         Layout.fillWidth: true

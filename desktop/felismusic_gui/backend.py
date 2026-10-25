@@ -1,3 +1,4 @@
+from collections import Counter
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
@@ -185,6 +186,7 @@ class BackendBridge(QObject):
         self._song_library_menu = {}
         self._song_library_token = ""
         self._playlist_save_state = {}
+        self._playlist_save_items = []
         self._playlist_save_item = {}
         self._song_library_item = {}
         self._library_section = ""
@@ -1250,10 +1252,30 @@ class BackendBridge(QObject):
         item = items[index]
         if not item.get("videoId") or item.get("kind", "song") not in ("song", "video", "upload_song", ""):
             return False
+        return self._open_playlist_selection([dict(item)], item.get("title", "Skladba"), False)
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanSavePlaylist(self):
+        return bool(self._detail_title and any(self._playlist_song_supported(x) for x in self._detail_tracks_model.snapshot()))
+
+    @staticmethod
+    def _playlist_song_supported(item):
+        return bool(item.get("videoId") and item.get("kind", "song") in ("song", "video", "upload_song", ""))
+
+    @Slot(result=bool)
+    def openCollectionPlaylistSave(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None or not self.detailCanSavePlaylist:
+            return False
+        items = [dict(x) for x in self._detail_tracks_model.snapshot() if self._playlist_song_supported(x)]
+        return self._open_playlist_selection(items, self._detail_title, True)
+
+    def _open_playlist_selection(self, items, title, collection):
         self._playlist_save_verification = None
-        self._playlist_save_item = dict(item)
-        self._playlist_save_state = {"title": item.get("title", "Skladba"), "targets": [],
-                                     "pending": True, "completed": False, "locked": False, "message": ""}
+        self._playlist_save_items = items
+        self._playlist_save_item = items[0]
+        self._playlist_save_state = {"title": title, "selectionCount": len(items), "collection": collection,
+                                     "targets": [], "pending": True, "completed": False,
+                                     "locked": False, "message": ""}
         api = self._ytmusic
         def task():
             targets = []
@@ -1273,8 +1295,8 @@ class BackendBridge(QObject):
                 return None
             try:
                 data = api.get_playlist(target["playlistId"], limit=None)
-                count = sum(x.get("videoId") == target["videoId"] for x in data.get("tracks", []))
-                if count >= target["minimumCount"]:
+                counts = Counter(x.get("videoId") for x in data.get("tracks", []))
+                if all(counts[video_id] >= minimum for video_id, minimum in target["minimumCounts"].items()):
                     return data
             except Exception as exc:
                 # Parser exceptions can include entire server responses. Keep
@@ -1292,21 +1314,27 @@ class BackendBridge(QObject):
             message = (f"Playlist {target['title']} byl vytvořen." if target["created"]
                        else f"YT Music potvrdilo přidání skladby do playlistu {target['title']}.")
             message += " Obsah zatím nelze ověřit. Můžeš jej zkusit načíst znovu nebo zkontrolovat ve webovém YTM."
+        if verified and target.get("batch"):
+            message = (f"Vytvořen playlist: {target['title']}." if target["created"]
+                       else f"Uloženo do playlistu: {target['title']}.")
+            message += f" Přidáno skladeb: {target['addedCount']}. Vynecháno duplicit: {target['skipped']}."
         return {"message": message, "completed": True, "locked": True,
                 "changed": True, "verified": verified, "canRecheck": not verified,
                 "error": False, "playlistId": target["playlistId"], "detail": after,
                 "verification": target}
 
-    def _save_playlist_song(self, api, item, playlist_id, new_title, duplicates):
+    def _save_playlist_song(self, api, items, playlist_id, new_title, duplicates):
         attempted = False
+        requested = [item["videoId"] for item in items]
         try:
             if new_title:
+                video_ids = list(dict.fromkeys(requested))
+                before_counts = Counter()
                 attempted = True
-                result = api.create_playlist(new_title, "", privacy_status="PRIVATE", video_ids=[item["videoId"]])
+                result = api.create_playlist(new_title, "", privacy_status="PRIVATE", video_ids=video_ids)
                 if not isinstance(result, str) or not result.strip():
                     raise RuntimeError("Creation not confirmed")
                 playlist_id = result
-                before_count = 0
                 title = new_title
             else:
                 before = api.get_playlist(playlist_id, limit=None)
@@ -1314,17 +1342,28 @@ class BackendBridge(QObject):
                     return {"message": "Playlist už není vlastní nebo ho nelze upravovat.",
                             "completed": False, "locked": False, "changed": False, "error": True}
                 title = before.get("title") or "Playlist"
-                before_count = sum(x.get("videoId") == item["videoId"] for x in before.get("tracks", []))
-                if before_count and not duplicates:
-                    return {"message": f"Skladba už v playlistu {title} je. Nic se nepřidalo.",
-                            "completed": True, "duplicate": True, "locked": False, "changed": False, "playlistId": playlist_id}
+                before_counts = Counter(x.get("videoId") for x in before.get("tracks", []))
+                seen = set(before_counts)
+                video_ids = []
+                for video_id in requested:
+                    if duplicates or video_id not in seen:
+                        video_ids.append(video_id)
+                        seen.add(video_id)
+                if not video_ids:
+                    message = (f"Skladba už v playlistu {title} je. Nic se nepřidalo." if len(items) == 1
+                               else f"Všechny vybrané skladby už v playlistu {title} jsou. Nic se nepřidalo.")
+                    return {"message": message, "completed": True, "duplicate": True,
+                            "locked": False, "changed": False, "playlistId": playlist_id}
                 attempted = True
-                result = api.add_playlist_items(playlist_id, videoIds=[item["videoId"]], duplicates=duplicates)
+                result = api.add_playlist_items(playlist_id, videoIds=video_ids, duplicates=duplicates)
                 status = result.get("status") if isinstance(result, dict) else result
                 if status != "STATUS_SUCCEEDED":
                     raise RuntimeError("Addition not confirmed")
-            target = {"playlistId": playlist_id, "videoId": item["videoId"],
-                      "minimumCount": before_count + 1, "title": title, "created": bool(new_title)}
+            added_counts = Counter(video_ids)
+            target = {"playlistId": playlist_id,
+                      "minimumCounts": {video_id: before_counts[video_id] + count for video_id, count in added_counts.items()},
+                      "title": title, "created": bool(new_title), "batch": len(items) > 1,
+                      "addedCount": len(video_ids), "skipped": len(requested) - len(video_ids)}
             return self._playlist_verification_result(api, target)
         except Exception as exc:
             print(f"FelisMusic uložení playlistu: {type(exc).__name__}")
@@ -1372,12 +1411,12 @@ class BackendBridge(QObject):
         self._begin_playlist_save("", title, False)
 
     def _begin_playlist_save(self, playlist_id, title, duplicates):
-        item = dict(self._playlist_save_item)
+        items = [dict(x) for x in self._playlist_save_items]
         api = self._ytmusic
         self._playlist_save_state = dict(self._playlist_save_state, pending=True, message="Ukládám…", error=False)
         self.playlistSaveChanged.emit()
         self._submit("playlist_save_write", "Ukládám skladbu do playlistu…",
-                     lambda: self._save_playlist_song(api, item, playlist_id, title, duplicates))
+                     lambda: self._save_playlist_song(api, items, playlist_id, title, duplicates))
 
     @Property("QVariantMap", notify=songLibraryMenuChanged)
     def songLibraryMenuState(self):
@@ -1844,6 +1883,7 @@ class BackendBridge(QObject):
                     changed_playlist_id = result["playlistId"]
                     if result.get("detail") is not None and self._detail_meta.get("playlistId") == changed_playlist_id:
                         self._detail_tracks_model.set_items([self._track(x) for x in core.usable_tracks(result["detail"].get("tracks", []))])
+                        self.detailTitleChanged.emit()
 
             elif name == "song_library_action":
                 self._song_library_action_pending = False
@@ -2731,7 +2771,7 @@ class BackendBridge(QObject):
         def task():
             data = self._require_ytmusic().get_playlist(
                 playlist_id,
-                limit=core.LIBRARY_LIMIT,
+                limit=None,
             )
             tracks = core.usable_tracks(data.get("tracks") or [])
             return {

@@ -215,3 +215,75 @@ class PlaylistSaveTests(support.AudioPlaybackTestCase):
         self.assertTrue(self.b.playlistSaveState['verified'])
         self.api.add_playlist_items.assert_called_once()
         self.assertEqual(len(self.data['mine']['tracks']), 1)
+
+    def collection(self, ids):
+        self.b._detail_title = 'Collection'
+        self.b.detailTracksModel.set_items([dict(kind='song', title=v, videoId=v) for v in ids])
+        self.b.detailTitleChanged.emit()
+        self.assertTrue(self.b.openCollectionPlaylistSave()); self.ready()
+
+    def test_collection_skips_existing_and_internal_duplicates_in_visible_order(self):
+        self.start('Q', 'R'); queue = self.b._queue
+        self.data['mine']['tracks'] = [dict(videoId='B')]
+        self.collection(['A', 'B', 'A', 'C'])
+        self.assertEqual(self.b.playlistSaveState['selectionCount'], 4)
+        self.b.clearDetail()  # Selection is already captured.
+        self.b.saveSongToPlaylist('mine', False); self.ready()
+        self.api.add_playlist_items.assert_called_once_with('mine', videoIds=['A', 'C'], duplicates=False)
+        self.assertTrue(self.b.playlistSaveState['verified'])
+        self.assertIn('Vynecháno duplicit: 2', self.b.playlistSaveState['message'])
+        self.assertIs(self.b._queue, queue)
+        self.assertEqual(self.played, ['Q'])
+        self.assertEqual([x['videoId'] for x in queue.tracks], ['Q', 'R'])
+
+    def test_collection_explicit_duplicates_keep_every_occurrence(self):
+        self.data['mine']['tracks'] = [dict(videoId='A')]
+        self.collection(['A', 'B', 'A'])
+        self.b.saveSongToPlaylist('mine', True); self.ready()
+        self.api.add_playlist_items.assert_called_once_with('mine', videoIds=['A', 'B', 'A'], duplicates=True)
+        self.assertEqual([x['videoId'] for x in self.data['mine']['tracks']], ['A', 'A', 'B', 'A'])
+        self.assertTrue(self.b.playlistSaveState['verified'])
+
+    def test_collection_create_private_deduplicates_without_reordering(self):
+        self.collection(['C', 'A', 'C', 'B'])
+        self.b.createPlaylistWithSong('Collected'); self.ready()
+        self.api.create_playlist.assert_called_once_with('Collected', '', privacy_status='PRIVATE', video_ids=['C', 'A', 'B'])
+        self.assertTrue(self.b.playlistSaveState['verified'])
+        self.api.add_playlist_items.assert_not_called()
+
+    def test_collection_all_existing_has_duplicate_result_without_write(self):
+        self.data['mine']['tracks'] = [dict(videoId='A'), dict(videoId='B')]
+        self.collection(['B', 'A', 'B'])
+        self.b.saveSongToPlaylist('mine', False); self.ready()
+        self.assertTrue(self.b.playlistSaveState['duplicate'])
+        self.assertTrue(self.b.playlistSaveState['collection'])
+        self.api.add_playlist_items.assert_not_called()
+
+    def test_collection_partial_readback_does_not_claim_full_success_or_reinsert(self):
+        self.collection(['A', 'B'])
+        reads = []
+        def partial(pid, **kwargs):
+            reads.append(pid)
+            if len(reads) == 1:
+                return deepcopy(self.data[pid])
+            return dict(owned=True, tracks=[dict(videoId='A')])
+        self.api.get_playlist.side_effect = partial
+        self.b.saveSongToPlaylist('mine', False); self.ready()
+        self.assertTrue(self.b.playlistSaveState['canRecheck'])
+        self.assertFalse(self.b.playlistSaveState['verified'])
+        self.api.get_playlist.side_effect = lambda pid, **kwargs: deepcopy(self.data[pid])
+        self.b.recheckPlaylistSave(); self.ready()
+        self.assertTrue(self.b.playlistSaveState['verified'])
+        self.api.add_playlist_items.assert_called_once()
+
+    def test_collection_loads_full_playlist_and_rejects_non_song_section(self):
+        self.data['mine']['tracks'] = [dict(title='A', videoId='A'), dict(title='Upload', videoId='private-id')]
+        self.b.loadPlaylistTracks('mine', 'Mine'); self.ready()
+        self.api.get_playlist.assert_called_with('mine', limit=None)
+        self.assertTrue(self.b.detailCanSavePlaylist)
+        self.assertTrue(self.b.openCollectionPlaylistSave()); self.ready()
+        self.assertEqual(self.b.playlistSaveState['selectionCount'], 2)
+        self.b._detail_title = 'Artist albums'
+        self.b.detailTracksModel.set_items([dict(kind='album', browseId='album')])
+        self.assertFalse(self.b.detailCanSavePlaylist)
+        self.assertFalse(self.b.openCollectionPlaylistSave())
