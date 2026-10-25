@@ -1112,6 +1112,24 @@ ApplicationWindow {
                 onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
             }
             MenuItem {
+                objectName: "playlistMoveUpAction"
+                text: "Posunout nahoru"
+                visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail"
+                         && backend.detailCanEditPlaylist && videoId.length > 0 && setVideoId.length > 0
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && trackDelegate.index > 0
+                onTriggered: backend.moveDetailPlaylistItem(videoId, setVideoId, -1)
+            }
+            MenuItem {
+                objectName: "playlistMoveDownAction"
+                text: "Posunout dolů"
+                visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail"
+                         && backend.detailCanEditPlaylist && videoId.length > 0 && setVideoId.length > 0
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && trackDelegate.index + 1 < backend.detailTracksModel.count
+                onTriggered: backend.moveDetailPlaylistItem(videoId, setVideoId, 1)
+            }
+            MenuItem {
                 objectName: "playlistRemoveItemAction"
                 text: "Odebrat z tohoto playlistu"
                 visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist

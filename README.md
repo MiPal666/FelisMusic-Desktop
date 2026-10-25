@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.17-dev**
+- Desktop GUI: **0.3.18-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -315,3 +315,11 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Při změně stránky, otevření detailu a strukturální změně zdrojového modelu (obnovení, řazení, vložení/odebrání řádků) se výběr zruší; změna hodnocení ani pravidelné aktualizace přehrávače ho neruší. Otevřený ukládací formulář už drží vlastní zachycené položky.
 
 - Po úspěšné hromadné akci se původní výběr zruší a lišta zmizí. U uložení do playlistu až po ověřeném úspěchu (také při Ověřit znovu); chyba, neověřený obsah nebo zavření formuláře bez uložení výběr zachová. Dokončení staršího formuláře nezruší později vytvořený výběr.
+
+## 0.3.18-dev – změna pořadí skladeb ve vlastním playlistu (druhá část 7c)
+
+- Menu jedné skladby ve vlastním playlistu nabízí **Posunout nahoru / Posunout dolů**. U první/poslední zobrazené skladby je příslušný směr neaktivní. Cizí playlisty a hromadný výběr tyto akce nenabízejí.
+- Přesun pracuje s videoId/setVideoId vybraného výskytu i souseda. Před zápisem znovu načte playlist a ověří vlastnictví, identity a jejich sousedství. Pořadí se zapíše přes edit_playlist(moveItem=…), včetně přesunu na konec; nedostupné skryté řádky se nezaměňují za viditelné pozice.
+- Po potvrzení YTM se přesune řádek i v aplikaci; při běžném přesunu se model neresetuje. Potvrzené operace a jejich výsledná pořadí překlenou opožděné odpovědi serveru. Už obsažené operace se neaplikují podruhé; po dorovnání se pomocná informace zahodí.
+- Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
+- Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
