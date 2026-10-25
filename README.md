@@ -4,6 +4,7 @@
 
 - Desktop GUI: **0.3.3.5-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
+- Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
 - FelisMusic CLI 1.0.0 je samostatný, zmrazený projekt / referenční implementace.
 
