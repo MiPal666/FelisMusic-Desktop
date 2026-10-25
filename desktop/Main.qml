@@ -40,6 +40,10 @@ ApplicationWindow {
 
     function pageSelected(index) {
         currentPage = index
+        if (index === 5) {
+            Qt.callLater(root.revealQueueRow)
+            return
+        }
         backend.clearDetail()
         if (index === 1 && backend.libraryItemsModel.count === 0)
             backend.loadLibrarySection(currentLibrarySection, currentLibraryOrder)
@@ -140,6 +144,89 @@ ApplicationWindow {
             color: "#eeeeee"
             wrapMode: Text.WordWrap
             padding: 18
+        }
+    }
+
+    Dialog {
+        id: trackInfo
+        objectName: "trackInfoDialog"
+        title: "Informace o skladbě"
+        modal: true
+        padding: 18
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 620)
+        height: Math.min(root.height - 48, 590)
+        background: Rectangle {
+            color: "#181818"
+            border.color: "#494949"
+            radius: 8
+        }
+        header: Label {
+            text: trackInfo.title
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        footer: DialogButtonBox {
+            background: Item { }
+            PlayerTextButton {
+                text: "Zavřít"
+                implicitWidth: 85
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+            }
+            onRejected: trackInfo.close()
+        }
+
+        ScrollView {
+            id: infoScroll
+            anchors.fill: parent
+            clip: true
+            contentWidth: availableWidth
+
+            ColumnLayout {
+                width: infoScroll.availableWidth
+                spacing: 12
+                Image {
+                    Layout.preferredWidth: 96
+                    Layout.preferredHeight: 96
+                    source: backend.playerThumbnail
+                    visible: source.toString().length > 0
+                    fillMode: Image.PreserveAspectFit
+                    asynchronous: true
+                }
+                Repeater {
+                    model: [
+                        {label: "Název", value: backend.playerTitle},
+                        {label: "Interpret", value: backend.playerArtist},
+                        {label: "Album", value: backend.playerAlbum},
+                        {label: "Délka", value: backend.playerDuration > 0 ? root.formatTime(backend.playerDuration) : "Neznámá"},
+                        {label: "Hodnocení", value: backend.playerLikeStatus === "LIKE" ? "Oblíbená"
+                                                   : (backend.playerLikeStatus === "DISLIKE" ? "Neoblíbená"
+                                                      : (backend.playerLikeStatus === "INDIFFERENT" ? "Bez hodnocení" : "Nezjištěno"))},
+                        {label: "Pozice ve frontě", value: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "Prázdná fronta"},
+                        {label: "Seznam", value: backend.playingListTitle}
+                    ]
+                    delegate: ColumnLayout {
+                        required property var modelData
+                        Layout.fillWidth: true
+                        spacing: 3
+                        Label {
+                            text: modelData.label
+                            color: "#aaaaaa"
+                            font.pixelSize: 12
+                        }
+                        Label {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            text: modelData.value || "Neuvedeno"
+                            color: "#f3f3f3"
+                            wrapMode: Text.Wrap
+                            font.pixelSize: 15
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -309,6 +396,8 @@ ApplicationWindow {
                 } else if (transportButton.iconKind === "pause") {
                     ctx.fillRect(cx - 7, cy - h / 2, 5, h)
                     ctx.fillRect(cx + 2, cy - h / 2, 5, h)
+                } else if (transportButton.iconKind === "stop") {
+                    ctx.fillRect(cx - 7, cy - 7, 14, 14)
                 } else if (transportButton.iconKind === "previous") {
                     ctx.fillRect(cx - 10, cy - h / 2, 3, h)
                     triangle(cx + 7, cy - h / 2, cx - 6, cy, cx + 7, cy + h / 2)
@@ -354,6 +443,14 @@ ApplicationWindow {
         var i = sourceKey === "playing" ? backend.playerQueueIndex : backend.playerSourceIndex
         if (i >= 0 && i < view.count)
             view.positionViewAtIndex(i, ListView.Contain)
+    }
+
+    function revealQueueRow() {
+        if (currentPage !== 5 || !backend.playerHasTrack)
+            return
+        queueList.currentIndex = backend.playerQueueIndex
+        queueList.forceLayout()
+        queueList.positionViewAtIndex(backend.playerQueueIndex, ListView.Center)
     }
 
     function showPlayingList() {
@@ -844,6 +941,7 @@ ApplicationWindow {
                 NavButton { pageIndex: 2; pageText: "Oblíbená hudba" }
                 NavButton { pageIndex: 3; pageText: "Historie" }
                 NavButton { pageIndex: 4; pageText: "Mixy pro vás" }
+                NavButton { pageIndex: 5; pageText: "Fronta"; objectName: "queueButton" }
 
                 Item { Layout.fillHeight: true }
 
@@ -884,9 +982,11 @@ ApplicationWindow {
                             font.bold: true
                         }
 
-                        Item { Layout.fillWidth: true }
-
                         Label {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            elide: Text.ElideRight
+                            horizontalAlignment: Text.AlignRight
                             text: backend.busy
                                   ? backend.status
                                   : (backend.connected
@@ -894,6 +994,12 @@ ApplicationWindow {
                                      : backend.status)
                             color: backend.status.indexOf("Chyba") >= 0 ? "#ff8a80" : "#999999"
                             font.pixelSize: 13
+                        }
+                        PlayerTextButton {
+                            objectName: "infoButton"
+                            text: "Info"
+                            enabled: backend.playerHasTrack
+                            onClicked: trackInfo.open()
                         }
                     }
                 }
@@ -1262,6 +1368,63 @@ ApplicationWindow {
                         }
                     }
 
+                    Item {
+                        ColumnLayout {
+                            anchors.fill: parent
+                            anchors.margins: 22
+                            spacing: 12
+
+                            RowLayout {
+                                Layout.fillWidth: true
+                                Label {
+                                    text: "Fronta"
+                                    color: "white"
+                                    font.pixelSize: 28
+                                    font.bold: true
+                                }
+                                Label {
+                                    objectName: "queuePosition"
+                                    Layout.fillWidth: true
+                                    text: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0"
+                                    color: "#b9b0ff"
+                                    font.pixelSize: 16
+                                }
+                                Button {
+                                    text: "Na aktuální"
+                                    enabled: backend.playerHasTrack
+                                    onClicked: root.revealQueueRow()
+                                }
+                            }
+                            Label {
+                                Layout.fillWidth: true
+                                text: backend.playingListTitle
+                                color: "#aaaaaa"
+                                elide: Text.ElideRight
+                            }
+                            Label {
+                                visible: !backend.playerHasTrack
+                                text: "Fronta je prázdná. Vyber skladbu v knihovně nebo hledání."
+                                Layout.fillWidth: true
+                                wrapMode: Text.Wrap
+                                color: "#aaaaaa"
+                            }
+                            ListView {
+                                id: queueList
+                                objectName: "queueList"
+                                Layout.fillWidth: true
+                                Layout.fillHeight: true
+                                Layout.minimumWidth: 0
+                                clip: true
+                                model: backend.playingTracksModel
+                                delegate: TrackDelegate { sourceKey: "playing" }
+                                ScrollBar.vertical: ScrollBar { }
+                                Connections {
+                                    target: backend
+                                    function onPlayerTrackChanged() { Qt.callLater(root.revealQueueRow) }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 Rectangle {
@@ -1396,6 +1559,16 @@ ApplicationWindow {
                                     iconKind: "next"
                                     enabled: backend.playerCanNext
                                     onClicked: backend.nextTrack()
+                                }
+                                TransportButton {
+                                    objectName: "stopButton"
+                                    iconKind: "stop"
+                                    implicitWidth: 42
+                                    enabled: backend.playerHasTrack && backend.playerState !== "idle"
+                                    hoverEnabled: true
+                                    onClicked: backend.stopPlayback()
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: "Zastavit; Play spustí skladbu od začátku"
                                 }
                                 PlayerTextButton {
                                     objectName: "repeatButton"

@@ -39,10 +39,10 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 
 ### Navazující funkce
 
-- Závazný aktuální postup: `PLAN.md`, jeho původní znění je uložené v commitu `e8012e0`. Podkrok Repeat už uživatel přijal; následuje jeho commit a potom Shuffle.
+- Závazný aktuální postup: `PLAN.md`, jeho původní znění je uložené v commitu `e8012e0`. Repeat je přijatý a commitnutý (`0a9b50c`). Uživatel následně výslovně zadal krok 2 – Fronta + Info; Shuffle zůstává odložený, neimplementovaný.
 - Do desktopové 1.0 patří také správa vlastních playlistů a Cast s převzetím ověřené logiky CLI. Následují Fronta/Info, kontextové akce, detaily, rádio, knihovna/odběry, playlisty, obnova session/přihlášení, MPRIS, Cast a závěrečné ověření podle pořadí v plánu.
 - Trvalé offline stahování až po 1.0. Připínání do „Poslouchejte znovu“ a poděkování u skladby jsou vyřazené. Sailfish port je samostatná etapa po stabilním desktopu.
-- Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta ještě není hotová.
+- Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta v 0.3.5-dev je uživatelem otestovaná a přijatá, viz níže.
 - Výchozí výstup při startu zůstává Toto zařízení. CLI 1.0.0 je samostatný zmrazený projekt.
 
 ### Otestováno uživatelem: 0.3.4-dev – Repeat (krok 1a)
@@ -52,7 +52,16 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Změna režimu zachová pozici i pauzu a sama nezačne přehrávat. Po startu aplikace je režim vypnutý, během relace zůstává i při výběru nové kolekce.
 - Přednačítání respektuje skutečného následujícího kandidáta; repeat-one další skladbu nestahuje, repeat-all na konci připraví první. Změna režimu zneplatní nepotřebné přednačítání.
 - Prošlo 18 offline testů (10 původních a 8 pro Repeat), plus QML kontrola načtení, viditelnosti a skutečného klikání na tlačítko při 900 a 1280 px.
-- Uživatel 2026-10-25 potvrdil funkčnost Repeat po skutečném testu. Podkrok 1a je přijatý a připravený ke commitu. Shuffle (1b) zatím neimplementovaný; naváže po commitu a potvrzení zavřené aplikace.
+- Uživatel 2026-10-25 potvrdil funkčnost Repeat po skutečném testu. Podkrok 1a je přijatý a uložený v commitu `0a9b50c`. Shuffle (1b) zatím neimplementovaný; na následný výslovný pokyn uživatele jsme přešli ke kroku 2.
+
+### Otestováno uživatelem: 0.3.5-dev – Fronta + Info + Stop (krok 2)
+
+- Nová položka Fronta v levé navigaci: model ze skutečné playback fronty, aktuální řádek, pozice `N / celkem`, vlastní scroll a tlačítko Na aktuální. Kliknutí na řádek zachovává existující frontu i původní zdroj/navigaci pro cover.
+- Info v horní liště: živý detail aktuální skladby s interpretem, albem, délkou, hodnocením a pozicí ve frontě. Prázdná fronta má vysvětlení a Info je deaktivované.
+- Stop je dostupný i během načítání; zneplatní požadavky a zastaví audio s výstupem v READY. Fronta, vybraná skladba a repeat zůstanou zachované. Play po Stop začíná vybranou skladbu od nuly; Pause zachovává pozici.
+- Prošlo 26 offline testů (18 původních, 8 pro frontu/metadata/Stop). Ověřena i změna výběru během stahování, duplicitní skladby a zrušení přednačítání při Stop.
+- QML ověřeno skutečným klikáním při 1280×800 a 900×600: prázdná fronta, výběr, nezávislé rolování, živé Info a zavření dialogu, Stop/Play i návrat přes cover.
+- Uživatel 2026-10-25 potvrdil funkčnost celého kroku 2 na skutečném přehrávání. Etapa je přijatá a připravená ke commitu. Další změny až po commitu této etapy.
 
 ## Pracovní domluva
 

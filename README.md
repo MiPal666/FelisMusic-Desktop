@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.4-dev**
+- Desktop GUI: **0.3.5-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -189,3 +189,13 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Změna režimu nerestartuje skladbu, neruší pauzu a sama nespouští zastavené přehrávání. Režim platí i pro nově vybranou kolekci; po spuštění aplikace je vypnutý.
 - Přednačítání respektuje režim: při opakování celého seznamu připraví i návrat na první skladbu, při opakování jedné nepřipravuje zbytečně další.
 - Shuffle bude samostatný následující podkrok po ověření a commitu Repeat.
+
+## 0.3.5-dev – Fronta + Info + Stop
+
+- Položka **Fronta** v levé navigaci ukazuje skutečné pořadí přehrávání a pozici aktuální skladby, například `17 / 133`. Obsah je nezávislý na právě prohlížené kolekci a rozlišuje i duplicitní výskyty skladeb.
+- Kliknutí na řádek fronty přepne skladbu ve stávající frontě, bez jejího nahrazení prohlíženým seznamem. Lze volně rolovat; při změně skladby se nová položka ukáže. Tlačítko **Na aktuální** ji přivede do záběru na požádání.
+- **Info** vpravo nahoře otevře informace o aktuálně vybrané skladbě: název, interpret, album, délka, hodnocení, pozice ve frontě a název seznamu. Údaje sledují změnu aktuální skladby; chybějící metadata se zobrazí jako neuvedená či nezjištěná.
+- Čtvercové tlačítko **Stop** zastaví přehrávání i rozpracovanou přípravu skladby. Zachová frontu, výběr a repeat; následné **Play spustí vybranou skladbu od začátku**, nikoli z poslední pozice. Pro pokračování z pozice slouží Pause/Play.
+- Stop ponechává lokální výstup v READY kvůli zachování směrování zvuku.
+- Kliknutí na cover dál vrací původní kolekci s její navigací. Samostatná Fronta je jiný pohled.
+- Shuffle je podle zadání uživatele zatím odložený; tato verze implementuje krok 2 plánu.

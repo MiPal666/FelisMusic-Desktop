@@ -22,13 +22,17 @@ Plán schváleného rozsahu z 2026-10-24. Jednotlivé kroky níže dosud nejsou 
 
 ## 1. Repeat, potom Shuffle
 
-**1a – Repeat:** vypnuto / celý seznam / jedna skladba. Jednoznačně ukázat režim v přehrávači. Repeat-one opakuje při dohrání, ruční Next/Previous přejdou na sousední skladbu bez obalení seznamu. Repeat-all obaluje seznam při dohrání i ručním přechodu. Hotovo v 0.3.4-dev, uživatel ověřil a přijal 2026-10-25; připraveno ke commitu, viz STATUS.md.
+**1a – Repeat:** vypnuto / celý seznam / jedna skladba. Jednoznačně ukázat režim v přehrávači. Repeat-one opakuje při dohrání, ruční Next/Previous přejdou na sousední skladbu bez obalení seznamu. Repeat-all obaluje seznam při dohrání i ručním přechodu. Hotovo v 0.3.4-dev, uživatel ověřil a přijal 2026-10-25, uloženo v commitu `0a9b50c`.
 
 **1b – Shuffle:** zapojit náhodné přehrávání přes YTM z CLI. Nabídnout ho u podporovaných zdrojů a zachovat výjimku pro nepodporované playlisty `RDCLAK…`. Vyjasnit přepnutí režimu za běhu a návrat k původnímu pořadí; upravit přednačítání podle skutečné následující skladby.
+
+Na výslovný pokyn uživatele z 2026-10-25 odložené; po Repeat jsme přešli ke kroku 2. Shuffle tím není zrušené ani dokončené.
 
 **Přijetí:** dohrání poslední skladby, opakování jedné, ruční Next/Previous a nové pořadí fungují konzistentně. U nepodporovaných zdrojů nevzniká nefunkční ovladač ani tichá náhrada jiným typem shuffle.
 
 ## 2. Samostatná Fronta a Info
+
+Hotovo v 0.3.5-dev, uživatel ověřil a přijal 2026-10-25; připraveno ke commitu. Aktuální podrobnosti v STATUS.md.
 
 **2a – Fronta:** samostatný pohled na skutečné pořadí přehrávání, označení aktuální skladby, pozice například `17 / 133`, vlastní scroll a výběr skladby.
 

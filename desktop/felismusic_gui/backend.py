@@ -317,6 +317,16 @@ class BackendBridge(QObject):
         return self._player_subtitle
 
     @Property(str, notify=playerChanged)
+    def playerArtist(self):
+        song = self._queue.current() if self.playerHasTrack else None
+        return core.artist_names(song) if song is not None else ""
+
+    @Property(str, notify=playerChanged)
+    def playerAlbum(self):
+        song = self._queue.current() if self.playerHasTrack else None
+        return self._album(song) if song is not None else ""
+
+    @Property(str, notify=playerChanged)
     def playerThumbnail(self):
         return self._player_thumbnail
 
@@ -457,8 +467,20 @@ class BackendBridge(QObject):
             "likeStatus": (str(item.get("likeStatus") or "").upper() or None),
             "_guiSubtitle": str(item.get("subtitle") or ""),
             "_guiThumbnail": thumbnail,
+            "_guiKind": str(item.get("kind") or "song"),
         }
         return track
+
+    def _sync_queue_model(self):
+        """Expose the real playback order, independently of browsing models."""
+        items = []
+        for song in self._queue.tracks if self._queue is not None else []:
+            item = self._track(song, upload=str(song.get("_guiKind") or "").startswith("upload_"))
+            item["kind"] = song.get("_guiKind") or "song"
+            item["subtitle"] = song.get("_guiSubtitle") or ""
+            item["thumbnail"] = song.get("_guiThumbnail") or ""
+            items.append(item)
+        self._playing_tracks_model.set_items(items)
 
     def _source_model(self, source):
         models = {
@@ -825,7 +847,7 @@ class BackendBridge(QObject):
 
         def cancelled():
             # An automatic transition to this track can still use its download.
-            return self._closing.is_set() or (
+            return self._closing.is_set() or self._player_state == "idle" or (
                 (generation != self._playback_generation or revision != self._prefetch_revision)
                 and self._current_video_id() != video_id
             )
@@ -952,7 +974,7 @@ class BackendBridge(QObject):
         if source == "playing":
             # Select within the existing queue; do not rebuild it from a
             # browsing model which may already display something else.
-            if self._queue is None or self._playback_transitioning:
+            if self._queue is None:
                 return
             if not 0 <= index < self._queue.count():
                 return
@@ -988,7 +1010,7 @@ class BackendBridge(QObject):
             name=self._queue_name_for_source(source),
             start_index=start_index,
         )
-        self._playing_tracks_model.set_items([items[i] for i in source_indices])
+        self._sync_queue_model()
         self._playing_browse_snapshots = {self._queue_source: items}
         if self._queue_source == "detail":
             for parent_source in ("library", "search"):
@@ -998,6 +1020,28 @@ class BackendBridge(QObject):
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
+
+    @Slot()
+    def stopPlayback(self):
+        """Keep queue/selection and repeat, but Play starts this track at zero."""
+        if self._closing.is_set() or self._local_output is None or not self.playerHasTrack:
+            return
+        with self._transport_lock:
+            self._playback_generation += 1
+            self._prefetch_revision += 1
+            self._playback_transitioning = False
+            self._player_state = "idle"
+            self._player_position = 0.0
+            if self._prefetch_future is not None:
+                self._prefetch_future.cancel()
+            try:
+                self._local_output.media_controller.stop(keep_output=True)
+            except Exception as exc:
+                self.playerChanged.emit()
+                self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
+                return
+        self._set_status("Přehrávání zastaveno")
+        self.playerChanged.emit()
 
     @Slot()
     def togglePlayPause(self):
