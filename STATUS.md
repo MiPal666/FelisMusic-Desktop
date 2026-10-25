@@ -42,7 +42,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Závazný aktuální postup: `PLAN.md`, jeho původní znění je uložené v commitu `e8012e0`. Repeat je přijatý a commitnutý (`0a9b50c`). Uživatel následně výslovně zadal krok 2 – Fronta + Info; Shuffle zůstává odložený, neimplementovaný.
 - Do desktopové 1.0 patří také správa vlastních playlistů a Cast s převzetím ověřené logiky CLI. Následují Fronta/Info, kontextové akce, detaily, rádio, knihovna/odběry, playlisty, obnova session/přihlášení, MPRIS, Cast a závěrečné ověření podle pořadí v plánu.
 - Trvalé offline stahování až po 1.0. Připínání do „Poslouchejte znovu“ a poděkování u skladby jsou vyřazené. Sailfish port je samostatná etapa po stabilním desktopu.
-- Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta v 0.3.5-dev je uživatelem otestovaná a přijatá, viz níže.
+- Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta v 0.3.5-dev je uživatelem otestovaná a uložená v commitu `f04c01b`, viz níže.
 - Výchozí výstup při startu zůstává Toto zařízení. CLI 1.0.0 je samostatný zmrazený projekt.
 
 ### Otestováno uživatelem: 0.3.4-dev – Repeat (krok 1a)
@@ -61,7 +61,17 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Stop je dostupný i během načítání; zneplatní požadavky a zastaví audio s výstupem v READY. Fronta, vybraná skladba a repeat zůstanou zachované. Play po Stop začíná vybranou skladbu od nuly; Pause zachovává pozici.
 - Prošlo 26 offline testů (18 původních, 8 pro frontu/metadata/Stop). Ověřena i změna výběru během stahování, duplicitní skladby a zrušení přednačítání při Stop.
 - QML ověřeno skutečným klikáním při 1280×800 a 900×600: prázdná fronta, výběr, nezávislé rolování, živé Info a zavření dialogu, Stop/Play i návrat přes cover.
-- Uživatel 2026-10-25 potvrdil funkčnost celého kroku 2 na skutečném přehrávání. Etapa je přijatá a připravená ke commitu. Další změny až po commitu této etapy.
+- Uživatel 2026-10-25 potvrdil funkčnost celého kroku 2 na skutečném přehrávání. Etapa je uložená v commitu `f04c01b`.
+
+### Uživatelsky ověřeno, čeká na commit: 0.3.6-dev – skladbové menu a vkládání do fronty (část kroku 3a)
+
+- Uživatel zadal krok 3 se zavřenou aplikací. První samostatně testovaný podkrok: nabídka přes „⋮“ / pravé tlačítko s akcemi Přehrát jako další / Přidat na konec fronty.
+- Nové položky jsou kopie, včetně duplicit; vložení nemění aktuální skladbu, čas, pauzu ani Stop. Vícenásobné „jako další“ klade poslední volbu bezprostředně za aktuální skladbu. Prázdná fronta dostane jednu skladbu bez automatického přehrání.
+- Vkládání je během přechodu/přípravy dočasně zakázané. Ve stabilním přehrávání nebo pauze aktualizuje model vložením jednoho řádku, bez resetu a bez přerušení audia.
+- Přednačítání se zneplatňuje jen při změně následujícího videoId. Zachovává se Repeat, včetně návratu na první skladbu při all.
+- Původ a navigační kontext jsou uložené u každého výskytu ve frontě. Změna skladby mezi různými zdroji proto obnovuje přes cover správnou kolekci a zdrojový index. Změny hodnocení se propisují také do těchto snapshotů.
+- Prošlo 38 offline testů: 26 původních + 12 pro vkládání, přehrávání, přenačítání, duplicity, smíšené zdroje, pauzu, Stop a Repeat. QML ověřeno klikáním na obě varianty menu a jejich akce při 1280×800 i 900×600; zahrnutý návrat přes cover mezi vloženým albem a původním seznamem.
+- Uživatel 2026-10-25 potvrdil funkčnost přehrání jako další a přidání do fronty. Na jeho návrh byla odstraněna duplicitní akce Přehrát odtud; přidání má přesnější název Přidat na konec fronty. Uživatel potvrdil i upravené menu. Podkrok je přijatý a čeká na commit. Akce pro celé kolekce, zbývající akce skladbového menu a odebírání/přesouvání položek zatím neimplementované.
 
 ## Pracovní domluva
 

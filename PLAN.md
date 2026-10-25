@@ -32,7 +32,7 @@ Na výslovný pokyn uživatele z 2026-10-25 odložené; po Repeat jsme přešli 
 
 ## 2. Samostatná Fronta a Info
 
-Hotovo v 0.3.5-dev, uživatel ověřil a přijal 2026-10-25; připraveno ke commitu. Aktuální podrobnosti v STATUS.md.
+Hotovo v 0.3.5-dev, uživatel ověřil a přijal 2026-10-25, uloženo v commitu `f04c01b`. Aktuální podrobnosti v STATUS.md.
 
 **2a – Fronta:** samostatný pohled na skutečné pořadí přehrávání, označení aktuální skladby, pozice například `17 / 133`, vlastní scroll a výběr skladby.
 
@@ -44,7 +44,9 @@ Cover nadále vrací původní kolekci s původní navigací. Fronta ukazuje akt
 
 ## 3. Kontextová menu a úpravy fronty
 
-**3a – Skladba:** nabídka „⋮“ a pravé tlačítko, Přehrát, Přehrát odtud, Přehrát jako další, Přidat do fronty, Info a dostupné hodnocení.
+**3a – Skladba:** nabídka „⋮“ a pravé tlačítko, Přehrát jako další, Přidat na konec fronty, Info a dostupné hodnocení.
+
+První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát jako další / Přidat na konec fronty, včetně zachování navigace ve smíšené frontě. Uživatel potvrdil vkládání do fronty; na jeho návrh byla odstraněna duplicitní akce Přehrát odtud. Upravené menu je také uživatelsky potvrzené; čeká na commit. Další akce nabídky a následující podkroky dosud nejsou hotové.
 
 **3b – Kolekce:** Přehrát, Náhodně, celou kolekci přehrát jako další nebo přidat na konec. Akce přidá skladby ve správném pořadí a nepřeruší aktuální audio.
 

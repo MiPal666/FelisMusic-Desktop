@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.5-dev**
+- Desktop GUI: **0.3.6-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -199,3 +199,13 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Stop ponechává lokální výstup v READY kvůli zachování směrování zvuku.
 - Kliknutí na cover dál vrací původní kolekci s její navigací. Samostatná Fronta je jiný pohled.
 - Shuffle je podle zadání uživatele zatím odložený; tato verze implementuje krok 2 plánu.
+
+## 0.3.6-dev – nabídka skladby a přidávání do fronty
+
+- U přehratelných řádků je tlačítko „⋮“; stejnou nabídku otevře pravé tlačítko myši. Dostupné akce: **Přehrát jako další**, **Přidat na konec fronty**. Levé kliknutí na samotný řádek funguje dál jako dříve.
+- „Jako další“ vloží kopii skladby hned za aktuální, „do fronty“ přidá kopii na konec. Opakované použití zachová i duplicity; při několika požadavcích „jako další“ bude bezprostředně další poslední zvolená položka.
+- Vložení nezastaví přehrávání, neposune aktuální skladbu ani její čas a nezruší pauzu či Stop. Do prázdné fronty přidá první vybranou skladbu, ale automaticky ji nespustí.
+- Během přípravy nové skladby jsou obě vkládací akce dočasně neaktivní. Samotné přehrátí jiné skladby zůstává dostupné.
+- Počet položek se zobrazuje u Fronty v levé navigaci. Vložení používá změnu jednoho řádku modelu, nikoli reset celé fronty; přednačítání se přeplánuje, pokud se skutečně změnila následující skladba.
+- Každý výskyt ve frontě si uchovává vlastní zdroj i navigaci. Ve smíšené frontě tak cover vrací album/playlist právě vybrané skladby, včetně původního řazení a výsledků hledání.
+- Tato etapa zahrnuje skladby v seznamech a ve Frontě. Akce pro celé kolekce, odebrání a přesouvání budou samostatné podkroky.

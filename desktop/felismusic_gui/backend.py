@@ -93,6 +93,12 @@ class DictListModel(QAbstractListModel):
     def clear(self):
         self.set_items([])
 
+    def insert_item(self, row, item):
+        self.beginInsertRows(QModelIndex(), row, row)
+        self._items.insert(row, dict(item))
+        self.endInsertRows()
+        self.countChanged.emit()
+
     def snapshot(self):
         return [dict(item) for item in self._items]
 
@@ -397,7 +403,19 @@ class BackendBridge(QObject):
 
     @Property(str, notify=playerChanged)
     def playerQueueSource(self):
-        return self._queue_source
+        return self._current_origin().get("source", self._queue_source)
+
+    @Property("QVariantMap", notify=playerChanged)
+    def playerSourceContext(self):
+        return self._current_origin().get("context", {})
+
+    @Property(str, notify=playerChanged)
+    def playerVideoId(self):
+        return self._current_video_id()
+
+    @Property(bool, notify=playerChanged)
+    def playerCanEditQueue(self):
+        return not self._closing.is_set() and not self._playback_transitioning
 
     @Property(int, notify=playerChanged)
     def playerQueueIndex(self):
@@ -415,6 +433,9 @@ class BackendBridge(QObject):
     def playerSourceIndex(self):
         if self._queue is None or self._queue.empty():
             return -1
+        origin = self._current_origin()
+        if origin:
+            return int(origin["index"])
         queue_index = int(self._queue.index)
         if 0 <= queue_index < len(self._queue_source_indices):
             return int(self._queue_source_indices[queue_index])
@@ -489,6 +510,7 @@ class BackendBridge(QObject):
             "history": self._history_model,
             "search": self._search_results_model,
             "detail": self._detail_tracks_model,
+            "playing": self._playing_tracks_model,
         }
         return models.get(source)
 
@@ -496,13 +518,38 @@ class BackendBridge(QObject):
         model = self._source_model(source)
         return model.snapshot() if model is not None else []
 
+    def _current_origin(self):
+        song = self._queue.current() if self.playerHasTrack else None
+        return song.get("_guiOrigin", {}) if song is not None else {}
+
+    def _make_origin(self, source, index, items, context=None):
+        snapshots = {source: items}
+        if source == "detail":
+            for parent in ("library", "search"):
+                snapshots[parent] = self._source_items(parent)
+        return {
+            "source": source, "index": index, "snapshots": snapshots,
+            "detail_title": self._detail_title if source == "detail" else "",
+            "liked_order": self._liked_order, "context": dict(context or {}),
+        }
+
+    @Slot("QVariantMap")
+    def setPlaybackSourceContext(self, context):
+        if self._queue is not None:
+            for song in self._queue.tracks:
+                if "_guiOrigin" in song:
+                    song["_guiOrigin"]["context"] = dict(context)
+
     @Slot(int, result=bool)
     def restorePlayingSource(self, page):
         """Restore browsing data without rebuilding or restarting playback."""
         if not self.playerHasTrack or self._busy:
             return False
-        sources = [self._queue_source]
-        if self._queue_source == "detail":
+        origin = self._current_origin()
+        source_key = self.playerQueueSource
+        snapshots = origin.get("snapshots", self._playing_browse_snapshots)
+        sources = [source_key]
+        if source_key == "detail":
             if page == 1:
                 sources.append("library")
             elif page == 0:
@@ -510,15 +557,15 @@ class BackendBridge(QObject):
         for source in sources:
             model = self._source_model(source)
             if model is not None:
-                model.set_items(self._playing_browse_snapshots.get(source, []))
-        title = self._playing_detail_title if self._queue_source == "detail" else ""
+                model.set_items(snapshots.get(source, []))
+        title = origin.get("detail_title", self._playing_detail_title) if source_key == "detail" else ""
         if title != self._detail_title:
             self._detail_title = title
             self.detailTitleChanged.emit()
-        if self._queue_source != "detail":
+        if source_key != "detail":
             self._detail_tracks_model.clear()
-        if self._queue_source == "liked":
-            self._liked_order = self._playing_liked_order
+        if source_key == "liked":
+            self._liked_order = origin.get("liked_order", self._playing_liked_order)
         return True
 
     def _queue_name_for_source(self, source):
@@ -621,7 +668,13 @@ class BackendBridge(QObject):
             if str(item.get("videoId") or "") == video_id:
                 item["likeStatus"] = status
 
-        for items in self._playing_browse_snapshots.values():
+        snapshots = [self._playing_browse_snapshots]
+        if self._queue is not None:
+            snapshots.extend(song.get("_guiOrigin", {}).get("snapshots", {}) for song in self._queue.tracks)
+        unique_items = {
+            id(items): items for snapshot in snapshots for items in snapshot.values()
+        }
+        for items in unique_items.values():
             for item in items:
                 if str(item.get("videoId") or "") == video_id:
                     item["likeStatus"] = status
@@ -823,6 +876,16 @@ class BackendBridge(QObject):
 
         self._playback_executor.submit(work)
 
+    def _next_prefetch_id(self):
+        if self._queue is None or self._queue.empty() or self._repeat_mode == "one":
+            return ""
+        next_index = self._queue.index + 1
+        if next_index >= self._queue.count():
+            if self._repeat_mode != "all":
+                return ""
+            next_index = 0
+        return str(self._queue.tracks[next_index].get("videoId") or "")
+
     def _prefetch_next_track(self):
         """Prepare just the next track, using the same serial audio worker.
 
@@ -832,14 +895,7 @@ class BackendBridge(QObject):
         """
         if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
-        if self._repeat_mode == "one":
-            return  # The current track is already in the local cache.
-        next_index = self._queue.index + 1
-        if next_index >= self._queue.count():
-            if self._repeat_mode != "all":
-                return
-            next_index = 0
-        video_id = str(self._queue.tracks[next_index].get("videoId") or "")
+        video_id = self._next_prefetch_id()
         if not video_id:
             return
         generation = self._playback_generation
@@ -1017,9 +1073,58 @@ class BackendBridge(QObject):
                 self._playing_browse_snapshots[parent_source] = self._source_items(parent_source)
         self._playing_detail_title = self._detail_title
         self._playing_liked_order = self._liked_order
+        origin = {
+            "source": self._queue_source, "snapshots": self._playing_browse_snapshots,
+            "detail_title": self._playing_detail_title,
+            "liked_order": self._playing_liked_order, "context": {},
+        }
+        for song, original_index in zip(self._queue.tracks, source_indices):
+            song["_guiOrigin"] = dict(origin, index=original_index)
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
+
+    @Slot(str, int, bool, "QVariantMap", result=bool)
+    def enqueueFrom(self, source, index, play_next, context):
+        if not self.playerCanEditQueue:
+            return False
+        items = self._source_items(source)
+        if not 0 <= index < len(items) or not items[index].get("videoId"):
+            return False
+        item = dict(items[index])
+        track = self._playback_track(item)
+        if source == "playing":
+            if not self.playerHasTrack:
+                return False
+            track["_guiOrigin"] = self._queue.tracks[index].get("_guiOrigin", {})
+        else:
+            track["_guiOrigin"] = self._make_origin(source, index, items, context)
+
+        if not self.playerHasTrack:
+            self._queue_source = source
+            self._queue_source_indices = [index]
+            self._queue = core.PlaybackQueue([track], name=self._queue_name_for_source(source))
+            origin = track["_guiOrigin"]
+            self._playing_browse_snapshots = origin["snapshots"]
+            self._playing_detail_title = origin["detail_title"]
+            self._playing_liked_order = origin["liked_order"]
+            self._sync_queue_model()
+            self._set_player_from_queue()
+        else:
+            previous_next = self._next_prefetch_id()
+            position = self._queue.index + 1 if play_next else self._queue.count()
+            self._queue.tracks.insert(position, track)
+            self._queue_source_indices.insert(position, -1)
+            self._playing_tracks_model.insert_item(position, item)
+            self.playerChanged.emit()
+            if previous_next != self._next_prefetch_id():
+                self._prefetch_revision += 1
+                if self._prefetch_future is not None:
+                    self._prefetch_future.cancel()
+                if self._player_state in ("playing", "paused"):
+                    self._prefetch_next_track()
+        self._set_status(f"{'Přidáno jako další' if play_next else 'Přidáno do fronty'} · {item.get('title', '')}")
+        return True
 
     @Slot()
     def stopPlayback(self):

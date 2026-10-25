@@ -25,8 +25,8 @@ ApplicationWindow {
     property var playbackContext: null
     signal playingSourceRequested()
 
-    function capturePlaybackContext() {
-        playbackContext = {
+    function navigationContext() {
+        return {
             page: currentPage,
             librarySection: currentLibrarySection,
             libraryLabel: currentLibraryLabel,
@@ -36,6 +36,11 @@ ApplicationWindow {
             searchMode: currentSearchMode,
             searchText: searchField.text
         }
+    }
+
+    function capturePlaybackContext() {
+        playbackContext = navigationContext()
+        backend.setPlaybackSourceContext(playbackContext)
     }
 
     function pageSelected(index) {
@@ -205,7 +210,7 @@ ApplicationWindow {
                                                    : (backend.playerLikeStatus === "DISLIKE" ? "Neoblíbená"
                                                       : (backend.playerLikeStatus === "INDIFFERENT" ? "Bez hodnocení" : "Nezjištěno"))},
                         {label: "Pozice ve frontě", value: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "Prázdná fronta"},
-                        {label: "Seznam", value: backend.playingListTitle}
+                        {label: "Název fronty", value: backend.playingListTitle}
                     ]
                     delegate: ColumnLayout {
                         required property var modelData
@@ -454,7 +459,9 @@ ApplicationWindow {
     }
 
     function showPlayingList() {
-        var context = playbackContext
+        var context = backend.playerSourceContext
+        if (context.page === undefined)
+            context = playbackContext
         if (!context || !backend.restorePlayingSource(context.page))
             return
         if (context.page === 1) {
@@ -485,6 +492,7 @@ ApplicationWindow {
     }
 
     component TrackDelegate: Rectangle {
+        id: trackDelegate
         // Qt 6 QAbstractListModel roles are injected directly into the delegate.
         // Declaring matching required properties makes that binding explicit and
         // avoids relying on the non-portable `model.<role>` object.
@@ -503,7 +511,8 @@ ApplicationWindow {
                                     && (sourceKey === "playing"
                                         ? backend.playerQueueIndex === index
                                         : (backend.playerQueueSource === sourceKey
-                                           && backend.playerSourceIndex === index))
+                                           && backend.playerSourceIndex === index
+                                           && backend.playerVideoId === videoId))
 
         function kindCaption(value) {
             var labels = {
@@ -537,7 +546,7 @@ ApplicationWindow {
         RowLayout {
             anchors.fill: parent
             anchors.leftMargin: 10
-            anchors.rightMargin: 14
+            anchors.rightMargin: videoId.length > 0 ? 56 : 14
             spacing: 12
 
             Rectangle {
@@ -606,12 +615,18 @@ ApplicationWindow {
             id: mouse
             anchors.fill: parent
             hoverEnabled: true
+            acceptedButtons: Qt.LeftButton | Qt.RightButton
             cursorShape: {
                 if (sourceKey === "search")
                     return actionable ? Qt.PointingHandCursor : Qt.ArrowCursor
                 return videoId.length > 0 ? Qt.PointingHandCursor : Qt.ArrowCursor
             }
-            onClicked: {
+            onClicked: function(event) {
+                if (event.button === Qt.RightButton) {
+                    if (videoId.length > 0)
+                        trackMenu.popup(trackDelegate, event.x, event.y)
+                    return
+                }
                 if (sourceKey === "search") {
                     // Přímé skladby/videa přehraj rovnou. Ostatní typy
                     // (album, interpret, playlist, podcast…) otevře backend.
@@ -624,6 +639,61 @@ ApplicationWindow {
                 } else if (videoId.length > 0 && sourceKey.length > 0) {
                     backend.playFrom(sourceKey, index)
                 }
+            }
+        }
+
+        Button {
+            id: menuButton
+            objectName: "trackMenuButton"
+            anchors.right: parent.right
+            anchors.rightMargin: 8
+            anchors.verticalCenter: parent.verticalCenter
+            width: 34
+            height: 34
+            visible: videoId.length > 0
+            hoverEnabled: true
+            onClicked: trackMenu.popup(menuButton, menuButton.width - trackMenu.width, menuButton.height)
+            ToolTip.visible: hovered
+            ToolTip.text: "Možnosti skladby"
+            background: Rectangle {
+                radius: 4
+                color: menuButton.hovered ? "#3b3b3b" : "transparent"
+            }
+            contentItem: Canvas {
+                onPaint: {
+                    var ctx = getContext("2d")
+                    ctx.fillStyle = "#dddddd"
+                    for (var i = 0; i < 3; ++i) {
+                        ctx.beginPath()
+                        ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
+                        ctx.fill()
+                    }
+                }
+            }
+        }
+
+        Menu {
+            id: trackMenu
+            objectName: "trackContextMenu"
+            popupType: Popup.Item
+            width: 240
+            palette.text: "#eeeeee"
+            palette.windowText: "#eeeeee"
+            palette.highlight: "#6757b8"
+            background: Rectangle {
+                color: "#242424"
+                border.color: "#555555"
+                radius: 5
+            }
+            MenuItem {
+                text: "Přehrát jako další"
+                enabled: backend.playerCanEditQueue
+                onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, true, root.navigationContext())
+            }
+            MenuItem {
+                text: "Přidat na konec fronty"
+                enabled: backend.playerCanEditQueue
+                onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, false, root.navigationContext())
             }
         }
     }
@@ -941,7 +1011,7 @@ ApplicationWindow {
                 NavButton { pageIndex: 2; pageText: "Oblíbená hudba" }
                 NavButton { pageIndex: 3; pageText: "Historie" }
                 NavButton { pageIndex: 4; pageText: "Mixy pro vás" }
-                NavButton { pageIndex: 5; pageText: "Fronta"; objectName: "queueButton" }
+                NavButton { pageIndex: 5; pageText: "Fronta" + (backend.playerQueueCount > 0 ? " (" + backend.playerQueueCount + ")" : ""); objectName: "queueButton" }
 
                 Item { Layout.fillHeight: true }
 
