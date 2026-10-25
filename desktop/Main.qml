@@ -25,6 +25,22 @@ ApplicationWindow {
     property var playbackContext: null
     signal playingSourceRequested()
 
+    onCurrentPageChanged: backend.clearTrackSelection()
+
+    function trackKeys(event, source) {
+        if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
+                && backend.selectionSource === source) {
+            backend.playSelectedTrack()
+            event.accepted = true
+        } else if (event.key === Qt.Key_A && (event.modifiers & Qt.ControlModifier)) {
+            backend.selectAllTracks(source)
+            event.accepted = true
+        } else if (event.key === Qt.Key_Escape) {
+            backend.clearTrackSelection()
+            event.accepted = true
+        }
+    }
+
     function navigationContext() {
         return {
             page: currentPage,
@@ -129,6 +145,7 @@ ApplicationWindow {
 
     Connections {
         target: backend
+        function onDetailTitleChanged() { backend.clearTrackSelection() }
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
         function onSongLibraryChanged() {
             if (root.currentPage === 1 && root.currentLibrarySection === "songs"
@@ -865,6 +882,8 @@ ApplicationWindow {
         required property string playlistId
         required property string browseId
         property string sourceKey: ""
+        property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
+        property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
         property bool currentTrack: backend.playerHasTrack
                                     && (sourceKey === "playing"
@@ -889,9 +908,9 @@ ApplicationWindow {
         width: ListView.view ? ListView.view.width : 600
         height: 68
         opacity: 1.0
-        color: currentTrack ? "#27223a" : (mouse.containsMouse ? "#1c1c1c" : "transparent")
-        border.color: currentTrack ? "#6757d9" : "transparent"
-        border.width: currentTrack ? 1 : 0
+        color: selectedTrack ? "#30394d" : (currentTrack ? "#27223a" : (mouse.containsMouse ? "#1c1c1c" : "transparent"))
+        border.color: selectedTrack ? "#91a9df" : (currentTrack ? "#6757d9" : "transparent")
+        border.width: selectedTrack || currentTrack ? 1 : 0
 
         Rectangle {
             width: 4
@@ -981,25 +1000,27 @@ ApplicationWindow {
                 return videoId.length > 0 || (sourceKey === "detail" && kind === "album") ? Qt.PointingHandCursor : Qt.ArrowCursor
             }
             onClicked: function(event) {
-                if (event.button === Qt.RightButton) {
-                    if (videoId.length > 0)
+                if (videoId.length > 0) {
+                    if (trackDelegate.ListView.view) trackDelegate.ListView.view.forceActiveFocus()
+                    if (event.button !== Qt.RightButton || !trackDelegate.selectedTrack)
+                        backend.selectTrack(sourceKey, index,
+                                            event.button !== Qt.RightButton && !!(event.modifiers & Qt.ControlModifier),
+                                            event.button !== Qt.RightButton && !!(event.modifiers & Qt.ShiftModifier))
+                    if (event.button === Qt.RightButton)
                         trackMenu.popup(trackDelegate, event.x, event.y)
                     return
                 }
-                if (sourceKey === "search") {
-                    // Přímé skladby/videa přehraj rovnou. Ostatní typy
-                    // (album, interpret, playlist, podcast…) otevře backend.
-                    if (!actionable)
-                        return
-                    if (videoId.length > 0)
-                        backend.playFrom("search", index)
-                    else
-                        backend.openSearchResult(index)
-                } else if (sourceKey === "detail" && kind === "album") {
+                if (event.button === Qt.RightButton) return
+                backend.clearTrackSelection()
+                if (sourceKey === "search" && actionable)
+                    backend.openSearchResult(index)
+                else if (sourceKey === "detail" && kind === "album")
                     backend.openDetailItem(index)
-                } else if (videoId.length > 0 && sourceKey.length > 0) {
+            }
+            onDoubleClicked: function(event) {
+                if (event.button === Qt.LeftButton && videoId.length > 0
+                        && !(event.modifiers & (Qt.ControlModifier | Qt.ShiftModifier)))
                     backend.playFrom(sourceKey, index)
-                }
             }
         }
 
@@ -1013,7 +1034,10 @@ ApplicationWindow {
             height: 34
             visible: videoId.length > 0
             hoverEnabled: true
-            onClicked: trackMenu.popup(menuButton, menuButton.width - trackMenu.width, menuButton.height)
+            onClicked: {
+                if (!trackDelegate.selectedTrack) backend.selectTrack(sourceKey, index, false, false)
+                trackMenu.popup(menuButton, menuButton.width - trackMenu.width, menuButton.height)
+            }
             ToolTip.visible: hovered
             ToolTip.text: "Možnosti skladby"
             background: Rectangle {
@@ -1039,7 +1063,7 @@ ApplicationWindow {
             property int libraryRequest: 0
             property bool libraryMatches: libraryRequest > 0 && backend.songLibraryMenuState.requestId === libraryRequest
             onAboutToShow: {
-                if (kind === "song" || kind === "video")
+                if (!trackDelegate.multipleSelection && (kind === "song" || kind === "video"))
                     libraryRequest = backend.prepareSongLibrary(trackDelegate.sourceKey, trackDelegate.index)
             }
             onClosed: {
@@ -1062,23 +1086,27 @@ ApplicationWindow {
             MenuItem {
                 text: "Přehrát jako další"
                 enabled: backend.playerCanEditQueue
-                onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, true, root.navigationContext())
+                onTriggered: trackDelegate.multipleSelection ? backend.enqueueSelection(true, root.navigationContext())
+                           : backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, true, root.navigationContext())
             }
             MenuItem {
                 text: "Přidat na konec fronty"
                 enabled: backend.playerCanEditQueue
-                onTriggered: backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, false, root.navigationContext())
+                onTriggered: trackDelegate.multipleSelection ? backend.enqueueSelection(false, root.navigationContext())
+                           : backend.enqueueFrom(trackDelegate.sourceKey, trackDelegate.index, false, root.navigationContext())
             }
             MenuItem {
                 text: "Přidat do playlistu…"
-                visible: kind === "song" || kind === "video" || kind === "upload_song"
+                visible: trackDelegate.multipleSelection ? backend.selectionCanSavePlaylist
+                         : (kind === "song" || kind === "video" || kind === "upload_song")
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
-                onTriggered: backend.openPlaylistSave(trackDelegate.sourceKey, trackDelegate.index)
+                onTriggered: trackDelegate.multipleSelection ? backend.openSelectedPlaylistSave()
+                           : backend.openPlaylistSave(trackDelegate.sourceKey, trackDelegate.index)
             }
             MenuItem {
                 text: "Spustit mix"
-                visible: kind === "song" || kind === "video"
+                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video")
                 height: visible ? implicitHeight : 0
                 enabled: backend.playerCanEditQueue && !backend.busy && backend.connected
                 onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
@@ -1086,7 +1114,7 @@ ApplicationWindow {
             MenuItem {
                 objectName: "playlistRemoveItemAction"
                 text: "Odebrat z tohoto playlistu"
-                visible: trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
+                visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
                          && videoId.length > 0 && setVideoId.length > 0
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1096,7 +1124,7 @@ ApplicationWindow {
             MenuItem {
                 objectName: "songLibraryMenuAction"
                 text: backend.songLibraryMenuState.inLibrary ? "Odebrat z knihovny" : "Přidat do knihovny"
-                visible: (kind === "song" || kind === "video") && trackMenu.libraryMatches
+                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video") && trackMenu.libraryMatches
                          && backend.songLibraryMenuState.available && !backend.songLibraryMenuState.pending
                 height: visible ? implicitHeight : 0
                 enabled: visible && !backend.busy
@@ -1395,6 +1423,7 @@ ApplicationWindow {
                 clip: true
                 model: tracks
                 delegate: TrackDelegate { sourceKey: trackPage.sourceKey }
+                Keys.onPressed: function(event) { root.trackKeys(event, trackPage.sourceKey) }
                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -1780,6 +1809,7 @@ ApplicationWindow {
                                 clip: true
                                 model: backend.searchResultsModel
                                 delegate: TrackDelegate { sourceKey: "search" }
+                                Keys.onPressed: function(event) { root.trackKeys(event, "search") }
                                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -1811,6 +1841,7 @@ ApplicationWindow {
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail" }
+                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -1886,6 +1917,7 @@ ApplicationWindow {
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail" }
+                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -1948,6 +1980,7 @@ ApplicationWindow {
                                 clip: true
                                 model: backend.likedModel
                                 delegate: TrackDelegate { sourceKey: "liked" }
+                                Keys.onPressed: function(event) { root.trackKeys(event, "liked") }
                                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -1991,6 +2024,7 @@ ApplicationWindow {
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail" }
+                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -2057,12 +2091,65 @@ ApplicationWindow {
                                 clip: true
                                 model: backend.playingTracksModel
                                 delegate: TrackDelegate { sourceKey: "playing" }
+                                Keys.onPressed: function(event) { root.trackKeys(event, "playing") }
                                 ScrollBar.vertical: ScrollBar { }
                                 Connections {
                                     target: backend
                                     function onPlayerTrackChanged() { Qt.callLater(root.revealQueueRow) }
                                 }
                             }
+                        }
+                    }
+                }
+
+                RowLayout {
+                    objectName: "selectionActions"
+                    visible: backend.selectedTrackIndices.length > 1
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 22
+                    Layout.rightMargin: 22
+                    spacing: 12
+                    Label {
+                        objectName: "selectedTrackCount"
+                        text: "Vybráno: " + backend.selectedTrackIndices.length
+                        color: "#dddddd"
+                    }
+                    Button {
+                        id: selectedActionsButton
+                        objectName: "selectedActionsButton"
+                        text: "Akce ⋮"
+                        onClicked: selectedActions.popup(selectedActionsButton, 0, -selectedActions.height)
+                    }
+                    Button {
+                        objectName: "clearTrackSelection"
+                        text: "Zrušit výběr"
+                        onClicked: backend.clearTrackSelection()
+                    }
+                    Item { Layout.fillWidth: true }
+                    Menu {
+                        id: selectedActions
+                        objectName: "selectedActionsMenu"
+                        popupType: Popup.Item
+                        width: 240
+                        palette.text: "#eeeeee"
+                        palette.windowText: "#eeeeee"
+                        palette.highlight: "#6757b8"
+                        background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+                        MenuItem {
+                            text: "Přehrát jako další"
+                            enabled: backend.playerCanEditQueue && backend.selectedTrackIndices.length > 1
+                            onTriggered: backend.enqueueSelection(true, root.navigationContext())
+                        }
+                        MenuItem {
+                            text: "Přidat na konec fronty"
+                            enabled: backend.playerCanEditQueue && backend.selectedTrackIndices.length > 1
+                            onTriggered: backend.enqueueSelection(false, root.navigationContext())
+                        }
+                        MenuItem {
+                            text: "Přidat do playlistu…"
+                            enabled: backend.connected && !backend.busy && backend.selectionCanSavePlaylist
+                                     && backend.selectedTrackIndices.length > 1
+                            onTriggered: backend.openSelectedPlaylistSave()
                         }
                     }
                 }

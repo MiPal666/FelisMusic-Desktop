@@ -160,6 +160,7 @@ class BackendBridge(QObject):
     playlistEditChanged = Signal()
     playlistEditRequested = Signal()
     playlistsChanged = Signal(str)
+    trackSelectionChanged = Signal()
 
     _songLibraryProbeReady = Signal(int, object, str)
     _resultReady = Signal(str, object)
@@ -206,6 +207,12 @@ class BackendBridge(QObject):
         self._playlist_save_items = []
         self._playlist_save_item = {}
         self._song_library_item = {}
+        self._selection_revision = 0
+        self._playlist_save_selection = None
+        self._selection_source = ""
+        self._selection_indices = []
+        self._selection_anchor = -1
+        self._selection_focus = -1
         self._library_section = ""
         self._library_order = ""
         self._detail_title = ""
@@ -260,6 +267,11 @@ class BackendBridge(QObject):
         self._detail_tracks_model = DictListModel(self)
         # Keep the playing list independent of subsequent browsing/searches.
         self._playing_tracks_model = DictListModel(self)
+        for source in ("library", "liked", "history", "search", "detail", "playing"):
+            model = self._source_model(source)
+            for signal in (model.modelReset, model.rowsInserted, model.rowsRemoved):
+                signal.connect(lambda *args, source=source: self._invalidate_selection(source))
+
 
         # Original YT Music order for client-side re-sorting.
         # We keep the untouched baseline so switching back to
@@ -661,6 +673,94 @@ class BackendBridge(QObject):
     def _source_items(self, source):
         model = self._source_model(source)
         return model.snapshot() if model is not None else []
+
+    @Property(str, notify=trackSelectionChanged)
+    def selectionSource(self):
+        return self._selection_source
+
+    @Property("QVariantList", notify=trackSelectionChanged)
+    def selectedTrackIndices(self):
+        return list(self._selection_indices)
+
+    @Slot()
+    def clearTrackSelection(self):
+        if not self._selection_source:
+            return
+        self._selection_revision += 1
+        self._selection_source = ""
+        self._selection_indices = []
+        self._selection_anchor = self._selection_focus = -1
+        self.trackSelectionChanged.emit()
+
+    def _invalidate_selection(self, source):
+        if source == self._selection_source:
+            self.clearTrackSelection()
+
+    @Slot(str, int, bool, bool)
+    def selectTrack(self, source, index, control, shift):
+        items = self._source_items(source)
+        if not 0 <= index < len(items) or not items[index].get("videoId"):
+            return
+        same = source == self._selection_source
+        selected = set(self._selection_indices) if same else set()
+        anchor = self._selection_anchor if same else -1
+        if shift and anchor >= 0:
+            span = {i for i in range(min(anchor, index), max(anchor, index) + 1) if items[i].get("videoId")}
+            selected = selected | span if control else span
+        elif control:
+            selected.symmetric_difference_update({index})
+            anchor = index
+        else:
+            selected = {index}
+            anchor = index
+        self._selection_revision += 1
+        self._selection_source = source
+        self._selection_indices = sorted(selected)
+        self._selection_anchor = anchor
+        self._selection_focus = index
+        self.trackSelectionChanged.emit()
+
+    @Slot(str)
+    def selectAllTracks(self, source):
+        self._selection_revision += 1
+        self._selection_source = source
+        self._selection_indices = [i for i, x in enumerate(self._source_items(source)) if x.get("videoId")]
+        self._selection_anchor = self._selection_indices[0] if self._selection_indices else -1
+        self._selection_focus = self._selection_anchor
+        self.trackSelectionChanged.emit()
+
+    @Slot()
+    def playSelectedTrack(self):
+        if self._selection_focus in self._selection_indices:
+            self.playFrom(self._selection_source, self._selection_focus)
+
+    @Slot(result=bool)
+    def openSelectedPlaylistSave(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None:
+            return False
+        source = self._source_items(self._selection_source)
+        items = [dict(source[i]) for i in self._selection_indices if i < len(source)]
+        if not items or not all(self._playlist_song_supported(x) for x in items):
+            return False
+        revision = self._selection_revision
+        opened = self._open_playlist_selection(items, f"Vybrané skladby: {len(items)}", len(items) > 1)
+        if opened:
+            self._playlist_save_selection = revision
+        return opened
+
+    @Property(bool, notify=trackSelectionChanged)
+    def selectionCanSavePlaylist(self):
+        source = self._source_items(self._selection_source)
+        return bool(self._selection_indices) and all(
+            i < len(source) and self._playlist_song_supported(source[i]) for i in self._selection_indices)
+
+    @Slot(bool, "QVariantMap", result=bool)
+    def enqueueSelection(self, play_next, context):
+        revision = self._selection_revision
+        added = self._enqueue_items(self._selection_source, list(self._selection_indices), play_next, context)
+        if added and revision == self._selection_revision:
+            self.clearTrackSelection()
+        return added
 
     def _current_origin(self):
         song = self._queue.current() if self.playerHasTrack else None
@@ -1570,6 +1670,7 @@ class BackendBridge(QObject):
         return self._open_playlist_selection(items, self._detail_title, True)
 
     def _open_playlist_selection(self, items, title, collection):
+        self._playlist_save_selection = None
         self._playlist_save_verification = None
         self._playlist_save_items = items
         self._playlist_save_item = items[0]
@@ -1939,44 +2040,49 @@ class BackendBridge(QObject):
 
     @Slot(str, int, bool, "QVariantMap", result=bool)
     def enqueueFrom(self, source, index, play_next, context):
-        if not self.playerCanEditQueue:
+        return self._enqueue_items(source, [index], play_next, context)
+
+    def _enqueue_items(self, source, indices, play_next, context):
+        if not self.playerCanEditQueue or not indices:
             return False
         items = self._source_items(source)
-        if not 0 <= index < len(items) or not items[index].get("videoId"):
+        if any(not 0 <= i < len(items) or not items[i].get("videoId") for i in indices):
             return False
-        item = dict(items[index])
-        track = self._playback_track(item)
-        if source == "playing":
-            if not self.playerHasTrack:
-                return False
-            track["_guiOrigin"] = self._queue.tracks[index].get("_guiOrigin", {})
-        else:
-            track["_guiOrigin"] = self._make_origin(source, index, items, context)
-
-        if not self.playerHasTrack:
+        # Capture the whole selection before modifying the queue or its model.
+        tracks = []
+        for index in indices:
+            track = self._playback_track(items[index])
+            if source == "playing":
+                track["_guiOrigin"] = deepcopy(self._queue.tracks[index].get("_guiOrigin", {}))
+            else:
+                track["_guiOrigin"] = self._make_origin(source, index, items, context)
+            tracks.append(track)
+        had_queue = self.playerHasTrack
+        previous_next = self._next_prefetch_id()
+        if not had_queue:
             self._queue_source = source
-            self._queue_source_indices = [index]
-            self._queue = core.PlaybackQueue([track], name=self._queue_name_for_source(source))
-            origin = track["_guiOrigin"]
-            self._playing_browse_snapshots = origin["snapshots"]
-            self._playing_detail_title = origin["detail_title"]
-            self._playing_liked_order = origin["liked_order"]
+            self._queue_source_indices = list(indices)
+            self._queue = core.PlaybackQueue(tracks, name=self._queue_name_for_source(source))
+            origin = tracks[0]["_guiOrigin"]
+            self._playing_browse_snapshots = origin.get("snapshots", {})
+            self._playing_detail_title = origin.get("detail_title", "")
+            self._playing_liked_order = origin.get("liked_order", "")
             self._sync_queue_model()
             self._set_player_from_queue()
         else:
-            previous_next = self._next_prefetch_id()
             position = self._queue.index + 1 if play_next else self._queue.count()
-            self._queue.tracks.insert(position, track)
-            self._queue_source_indices.insert(position, -1)
-            self._playing_tracks_model.insert_item(position, item)
+            self._queue.tracks[position:position] = tracks
+            self._queue_source_indices[position:position] = [-1] * len(tracks)
+            for offset, index in enumerate(indices):
+                self._playing_tracks_model.insert_item(position + offset, items[index])
             self.playerChanged.emit()
-            if previous_next != self._next_prefetch_id():
-                self._prefetch_revision += 1
-                if self._prefetch_future is not None:
-                    self._prefetch_future.cancel()
-                if self._player_state in ("playing", "paused"):
-                    self._prefetch_next_track()
-        self._set_status(f"{'Přidáno jako další' if play_next else 'Přidáno do fronty'} · {item.get('title', '')}")
+        if had_queue and previous_next != self._next_prefetch_id():
+            self._prefetch_revision += 1
+            if self._prefetch_future is not None:
+                self._prefetch_future.cancel()
+            if self._player_state in ("playing", "paused"):
+                self._prefetch_next_track()
+        self._set_status(f"{'Přidáno jako další' if play_next else 'Přidáno do fronty'} · {len(tracks)} skladeb")
         return True
 
     @Slot()
@@ -2262,6 +2368,9 @@ class BackendBridge(QObject):
                 self._playlist_save_verification = result.get("verification")
                 self._playlist_save_state = dict(self._playlist_save_state,
                     **{key: value for key, value in result.items() if key not in ("detail", "verification")}, pending=False)
+                if (result.get("completed") and result.get("verified")
+                        and self._playlist_save_selection == self._selection_revision):
+                    self.clearTrackSelection()
                 self.playlistSaveChanged.emit()
                 self._set_status(result["message"])
                 if result.get("changed"):

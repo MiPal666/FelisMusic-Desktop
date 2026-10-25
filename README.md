@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.16-dev**
+- Desktop GUI: **0.3.17-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -304,3 +304,14 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Odebraný aktuální výskyt se znovu neopakuje ani v Repeat One; po dohrání pokračuje další skladba, Repeat All dovoluje návrat na začátek zbývající fronty. Next/Previous, výběr jiné položky a Stop ho také vyřadí při opuštění. Odebraná zastavená položka zmizí ihned. Přednačítání se přesměruje na skutečného nástupce.
 - Návrat přes cover ukáže upravený playlist a zbývající výskyty mají správné pozice. Odebrání z knihovny je samostatná akce; v samotné Frontě se odebrání z uloženého playlistu nenabízí.
 - Změna pořadí skladeb je další samostatná část 7c; smazání celého playlistu následuje v 7d.
+
+## 0.3.17-dev – výběr skladeb a společné akce
+
+- V seznamech skladeb jeden klik pouze vybere řádek; **dvojklik nebo Enter** spustí přehrávání. Enter přehraje naposledy vybraný řádek, pokud je stále součástí výběru. Přehrávání nadále vychází z celého zdrojového seznamu, ve Frontě se vybírá v existující frontě. Alba, interpreti a ostatní kolekce se dál otevírají jedním klikem.
+- **Ctrl+klik** přidává/odebírá jednotlivé řádky, **Shift+klik** vybírá rozsah, **Ctrl+Shift+klik** rozsah přidává. **Ctrl+A** vybere všechny skladby v aktivním seznamu, **Escape** nebo Zrušit výběr výběr zruší. Dvě stejné skladby jsou dva samostatné řádky.
+- Vybrané řádky mají vlastní zvýraznění, nezávislé na značce právě přehrávané skladby. Při výběru alespoň dvou skladeb je nad přehrávačem počet Vybráno a nabídka Akce ⋮: **Přehrát jako další / Přidat na konec fronty / Přidat do playlistu…**.
+- Pravé tlačítko nebo ⋮ na již vybraném řádku zachová celý výběr; na jiném řádku vybere jen tento řádek. Pro skupinu jsou dostupné společné akce, jednotlivé Mix/knihovna/odebrání se nenabízejí. Hromadné odebrání je další samostatný podkrok.
+- Dávka do fronty zachovává zobrazené pořadí a všechny vybrané výskyty; nepřeruší současné audio. Do prázdné fronty se vloží bez automatického spuštění. Uložení do playlistu používá dosavadní formulář a volby viditelnosti/duplicit.
+- Při změně stránky, otevření detailu a strukturální změně zdrojového modelu (obnovení, řazení, vložení/odebrání řádků) se výběr zruší; změna hodnocení ani pravidelné aktualizace přehrávače ho neruší. Otevřený ukládací formulář už drží vlastní zachycené položky.
+
+- Po úspěšné hromadné akci se původní výběr zruší a lišta zmizí. U uložení do playlistu až po ověřeném úspěchu (také při Ověřit znovu); chyba, neověřený obsah nebo zavření formuláře bez uložení výběr zachová. Dokončení staršího formuláře nezruší později vytvořený výběr.
