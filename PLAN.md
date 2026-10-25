@@ -100,7 +100,7 @@ Na výslovný pokyn uživatele po commitu `c3de56b` přecházíme ke kroku 7. V 
 
 **7a – Přidávání:** dialog pro výběr vlastního editovatelného playlistu, přidání skladby i celé kolekce; možnost vytvořit nový playlist přímo při ukládání. Výslovně vyřešit duplicity.
 
-V 0.3.13-dev je uživatelsky otestovaná a přijatá první část 7b: vytvoření prázdného soukromého playlistu z přehledu Knihovna/Playlisty, oddělené od ukládání skladeb, s validací a ochranou proti opakovanému zápisu. Po prvním uživatelském testu doplněno zachování potvrzené nové karty do načtení ze serveru a tvorba přes ⋮; uživatel ověřil i tuto finální opravu, celek čeká na commit. Úpravy údajů a další viditelnosti dosud neimplementované.
+V 0.3.13-dev je uživatelsky otestovaná a přijatá první část 7b: vytvoření prázdného soukromého playlistu z přehledu Knihovna/Playlisty, oddělené od ukládání skladeb, s validací a ochranou proti opakovanému zápisu. Po prvním uživatelském testu doplněno zachování potvrzené nové karty do načtení ze serveru a tvorba přes ⋮; uživatel ověřil i tuto finální opravu, celek je uložený v commitu `d811929`. Úpravy údajů a další viditelnosti dosud neimplementované.
 
 **7b – Vytvoření a úprava údajů:** název, popis a viditelnost u podporovaných vlastních playlistů.
 
@@ -153,3 +153,5 @@ Play, Pause, PlayPause, Next, Previous, metadata, cover, délka a správné stav
 - Podle skutečného zájmu trvalé offline stahování: správa místa, souborů, metadat a přehrávání bez sítě. Není podmínkou první verze.
 - Další vylepšení podle zkušeností z používání.
 - Sailfish OS / Silica port s využitím již ověřené funkční logiky; vlastní rozložení, audio a systémová integrace pro Jollu.
+
+V 0.3.14-dev je uživatelsky otestovaná a přijatá další část 7b: úprava názvu, popisu (včetně vymazání) a viditelnosti vlastního playlistu přes menu detailu. Čerstvé načtení údajů i ověření vlastnictví před zápisem, vazba na ID formuláře, aktualizace zobrazení bez přestavby fronty. Prošlo 111 offline testů a QML kontrola v obou velikostech. Čeká na commit. Následuje výběr Soukromý/Neveřejný/Veřejný při vytvoření prázdného playlistu i ze skladby/kolekce, s výchozím Soukromý. Další viditelnosti přímo při tvorbě, 7c a 7d dosud nehotové.

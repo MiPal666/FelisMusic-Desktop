@@ -135,6 +135,17 @@ ApplicationWindow {
                     && backend.detailTitle.length === 0)
                 backend.loadLibrarySection("songs", root.currentLibraryOrder)
         }
+        function onPlaylistEditRequested() {
+            playlistEditName.text = backend.playlistEditState.title || ""
+            playlistEditDescription.text = backend.playlistEditState.description || ""
+            playlistEditPrivacy.currentIndex = ["PRIVATE", "UNLISTED", "PUBLIC"].indexOf(backend.playlistEditState.privacy)
+            playlistEditDialog.open()
+            playlistEditName.forceActiveFocus()
+        }
+        function onPlaylistEditChanged() {
+            if (backend.playlistEditState.completed && !backend.playlistEditState.pending)
+                playlistEditDialog.close()
+        }
         function onEmptyPlaylistRequested() {
             emptyPlaylistName.text = ""
             emptyPlaylistDialog.open()
@@ -184,6 +195,81 @@ ApplicationWindow {
             color: "#eeeeee"
             wrapMode: Text.WordWrap
             padding: 18
+        }
+    }
+
+    Dialog {
+        id: playlistEditDialog
+        objectName: "playlistEditDialog"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 540)
+        padding: 18
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label {
+            text: "Upravit playlist"
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        contentItem: ColumnLayout {
+            spacing: 12
+            enabled: !backend.busy && !backend.playlistEditState.locked
+            TextField {
+                id: playlistEditName
+                objectName: "playlistEditName"
+                Layout.fillWidth: true
+                placeholderText: "Název playlistu"
+                color: "white"
+                placeholderTextColor: "#999999"
+                background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
+            }
+            ScrollView {
+                Layout.fillWidth: true
+                Layout.preferredHeight: 110
+                TextArea {
+                    id: playlistEditDescription
+                    objectName: "playlistEditDescription"
+                    placeholderText: "Popis (nepovinný)"
+                    placeholderTextColor: "#999999"
+                    color: "white"
+                    wrapMode: TextEdit.Wrap
+                    background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
+                }
+            }
+            ComboBox {
+                id: playlistEditPrivacy
+                objectName: "playlistEditPrivacy"
+                Layout.fillWidth: true
+                model: ["Soukromý", "Neveřejný (přístup přes odkaz)", "Veřejný"]
+            }
+            Label {
+                objectName: "playlistEditMessage"
+                text: backend.playlistEditState.message || ""
+                visible: text.length > 0
+                color: backend.playlistEditState.error ? "#ffaaaa" : "#cccccc"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+        }
+        footer: DialogButtonBox {
+            background: Item { }
+            PlayerTextButton {
+                objectName: "playlistEditSubmit"
+                text: "Uložit"
+                implicitWidth: 105
+                enabled: !backend.busy && !backend.playlistEditState.locked && !backend.playlistEditState.pending
+                         && !backend.playlistEditState.completed && playlistEditName.text.trim().length > 0
+                onClicked: backend.savePlaylistEdit(playlistEditName.text, playlistEditDescription.text,
+                                                   ["PRIVATE", "UNLISTED", "PUBLIC"][playlistEditPrivacy.currentIndex])
+            }
+            PlayerTextButton {
+                objectName: "playlistEditClose"
+                text: "Zavřít"
+                implicitWidth: 85
+                onClicked: playlistEditDialog.close()
+            }
         }
     }
 
@@ -1027,7 +1113,7 @@ ApplicationWindow {
             objectName: "collectionMenuButton"
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
-            visible: backend.detailCanSavePlaylist
+            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
             ToolTip.visible: hovered
@@ -1061,8 +1147,18 @@ ApplicationWindow {
             MenuItem {
                 objectName: "collectionPlaylistSave"
                 text: "Přidat seznam do playlistu…"
+                visible: backend.detailCanSavePlaylist
+                height: visible ? implicitHeight : 0
                 enabled: backend.detailCanSavePlaylist && !backend.busy
                 onTriggered: backend.openCollectionPlaylistSave()
+            }
+            MenuItem {
+                objectName: "collectionPlaylistEdit"
+                text: "Upravit playlist…"
+                visible: backend.detailCanEditPlaylist
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.openPlaylistEdit()
             }
         }
     }

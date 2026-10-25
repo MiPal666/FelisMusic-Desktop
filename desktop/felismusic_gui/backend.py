@@ -150,6 +150,8 @@ class BackendBridge(QObject):
     playlistSaveRequested = Signal()
     emptyPlaylistChanged = Signal()
     emptyPlaylistRequested = Signal()
+    playlistEditChanged = Signal()
+    playlistEditRequested = Signal()
     playlistsChanged = Signal(str)
 
     _songLibraryProbeReady = Signal(int, object, str)
@@ -188,6 +190,7 @@ class BackendBridge(QObject):
         self._song_library_menu = {}
         self._song_library_token = ""
         self._empty_playlist_state = {}
+        self._playlist_edit_state = {}
         # Confirmed creations may precede their appearance in YTM's library.
         # Keep their cards until a library response contains the actual IDs.
         self._pending_created_playlists = {}
@@ -1289,6 +1292,88 @@ class BackendBridge(QObject):
         self._submit("playlist_create_empty", "Vytvářím prázdný playlist…", task)
         return True
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanEditPlaylist(self):
+        return (self._detail_meta.get("kind") == "playlist"
+                and bool(self._detail_meta.get("playlistId"))
+                and self._detail_meta.get("owned") is True)
+
+    @Property("QVariantMap", notify=playlistEditChanged)
+    def playlistEditState(self):
+        return self._playlist_edit_state
+
+    @Slot(result=bool)
+    def openPlaylistEdit(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None or not self.detailCanEditPlaylist:
+            return False
+        playlist_id = self._detail_meta["playlistId"]
+        api = self._ytmusic
+        def task():
+            try:
+                data = api.get_playlist(playlist_id, limit=1)
+                if data.get("owned") is not True:
+                    raise ValueError("Not owned")
+                privacy = data.get("privacy")
+                if privacy not in ("PRIVATE", "UNLISTED", "PUBLIC"):
+                    raise ValueError("Missing privacy")
+                return {"playlistId": playlist_id, "title": data["title"],
+                        "description": data.get("description") or "", "privacy": privacy,
+                        "pending": False, "completed": False, "locked": False, "message": ""}
+            except Exception as exc:
+                print(f"FelisMusic údaje playlistu: {type(exc).__name__}")
+                raise RuntimeError("Nelze načíst údaje vlastního playlistu.") from None
+        self._submit("playlist_edit_read", "Načítám údaje playlistu…", task)
+        return True
+
+    @Slot(str, str, str, result=bool)
+    def savePlaylistEdit(self, title, description, privacy):
+        state = self._playlist_edit_state
+        if (self._busy or self._closing.is_set() or self._ytmusic is None or not state
+                or state.get("pending") or state.get("locked") or state.get("completed")):
+            return False
+        title = str(title or "").strip()
+        if not title or any(c in title + description for c in "<>") or privacy not in ("PRIVATE", "UNLISTED", "PUBLIC"):
+            self._playlist_edit_state = dict(state, error=True, message="Vyplň název a nepoužívej znaky < a >.")
+            self.playlistEditChanged.emit()
+            return False
+        playlist_id = state["playlistId"]
+        api = self._ytmusic
+        self._playlist_edit_state = dict(state, pending=True, error=False, message="Ukládám údaje…")
+        self.playlistEditChanged.emit()
+        def task():
+            writing = False
+            try:
+                data = api.get_playlist(playlist_id, limit=1)
+                if data.get("owned") is not True:
+                    raise ValueError("Not owned")
+                writing = True
+                if description == "":
+                    # ytmusicapi.edit_playlist ignores an empty description.
+                    # Send its same actions explicitly so clearing it also works.
+                    response = api._send_request("browse/edit_playlist", {
+                        "playlistId": playlist_id,
+                        "actions": [
+                            {"action": "ACTION_SET_PLAYLIST_NAME", "playlistName": title},
+                            {"action": "ACTION_SET_PLAYLIST_DESCRIPTION", "playlistDescription": ""},
+                            {"action": "ACTION_SET_PLAYLIST_PRIVACY", "playlistPrivacy": privacy},
+                        ],
+                    })
+                else:
+                    response = api.edit_playlist(playlist_id, title=title, description=description, privacyStatus=privacy)
+                status = response.get("status") if isinstance(response, dict) else response
+                if status != "STATUS_SUCCEEDED":
+                    raise RuntimeError("Edit not confirmed")
+                return {"completed": True, "locked": True, "error": False,
+                        "title": title, "description": description, "privacy": privacy,
+                        "message": "Údaje playlistu uloženy."}
+            except Exception as exc:
+                print(f"FelisMusic úprava playlistu: {type(exc).__name__}")
+                return {"completed": False, "locked": writing, "error": True,
+                        "message": ("Uložení se nepodařilo potvrdit. Zavři formulář a zkontroluj údaje před dalším pokusem."
+                                    if writing else "Nelze ověřit vlastnictví playlistu. Nic nebylo změněno.")}
+        self._submit("playlist_edit_write", "Ukládám údaje playlistu…", task)
+        return True
+
     @Property("QVariantMap", notify=playlistSaveChanged)
     def playlistSaveState(self):
         return self._playlist_save_state
@@ -1904,6 +1989,7 @@ class BackendBridge(QObject):
         emit_initialized = False
         emit_song_library_changed = False
         emit_playlist_save_requested = False
+        emit_playlist_edit_requested = False
         changed_playlist_id = ""
         try:
             if name == "initialize":
@@ -1917,6 +2003,33 @@ class BackendBridge(QObject):
                 self._set_connected(True)
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
+
+            elif name == "playlist_edit_read":
+                self._playlist_edit_state = result
+                self.playlistEditChanged.emit()
+                emit_playlist_edit_requested = True
+                self._set_status("Údaje playlistu načteny")
+
+            elif name == "playlist_edit_write":
+                self._playlist_edit_state = dict(self._playlist_edit_state, **result, pending=False)
+                state = self._playlist_edit_state
+                if state.get("completed"):
+                    playlist_id = state["playlistId"]
+                    if self._detail_meta.get("playlistId") == playlist_id:
+                        self._detail_title = state["title"]
+                        self._detail_meta = dict(self._detail_meta, description=state["description"], privacy=state["privacy"])
+                        self.detailTitleChanged.emit()
+                    for model in (self._library_items_model, self._playlists_model):
+                        cards = model.snapshot()
+                        for card in cards:
+                            if card.get("playlistId") == playlist_id:
+                                card["title"] = state["title"]
+                                card["subtitle"] = state["description"]
+                        model.set_items(self._sort_normalized(cards, self._library_order) if model is self._library_items_model else cards)
+                    if playlist_id in self._pending_created_playlists:
+                        self._pending_created_playlists[playlist_id].update(title=state["title"], subtitle=state["description"])
+                self.playlistEditChanged.emit()
+                self._set_status(state["message"])
 
             elif name == "playlist_create_empty":
                 self._empty_playlist_state = result
@@ -2040,6 +2153,8 @@ class BackendBridge(QObject):
             self.songLibraryChanged.emit()
         if emit_playlist_save_requested:
             self.playlistSaveRequested.emit()
+        if emit_playlist_edit_requested:
+            self.playlistEditRequested.emit()
         if changed_playlist_id:
             self.playlistsChanged.emit(changed_playlist_id)
 
@@ -2846,7 +2961,7 @@ class BackendBridge(QObject):
             tracks = core.usable_tracks(data.get("tracks") or [])
             return {
                 "title": data.get("title") or title,
-                "meta": {"kind": "playlist", "playlistId": playlist_id},
+                "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": data.get("owned") is True},
                 "tracks": [self._track(x) for x in tracks],
             }
 

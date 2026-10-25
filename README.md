@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.13-dev**
+- Desktop GUI: **0.3.14-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -280,3 +280,11 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Po potvrzeném vytvoření se dialog zavře a přehled playlistů se znovu načte. Potvrzený nový playlist zůstane viditelný i při opožděné odpovědi knihovny YTM; po jeho načtení ze serveru se karta nahradí skutečnými údaji podle ID, bez duplicity. Nový playlist lze otevřít i s nulovým počtem skladeb a vrátit se přes Zpět.
 - Při nepotvrzeném výsledku zůstane stručná zpráva a opakované odeslání je blokované do nového otevření, aby nevznikla další kopie. Zavření formuláře bez odeslání nic nevytvoří.
 - Název/popisy/viditelnost existujících playlistů, další viditelnosti nového playlistu, odebrání/přesouvání položek a smazání jsou následující podkroky.
+
+## 0.3.14-dev – úprava údajů vlastního playlistu (další část 7b)
+
+- V otevřeném vlastním playlistu je **⋮ → Upravit playlist…**, také pokud nemá žádné skladby. Cizí playlist tuto akci nenabízí.
+- Formulář načte aktuální název, popis a viditelnost; lze zvolit Soukromý, Neveřejný (přes odkaz) a Veřejný. Popis lze i úplně vymazat. Název musí být neprázdný; znaky < > nejsou povolené.
+- Před uložením se znovu ověřuje vlastnictví přesné identity playlistu. Po potvrzení zápisu YTM se formulář zavře a aktualizuje název detailu i již načtené karty. Obsah, fronta ani audio se tím nepřestavují.
+- Nepotvrzený zápis ponechá stručné oznámení a zablokuje další odeslání z téhož formuláře; další pokus až po jeho zavření a novém načtení údajů. Zrušení formuláře nic nezapisuje.
+- Vytvoření prázdného playlistu zůstává soukromé; další viditelnost lze nastavit následnou úpravou. Odebrání/přesouvání skladeb a smazání playlistu následují samostatně.
