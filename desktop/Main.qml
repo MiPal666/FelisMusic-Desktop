@@ -168,12 +168,14 @@ ApplicationWindow {
     }
 
     component PlayerTextButton: Button {
+        property bool active: false
         implicitHeight: 36
         implicitWidth: 52
 
         background: Rectangle {
             radius: 5
-            color: parent.down ? "#62636c" : (parent.hovered ? "#55565f" : "#464750")
+            color: parent.down ? "#62636c"
+                   : (parent.active ? "#6757b8" : (parent.hovered ? "#55565f" : "#464750"))
             border.color: "#62636c"
             opacity: parent.enabled ? 1.0 : 0.55
         }
@@ -1344,6 +1346,7 @@ ApplicationWindow {
                                     enabled: backend.playerCanRate
                                     onClicked: backend.toggleRating("DISLIKE")
                                 }
+
                                 BusyIndicator {
                                     visible: backend.playerRatingBusy
                                     running: visible
@@ -1393,6 +1396,21 @@ ApplicationWindow {
                                     iconKind: "next"
                                     enabled: backend.playerCanNext
                                     onClicked: backend.nextTrack()
+                                }
+                                PlayerTextButton {
+                                    objectName: "repeatButton"
+                                    implicitWidth: 110
+                                    implicitHeight: 32
+                                    hoverEnabled: true
+                                    active: backend.playerRepeatMode !== "off"
+                                    text: backend.playerRepeatMode === "all" ? "Opakovat: vše"
+                                          : (backend.playerRepeatMode === "one" ? "Opakovat: 1" : "Opakovat: vyp.")
+                                    enabled: backend.playerHasTrack
+                                    onClicked: backend.cycleRepeat()
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: backend.playerRepeatMode === "all" ? "Opakovat celý seznam"
+                                                  : (backend.playerRepeatMode === "one" ? "Opakovat jednu skladbu"
+                                                     : "Opakování je vypnuté")
                                 }
                             }
 

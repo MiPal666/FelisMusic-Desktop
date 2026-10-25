@@ -1,6 +1,6 @@
 # FelisMusic Desktop – aktuální stav
 
-Aktualizováno: 2026-10-24 (Europe/Prague).
+Aktualizováno: 2026-10-25 (Europe/Prague).
 
 ## Uzavřený a otestovaný základ
 
@@ -39,11 +39,20 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 
 ### Navazující funkce
 
-- Závazný aktuální postup: `PLAN.md`. Nejbližší podkrok: Repeat, potom Shuffle.
+- Závazný aktuální postup: `PLAN.md`, jeho původní znění je uložené v commitu `e8012e0`. Podkrok Repeat už uživatel přijal; následuje jeho commit a potom Shuffle.
 - Do desktopové 1.0 patří také správa vlastních playlistů a Cast s převzetím ověřené logiky CLI. Následují Fronta/Info, kontextové akce, detaily, rádio, knihovna/odběry, playlisty, obnova session/přihlášení, MPRIS, Cast a závěrečné ověření podle pořadí v plánu.
 - Trvalé offline stahování až po 1.0. Připínání do „Poslouchejte znovu“ a poděkování u skladby jsou vyřazené. Sailfish port je samostatná etapa po stabilním desktopu.
 - Návrat přes cover slouží k otevření původní kolekce. Samostatná Fronta ještě není hotová.
 - Výchozí výstup při startu zůstává Toto zařízení. CLI 1.0.0 je samostatný zmrazený projekt.
+
+### Otestováno uživatelem: 0.3.4-dev – Repeat (krok 1a)
+
+- Tři režimy: vypnuto / celý seznam / jedna skladba. Tlačítko je vedle transportních ovladačů, s textem, barevným zvýrazněním a tooltipem.
+- Používá přepínání režimů z CLI. Repeat-one se uplatní při dohrání; ruční Next/Previous přejdou na sousední skladbu. Repeat-all obaluje seznam při dohrání i ručním Next/Previous.
+- Změna režimu zachová pozici i pauzu a sama nezačne přehrávat. Po startu aplikace je režim vypnutý, během relace zůstává i při výběru nové kolekce.
+- Přednačítání respektuje skutečného následujícího kandidáta; repeat-one další skladbu nestahuje, repeat-all na konci připraví první. Změna režimu zneplatní nepotřebné přednačítání.
+- Prošlo 18 offline testů (10 původních a 8 pro Repeat), plus QML kontrola načtení, viditelnosti a skutečného klikání na tlačítko při 900 a 1280 px.
+- Uživatel 2026-10-25 potvrdil funkčnost Repeat po skutečném testu. Podkrok 1a je přijatý a připravený ke commitu. Shuffle (1b) zatím neimplementovaný; naváže po commitu a potvrzení zavřené aplikace.
 
 ## Pracovní domluva
 

@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.3.5-dev**
+- Desktop GUI: **0.3.4-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -179,3 +179,13 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Nově vybraný řádek během přípravy ukazuje `Připravuji…`; `Hraje` až po spuštění. Pauza a zastavený stav mají odpovídající označení.
 - Nový výběr zneplatní předchozí přípravu, včetně rozpracovaného stahování. Neaktuální požadavek nesmí znovu spustit starou skladbu. Přerušení síťového požadavku na metadata může stále chvíli trvat.
 - Automatický přechod po dohrání dál využívá přednačítání, bez dodatečného zastavování výstupu.
+
+## 0.3.4-dev – Repeat
+
+- Tlačítko vedle přehrávacích ovladačů cykluje `Opakovat: vyp.` → `Opakovat: vše` → `Opakovat: 1`. Aktivní režimy jsou barevně zvýrazněné; popisek po najetí vysvětlí jejich význam.
+- Vypnuto: po dohrání poslední skladby se přehrávání zastaví.
+- Vše: po poslední skladbě se pokračuje první; ruční Next/Previous na krajích seznamu také přejdou na opačný konec.
+- Jedna: po dohrání se tatáž skladba spustí od začátku z cache. Ruční Next/Previous dál vybírají sousední skladbu, na hranicích nepřeskakují na opačný konec.
+- Změna režimu nerestartuje skladbu, neruší pauzu a sama nespouští zastavené přehrávání. Režim platí i pro nově vybranou kolekci; po spuštění aplikace je vypnutý.
+- Přednačítání respektuje režim: při opakování celého seznamu připraví i návrat na první skladbu, při opakování jedné nepřipravuje zbytečně další.
+- Shuffle bude samostatný následující podkrok po ověření a commitu Repeat.

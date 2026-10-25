@@ -16,7 +16,7 @@ from felismusic_gui import backend
 core = backend.core
 
 
-class PrefetchTests(unittest.TestCase):
+class AudioPlaybackTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QCoreApplication.instance() or QCoreApplication([])
@@ -136,6 +136,9 @@ class PrefetchTests(unittest.TestCase):
         self.status.idle_reason = 'FINISHED'
         self.b._poll_player()
 
+
+
+class PrefetchTests(AudioPlaybackTestCase):
     def test_next_track_is_ready_before_eos_and_only_one_ahead(self):
         self.start('A', 'B', 'C')
         self.until(lambda: 'B' in core.LOCAL_AUDIO_CACHE)

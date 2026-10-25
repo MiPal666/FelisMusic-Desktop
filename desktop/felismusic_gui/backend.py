@@ -156,6 +156,7 @@ class BackendBridge(QObject):
         self._closing = Event()
         self._transport_lock = Lock()
         self._prefetch_future = None
+        self._prefetch_revision = 0
         self._ytmusic = None
         self._status = "Připravuji backend…"
         self._account_name = "YouTube Music"
@@ -174,6 +175,7 @@ class BackendBridge(QObject):
         self._playing_detail_title = ""
         self._playing_liked_order = ""
         self._player_state = "idle"
+        self._repeat_mode = "off"
         self._player_title = ""
         self._player_subtitle = ""
         self._player_thumbnail = ""
@@ -368,6 +370,22 @@ class BackendBridge(QObject):
         return self._queue is not None and not self._queue.empty()
 
     @Property(str, notify=playerChanged)
+    def playerRepeatMode(self):
+        return self._repeat_mode
+
+    @Slot()
+    def cycleRepeat(self):
+        self._repeat_mode = core.cycle_repeat_mode(self._repeat_mode)
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self.playerChanged.emit()
+        # Changing repeat never starts/resumes playback. Refresh speculation
+        # only for an active session, using the new automatic successor.
+        if not self._playback_transitioning and self._player_state in ("playing", "paused"):
+            self._prefetch_next_track()
+
+    @Property(str, notify=playerChanged)
     def playerQueueSource(self):
         return self._queue_source
 
@@ -397,7 +415,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and self._queue.index > 0
+            and (self._queue.index > 0 or self._repeat_mode == "all")
             and not self._playback_transitioning
         )
 
@@ -406,7 +424,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and self._queue.index + 1 < self._queue.count()
+            and (self._queue.index + 1 < self._queue.count() or self._repeat_mode == "all")
             and not self._playback_transitioning
         )
 
@@ -790,20 +808,25 @@ class BackendBridge(QObject):
         arrives while prefetch is running, playback follows it and reuses the
         finished file through get_local_audio_source's normal cache lookup.
         """
-        if self._closing.is_set() or self._queue is None:
+        if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
+        if self._repeat_mode == "one":
+            return  # The current track is already in the local cache.
         next_index = self._queue.index + 1
         if next_index >= self._queue.count():
-            return
+            if self._repeat_mode != "all":
+                return
+            next_index = 0
         video_id = str(self._queue.tracks[next_index].get("videoId") or "")
         if not video_id:
             return
         generation = self._playback_generation
+        revision = self._prefetch_revision
 
         def cancelled():
             # An automatic transition to this track can still use its download.
             return self._closing.is_set() or (
-                generation != self._playback_generation
+                (generation != self._playback_generation or revision != self._prefetch_revision)
                 and self._current_video_id() != video_id
             )
 
@@ -906,8 +929,14 @@ class BackendBridge(QObject):
         elif state == "PAUSED" and self._player_state != "paused":
             self._player_state = "paused"
             changed = True
-        elif state == "IDLE" and idle_reason == "FINISHED":
-            if self._queue.next():
+        elif state == "IDLE" and idle_reason == "FINISHED" and self._player_state != "idle":
+            advance = self._repeat_mode == "one"
+            if not advance:
+                advance = self._queue.next()
+                if not advance and self._repeat_mode == "all":
+                    self._queue.index = 0
+                    advance = True
+            if advance:
                 self._set_player_from_queue()
                 self._start_current_async(direction=1)
                 return
@@ -993,7 +1022,11 @@ class BackendBridge(QObject):
     def nextTrack(self):
         if self._queue is None or self._playback_transitioning:
             return
-        if self._queue.next():
+        moved = self._queue.next()
+        if not moved and self._repeat_mode == "all" and not self._queue.empty():
+            self._queue.index = 0
+            moved = True
+        if moved:
             self._set_player_from_queue()
             self._start_current_async(direction=1, stop_current=True)
 
@@ -1001,7 +1034,11 @@ class BackendBridge(QObject):
     def previousTrack(self):
         if self._queue is None or self._playback_transitioning:
             return
-        if self._queue.previous():
+        moved = self._queue.previous()
+        if not moved and self._repeat_mode == "all" and not self._queue.empty():
+            self._queue.index = self._queue.count() - 1
+            moved = True
+        if moved:
             self._set_player_from_queue()
             self._start_current_async(direction=-1, stop_current=True)
 

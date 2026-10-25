@@ -22,7 +22,7 @@ Plán schváleného rozsahu z 2026-10-24. Jednotlivé kroky níže dosud nejsou 
 
 ## 1. Repeat, potom Shuffle
 
-**1a – Repeat:** vypnuto / celý seznam / jedna skladba. Jednoznačně ukázat režim v přehrávači. Rozlišit automatické dohrání a ruční Next; před implementací doladit jejich chování při repeat-one.
+**1a – Repeat:** vypnuto / celý seznam / jedna skladba. Jednoznačně ukázat režim v přehrávači. Repeat-one opakuje při dohrání, ruční Next/Previous přejdou na sousední skladbu bez obalení seznamu. Repeat-all obaluje seznam při dohrání i ručním přechodu. Hotovo v 0.3.4-dev, uživatel ověřil a přijal 2026-10-25; připraveno ke commitu, viz STATUS.md.
 
 **1b – Shuffle:** zapojit náhodné přehrávání přes YTM z CLI. Nabídnout ho u podporovaných zdrojů a zachovat výjimku pro nepodporované playlisty `RDCLAK…`. Vyjasnit přepnutí režimu za běhu a návrat k původnímu pořadí; upravit přednačítání podle skutečné následující skladby.
 
