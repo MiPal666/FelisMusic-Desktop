@@ -2298,6 +2298,82 @@ class BackendBridge(QObject):
         # An explicit queue edit while the API is working supersedes its result.
         return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanShuffle(self):
+        meta = self._detail_meta
+        return (meta.get("kind") in ("playlist", "album")
+                and core.youtube_shuffle_supported(self._detail_shuffle_id())
+                and self._detail_tracks_model.count > 0)
+
+    def _detail_shuffle_id(self):
+        meta = self._detail_meta
+        return meta.get("playlistId", "") if meta.get("kind") == "playlist" else meta.get("shufflePlaylistId", "")
+
+    @Slot(result=bool)
+    def shuffleDetail(self):
+        if (self._busy or not self.playerCanEditQueue or self._ytmusic is None
+                or not self.detailCanShuffle):
+            return False
+        state = self._detail_state()
+        generation = self._playback_generation
+        marker = self._radio_queue_marker()
+        origin = self._make_origin("detail", -1, state["tracks"])
+        api = self._ytmusic
+        playlist_id = self._detail_shuffle_id()
+
+        def task():
+            result = {"state": state, "generation": generation, "marker": marker,
+                      "origin": origin, "playlistId": playlist_id}
+            try:
+                songs = core.get_youtube_shuffle_tracks(api, playlist_id, len(state["tracks"]))
+                result["items"] = [self._track(song) for song in songs]
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+
+        self._submit("shuffle_detail", f"Načítám náhodné pořadí · {state['title']}…", task)
+        return True
+
+    def _apply_detail_shuffle(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or result["state"] != self._detail_state()):
+            return
+        if result.get("error"):
+            self._set_status("Náhodné pořadí se nepodařilo načíst")
+            self.errorOccurred.emit(result["error"])
+            return
+        # Keep the server order, including repeated video IDs. Watch responses
+        # do not identify exact playlist occurrences; do not invent bindings.
+        source_items = result["state"]["tracks"]
+        matches = {}
+        for index, item in enumerate(source_items):
+            matches.setdefault(item.get("videoId"), []).append(index)
+        tracks, indices = [], []
+        for item in result["items"]:
+            positions = matches.get(item["videoId"], [])
+            index = positions.pop(0) if positions else -1
+            track = self._playback_track(item)
+            track["_guiOrigin"] = dict(result["origin"], index=index)
+            tracks.append(track)
+            indices.append(index)
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._queue = core.PlaybackQueue(
+            tracks, name=result["state"]["title"],
+            source_playlist_id=result["playlistId"], shuffle_active=True)
+        self._queue_source = "detail"
+        self._queue_source_indices = indices
+        self._playing_browse_snapshots = result["origin"]["snapshots"]
+        self._playing_detail_title = result["state"]["title"]
+        self._playing_liked_order = result["origin"]["liked_order"]
+        self._sync_queue_model()
+        self.playbackSourceCaptured.emit()
+        self._set_player_from_queue()
+        self._start_current_async(direction=1, stop_current=True)
+        self._set_status(f"Náhodně · {self._queue.name} · {len(tracks)} skladeb")
+
     @Slot(str, int, result=bool)
     def startRadioFrom(self, source, index):
         if self._busy or not self.playerCanEditQueue or self._ytmusic is None:
@@ -2606,7 +2682,10 @@ class BackendBridge(QObject):
         deleted_playlist = None
         changed_playlist_id = ""
         try:
-            if name == "initialize":
+            if name == "shuffle_detail":
+                self._apply_detail_shuffle(result)
+
+            elif name == "initialize":
                 self._ytmusic = result["ytmusic"]
                 self._library_probe_headers = dict(result.get("auth_headers") or {})
                 account = result.get("account") or {}
@@ -3429,6 +3508,8 @@ class BackendBridge(QObject):
                 data = ytmusic.get_album(browse_id)
                 detail_title = data.get("title") or title
                 tracks = core.usable_tracks(data.get("tracks") or [])
+                meta = {"kind": "album", "browseId": browse_id,
+                        "shufflePlaylistId": data.get("audioPlaylistId") or ""}
 
             elif kind == "artist":
                 if not browse_id:

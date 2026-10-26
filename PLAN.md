@@ -1,169 +1,111 @@
-# FelisMusic Desktop – plán do verze 1.0
+# FelisMusic Desktop – aktuální plán do 1.0
 
-Výchozí stav: uživatelem otestovaná **0.3.3.5-dev**, commit **7f3f704**.
-Plán schváleného rozsahu z 2026-10-24. Jednotlivé kroky níže dosud nejsou implementované, pokud STATUS.md neříká jinak.
+Aktualizováno: **2026-10-26 (Europe/Prague)** po porovnání kódu GUI, původní CLI reference `tmp/felismusic.py` a převzatého `desktop/felismusic_gui/legacy_core.py`.
 
-## Cíl a hranice
+Aktuální uživatelsky přijatá verze: **0.3.19-dev**, commit **`99dcad6`**. Poslední ověřování: **182 offline testů**, QML 1280×800/900×600 a skutečné uživatelské testy YTM. Historie změn a přijetí je v [STATUS.md](STATUS.md); věcné porovnání funkcí v [CLI-GUI.md](CLI-GUI.md). Tento plán popisuje současný stav, nikoli postupně zastarávající historické mezistavy.
 
-- Desktopová 1.0 pro Linux: běžné přehrávání, shuffle/repeat, fronta, rádio, práce s knihovnou a playlisty, obnova session, MPRIS a Cast.
-- Převzít ověřenou logiku CLI, zejména shuffle, rádio, obnovu session a přepínání výstupů. Vyvíjíme jejich propojení s GUI; nepíšeme fungující mechanismy znovu.
-- Start vždy na lokálním výstupu. Cast hledat až po otevření výběru výstupu / ručním obnovení.
-- Trvalé offline stahování až po 1.0. Přednačítání a dočasná cache zůstávají součástí běžného přehrávání.
-- Vyřazeno: připínání do „Poslouchejte znovu“ a poděkování u skladby. Počty přehrání a podobné doplňky nejsou podmínkou 1.0.
-- Sailfish port následuje po stabilním desktopovém základu jako samostatná etapa.
+Rozpracováno **0.3.20-dev / A1**: náhodné spuštění otevřeného playlistu/alba přes YTM je implementované a čeká na skutečný uživatelský test. Automaticky ověřeno 192 offline testy a QML menu/návratem přes cover v 1280×800 a 900×600. A2 a Rádio zůstávají další samostatné podkroky.
 
-## Jak budeme pracovat
+## Rozsah a pracovní domluva
 
-1. Vybereme jeden níže uvedený podkrok. Před změnami aplikace uživatel potvrdí její zavření.
-2. Klára implementuje daný podkrok, ověří ho přiměřenými kontrolami a napíše konkrétní postup uživatelského testu.
-3. Michal otestuje skutečný účet, zvuk a zařízení; chyby stejného podkroku opravíme před pokračováním.
-4. Po přijetí aktualizujeme STATUS a dokumentaci, připravíme příkaz pro commit. Git zápis zatím provádí Michal a pošle výsledek; Klára ověří stav.
-5. Každý samostatně přijatý podkrok může mít vlastní commit. Čísla vývojových verzí přidělujeme podle skutečně dokončeného obsahu.
+- Cíl: desktopová 1.0 pro Linux s přehráváním, YTM Shuffle, frontou, průběžným rádiem, knihovnou a playlisty, session, MPRIS a Castem.
+- Hotové datové a přehrávací mechanismy CLI znovu nevymýšlet. Převzít je a adaptovat na asynchronní GUI, jeho metadata, přesné výskyty skladeb a ochranu proti opožděným výsledkům. Textová menu a blokující smyčku CLI nepouštět jako GUI přehrávač.
+- Start vždy na lokálním výstupu. Cast hledat/připojit až na ruční pokyn, i po obnovení session.
+- Jeden samostatně testovatelný podkrok: úprava → kontroly Kláry → skutečný test Michala → opravy → přijetí/dokumentace → commit. Potom další podkrok.
+- Před programováním upozornit na zavření aplikace a počkat na potvrzení. Čtení kódu, plánování a zápis přijetí do dokumentace mohou probíhat za běhu aplikace.
+- Git zápis provádí Michal připraveným jednořádkovým příkazem. Push a publikace pouze na samostatný pokyn.
+- Trvalé offline stahování a Sailfish port nejsou podmínkou desktopové 1.0.
 
-## 1. Repeat, potom Shuffle
+## Stav původních bodů 1–11
 
-**1a – Repeat:** vypnuto / celý seznam / jedna skladba. Jednoznačně ukázat režim v přehrávači. Repeat-one opakuje při dohrání, ruční Next/Previous přejdou na sousední skladbu bez obalení seznamu. Repeat-all obaluje seznam při dohrání i ručním přechodu. Hotovo v 0.3.4-dev, uživatel ověřil a přijal 2026-10-25, uloženo v commitu `0a9b50c`.
+| Bod | Současný stav | Co zbývá |
+|---|---|---|
+| **1. Repeat / Shuffle** | Repeat off/all/one hotový. A1 náhodné spuštění playlistu/alba připravené k uživatelskému testu. | Přijetí A1; **A2:** zamíchání za běhu. |
+| **2. Fronta + Info + Stop** | **Hotovo** v původním rozsahu. | Samostatné zásahy do fronty patří do 3c. |
+| **3. Kontextová menu** | Menu skladeb, vložení jedné či vybraných skladeb jako další/na konec, multivýběr hotové. | **3a:** Info/hodnocení konkrétní vybrané skladby v menu. **3b:** přímé přehrávací a vkládací akce celých kolekcí. **3c:** odebrání/přesun přímo ve Frontě. |
+| **4. Detaily a navigace** | **4a hotovo:** interpret – dostupné úplné skladby/alba/singly/EP, řazení, otevření alba a návrat. Kompaktní hlavičky hotové. | **4b:** dostupná metadata hlaviček. **4c:** přímé přechody skladba → album/interpret a album → interpret. |
+| **5. Rádio / Mix** | **5a hotovo:** mix z jedné skladby, první blok doporučení. Mixy pro vás lze načíst a otevřít. | **5b:** automatické doplňování. **5c:** Mix/Náhodně interpreta a podporované akce kolekcí. |
+| **6. Knihovna a odběry** | Přímé přidání/odebrání podporované skladby v knihovně hotové. | **6a zbytek:** alba/playlisty. **6b:** odběry interpretů. **6c:** kopírování/otevírání odkazů. |
+| **7. Správa playlistů** | **7a–7d hotové, uživatelsky přijaté a commitnuté.** | Další náměty: hromadné odebrání a přetahování; nezpochybňují dokončení domluveného rozsahu 7a–7d. |
+| **8. Session a přihlášení** | GUI používá existující FCM přihlášení. | **8a:** uložit/obnovit přehrávání. **8b:** přihlásit/obnovit přihlášení z GUI. |
+| **9. MPRIS** | Nezapojeno. | Systémové ovládání KDE, multimediální klávesy a Bluetooth sluchátka. |
+| **10. Cast** | GUI má lokální výstup. Ověřený Cast existuje v CLI. | Discovery, výběr výstupu, Local ↔ Cast ↔ Cast, odpojení/ztráta zařízení a integrace ostatních funkcí. |
+| **11. Desktop 1.0** | Vývojový základ průběžně ověřovaný. | Kontrola celku, vzhled/použitelnost, instalace, ikona/spouštěč, dokumentace a příprava vydání. |
 
-**1b – Shuffle:** zapojit náhodné přehrávání přes YTM z CLI. Nabídnout ho u podporovaných zdrojů a zachovat výjimku pro nepodporované playlisty `RDCLAK…`. Vyjasnit přepnutí režimu za běhu a návrat k původnímu pořadí; upravit přednačítání podle skutečné následující skladby.
+Pozor na dva různé významy „úprava fronty“: synchronizace po změně uloženého playlistu je hotová v bodu 7. Samostatné odebrání/přesun položky pouze ve Frontě, bez zápisu do YTM playlistu, ještě není hotový bod 3c.
 
-Na výslovný pokyn uživatele z 2026-10-25 odložené; po Repeat jsme přešli ke kroku 2. Shuffle tím není zrušené ani dokončené.
+## Nejbližší pořadí práce
 
-**Přijetí:** dohrání poslední skladby, opakování jedné, ruční Next/Previous a nové pořadí fungují konzistentně. U nepodporovaných zdrojů nevzniká nefunkční ovladač ani tichá náhrada jiným typem shuffle.
+Uživatel zdůraznil časté používání Mix/Rádia. Proto se po bodu 7 nepostupuje rovnou k 8; nejprve se vracíme k přeskočenému Shuffle a rádiu. Následující pořadí je aktuální návrh, každý podkrok má vlastní test a commit.
 
-## 2. Samostatná Fronta a Info
+### A. Shuffle (1b)
 
-Hotovo v 0.3.5-dev, uživatel ověřil a přijal 2026-10-25, uloženo v commitu `f04c01b`. Aktuální podrobnosti v STATUS.md.
+1. **A1 – Spustit kolekci náhodně přes YTM (implementováno, čeká na uživatelský test).** Uchovat skutečné zdrojové playlistId; u alba jeho audioPlaylistId. Použít `get_youtube_shuffle_tracks`, nikoli tiše nahradit YTM Shuffle lokálním `random.shuffle`. U nepodporovaných zdrojů, včetně CLI výjimky `RDCLAK…`, je akce neaktivní; u uploadů se nezobrazuje.
+2. **A2 – Zamíchat běžící frontu.** Vycházet z `apply_youtube_shuffle`: aktuální audio/pozice/hodnocení pokračují, aktualizuje se skutečná fronta a prefetch. Předem dohodnout chování ručně přidaných položek a duplicit; neidentifikovat výskyty jen podle videoId. CLI dělá jednorázové zamíchání, nikoli hotový přepínač návratu k původnímu pořadí – takový návrat by byl samostatně navržená funkce.
 
-**2a – Fronta:** samostatný pohled na skutečné pořadí přehrávání, označení aktuální skladby, pozice například `17 / 133`, vlastní scroll a výběr skladby.
+**Přijetí:** skutečné YTM pořadí, označení aktuální skladby, Next/Previous/Repeat, správný nástupce v prefetch a dostupnost jen u podporovaných zdrojů. Uploadům bez odpovídajícího YTM endpointu nevyrábět nefunkční shuffle.
 
-**2b – Info:** název, interpret, album, délka, hodnocení a pozice ve frontě. Přidat uživatelské Stop s jasným zastaveným stavem.
+### B. Rádio / Mix – vysoká priorita (5b/5c)
 
-Cover nadále vrací původní kolekci s původní navigací. Fronta ukazuje aktuální pořadí, které se po shuffle nebo vložení položek může od kolekce lišit. Zvýrazňování nesmí spoléhat jen na původní index řádku.
+1. **B1 – Průběžné doplňování mixu ze skladby.** Dopojit mechanismus `refill_radio_queue` / `maybe_refill_radio_queue`: načítat před koncem fronty, další blok seedovat vhodnou poslední skladbou, filtrovat již přítomné/nepoužitelné výsledky. Operaci provádět mimo UI vlákno, zachovat audio, aktualizovat frontu a prefetch. Zrušit nebo ignorovat starý výsledek při změně zdroje. Při chybě omezený další pokus, nikoli opakování v každém pollu.
+2. **B2 – Mix a Náhodně interpreta.** Uchovat YTM `radioId`/`shuffleId`, které GUI dosud nevyužívá. Převzít datovou logiku `artist_action_queue`. Rádio interpreta musí spolupracovat s doplňováním B1.
+3. **B3 – Dostupné mixy kolekcí a sjednocení jejich chování.** Nabídnout akci tam, kde YTM skutečně vrací vhodný zdroj. Rozlišovat otevření existujícího „Mixu pro vás“, vytvoření rádia a konečný playlist. U dynamických mixů ověřit vhodný způsob pokračování; neslibovat neomezené přehrávání každému obyčejnému playlistu.
 
-**Přijetí:** procházení jiné kolekce nemění frontu; skok, Next a shuffle označují správné položky. Stop zastaví audio, Play má předem určené chování po zastavení.
+**Přijetí:** několik skutečně doplněných bloků, duplicity, konec původního bloku, dočasná chyba sítě, přepnutí na jinou frontu během dotazu a zachování aktuální skladby při aktivaci jejího rádia. První blok rádia nebo samotné otevření Mixů pro vás není splněné automatické doplňování.
 
-## 3. Kontextová menu a úpravy fronty
+### C. Uzavřít zbývající rozsah bodů 3, 4 a 6
 
-**3a – Skladba:** nabídka „⋮“ a pravé tlačítko, Přehrát jako další, Přidat na konec fronty, Info a dostupné hodnocení.
+1. **C1 / 3b – Akce celých kolekcí.** Přehrát, Náhodně (po A), přehrát celou kolekci jako další, přidat ji na konec. Uložení celé kolekce do playlistu už existuje; vkládání výběru přes Ctrl+A také funguje, chybí přímé akce kolekce.
+2. **C2 / 3c – Úpravy přímo ve Frontě.** Odebrat konkrétní výskyt a přesunout ho v pořadí bez zápisu do uloženého playlistu. Samostatně určit aktuální položku, historii, ruční vložení, prefetch a interakci se Shuffle/Rádiem.
+3. **C3 / 3a – Info a dostupné hodnocení vybrané skladby.** Horní Info a Like/Dislike aktuální skladby už fungují; doplnit cílení na jinou vybranou skladbu přes její menu.
+4. **C4 / 4b – Hlavičky.** Dostupný cover, autor/interpret, rok, počet a délka; neodhadovat chybějící data. Kompaktní rozložení se třemi tečkami zachovat. Dostupné celé seznamy/stránkování průběžně kontrolovat.
+5. **C5 / 4c – Navigace.** Skladba → album → interpret, případně výběr z více interpretů, správný návrat. Uchovat skutečná ID, podle potřeby je načíst; názvy neslouží jako náhradní identifikátor. Seznamy interpreta zůstávají dostupné celé a výchozí A–Z; datum skladby nevymýšlet z data jiného objektu.
+6. **C6 / 6a – Alba a playlisty v knihovně.** Přidání/odebrání podle reálně dostupných API údajů. Nezaměňovat smazání vlastního playlistu, členství v knihovně a Like. Stávající chování skladbového menu odpovídající YTM znovu nepřepisovat na základě domněnek.
+7. **C7 / 6b – Odběry interpretů.** Načíst stav, přihlásit/zrušit odběr, ověřit a obnovit přehled.
+8. **C8 / 6c – Odkazy.** Kopírovat a otevřít v YTM podporované veřejné položky. Uploadům nevyrábět neplatný veřejný odkaz.
 
-První dílčí etapa je uživatelsky ověřená v 0.3.6-dev: nabídka Přehrát jako další / Přidat na konec fronty, včetně zachování navigace ve smíšené frontě. Uživatel potvrdil vkládání do fronty; na jeho návrh byla odstraněna duplicitní akce Přehrát odtud. Upravené menu je také uživatelsky potvrzené; uloženo v commitu `a284740`. Další akce nabídky a následující podkroky dosud nejsou hotové.
+### D. Session a přihlášení (8)
 
-**3b – Kolekce:** Přehrát, Náhodně, celou kolekci přehrát jako další nebo přidat na konec. Akce přidá skladby ve správném pořadí a nepřeruší aktuální audio.
+1. **8a – Obnova přehrávání.** Uchovat frontu, přesné výskyty, aktuální skladbu/pozici, repeat/shuffle/radio a potřebný zdrojový kontext. Nabídnout pokračování nebo odmítnutí; nic automaticky nepřehrávat ani nepřipojovat Cast. Využít `save_resume_session` / `load_resume_session`, ověřit kompatibilitu/oddělení CLI a GUI uloženého stavu a neukládat zbytečně rozkopírované snapshoty modelů u každé skladby.
+2. **8b – Přihlášení z GUI.** Zapojit existující izolovaný login `AuthManager`; odstranit závislost uživatelského postupu na textovém `input`/CLI menu. Nabídnout obnovu přihlášení při neplatné session, průběh, chybu a zrušení. Přihlašovací data ponechat mimo Git.
 
-**3c – Fronta:** odebrání čekající položky a změna pořadí. Předem určit chování při zásahu do aktuální položky; bezpečně aktualizovat indexy i přednačítání.
+Autentizační session a obnovení přehrávání jsou dvě různé věci. Přihlášené GUI dnes neznamená uloženou frontu po restartu.
 
-**Přijetí:** „jako další“ znamená hned za aktuální skladbu, „do fronty“ znamená na konec. Duplicitní výskyty stejné skladby se dají rozlišit. Menu obsahuje jen skutečně zapojené a dostupné akce.
+### E. MPRIS (9)
 
-## 4. Detail interpreta a dokončení detailů kolekcí
+1. Lokální Play/Pause/PlayPause/Stop/Next/Previous, metadata, cover, délka, pozice a dostupné seek/volume/repeat/shuffle podle podporovaného rozhraní.
+2. Ověřit KDE, fyzické multimediální klávesy a skutečná Bluetooth sluchátka. Systém i GUI ovládají jeden stav přehrávání.
+3. Po zapojení Castu zopakovat integraci pro aktuální výstup.
 
-Na výslovný pokyn uživatele jsme po skladbovém menu přešli ke kroku 4. Zbývající části kroku 3 zůstávají plánované.
+MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
-V 0.3.7-dev je první podkrok 4a uživatelsky otestovaný a přijatý (commit `635fb27`): části interpreta s automatickým načtením celých dostupných seznamů, výchozím řazením A–Z a volbou dalších pořadí, otevření alba a návrat k interpretovi. Přehrávání skladeb z řádků funguje stávajícím způsobem; samostatné akce pro celou kolekci, Shuffle a Mix zůstávají navazující práce.
+### F. Cast (10)
 
-**4a – Interpret:** nejposlouchanější skladby, dostupné rozšíření seznamu, alba a singly/EP. Nabídky Přehrát/Náhodně podle dostupného zdroje; Mix dopojit v následujícím kroku.
+1. **10a – Ruční discovery a výběr.** Místní výstup, Chromecast Audio a Cast Groups, aktuální dostupnost. Startup zůstává lokální.
+2. **10b.1 – Local → Cast.** Převzít `switch_playback_output`, ověřit stejnou skladbu, pozici, pause/play, hlasitost a že starý výstup současně nehraje.
+3. **10b.2 – Cast → Local.** Samostatný skutečný test včetně přípravy lokálního audia.
+4. **10b.3 – Cast1 → Cast2 / skupina.** Samostatný skutečný test se zařízeními uživatele.
+5. **10c – Odpojení a výpadky.** Stav zařízení, dlouhá pauza, obnova spojení, aktualizace discovery, nefunkční/zmizelý výstup a ukončení aplikace.
+6. **10d – Celek.** Fronta, repeat/shuffle, průběžné rádio, MPRIS a systémové ovládání míří na zvolený výstup. Cast používá svůj streamovací postup CLI; lokální cache/prefetch nezapojovat mechanicky stejným způsobem.
 
-**4b – Album/playlist:** přehledná hlavička s coverem, názvem, interpretem či autorem, rokem a počtem/délkou skladeb, pokud jsou data dostupná. Ověřit úplnost obsahu a případné stránkování.
+Cast už v CLI funguje. Chybí propojení s GUI a ověření jeho nových funkcí, nikoli vymyšlení přepínání výstupů od začátku.
 
-**4c – Navigace:** ze skladby otevřít její album nebo interpreta, z alba interpreta. Podporovat více interpretů a korektní návrat zpět. Chybějící ID případně doplnit datovým dotazem; nevytvářet odkazy odhadem podle názvu.
+### G. Desktop 1.0 (11)
 
-**Přijetí:** procházení detailů nemění přehrávání; cover stále vrací skutečný původ aktuální kolekce. Nahraná hudba používá své soukromé identifikátory a dostupné akce.
+1. **11a – Kontrola celku.** Velké kolekce, nedostupné skladby, duplicity, chyby sítě/účtu, opakované akce, opožděné výsledky, ukončení během práce, kombinace všech přijatých funkcí a reálný Cast.
+2. **11b – Vzhled a instalace.** Celková revize menu/rozložení a klávesnice, texty a chyby, ikona, desktopový spouštěč a ověřený instalační postup se závislostmi. Formu distribučního balíčku zvolit před touto etapou.
+3. **11c – Příprava vydání.** README, známá omezení, přijatý kandidát, čistý Git, release commit/tag a instalační výstup. Publikace až na samostatný pokyn.
 
-## 5. Rádio / Mix
+## Dokončený bod 7 a další náměty
 
-Uživatel výslovně zvolil krok 5 po přijetí podkroku interpreta; 4b/4c zůstávají otevřené. V 0.3.8-dev je uživatelsky otestovaný a přijatý podkrok 5a (commit `635fb27`): Mix ze skladby přes CLI rádio, zachování audia aktuálního seedu, přesměrování přednačítání a pojistky proti opožděným výsledkům. Zatím jeden blok doporučení; 5b/5c následují samostatně.
+**7a–7d jsou hotové:** skladba/kolekce do existujícího či nového playlistu, politika duplicit, prázdný playlist, název/popisy/viditelnost, jednotlivé odebrání podle setVideoId se synchronizací fronty, přesun nahoru/dolů včetně celé původní fronty a potvrzené smazání vlastního playlistu při zachování audia. Poslední commit `99dcad6`.
 
-**5a – Aktuální nebo vybraná skladba:** zapojit vytvoření rádia z CLI a ukázat, že se přehrává rádio.
+Multivýběr, dvojklik/Enter, dávkové vkládání/ukládání, lišta od dvou vybraných a odznačení po úspěchu jsou rovněž hotové (`142bb2d`).
 
-**5b – Doplňování:** průběžně načítat další bloky, filtrovat duplicity a spolupracovat s přednačítáním. Dočasná chyba doplnění nesmí přerušit aktuální skladbu nebo neustále opakovat požadavky.
+Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Jejich prioritu domluvit samostatně; samy teď neblokují návrat ke Shuffle a Mix/Rádiu.
 
-**5c – Interpret a kolekce:** dopojit Mix tam, kde je podporovaný a máme potřebné identifikátory. Mixy pro vás již fungují; nemíchat jejich otevření s vytvářením nového rádia.
+## Mimo desktopovou 1.0
 
-**Přijetí:** rádio přehraje více doplněných bloků bez konce na původní dávce. Fronta, aktuální skladba a přepnutí zpět na běžný playlist zůstávají konzistentní.
-
-## 6. Knihovna, odběry a odkazy
-
-Na výslovný pokyn uživatele jsme po commitu `635fb27` přešli ke kroku 6. Podkroky 5b/5c a dříve nedokončené části plánu zůstávají otevřené. V 0.3.9-dev je uživatelsky otestovaná a přijatá první část 6a (commit `c3de56b`): přímá akce Přidat/Odebrat v menu skladby podle skutečného členství, nezávislé načítání stavu bez blokování ostatních akcí, změna přes feedback tokeny a ověření výsledku bez změny hodnocení nebo fronty. Původní dialog uživatel otestoval. Finální varianta skrývá knihovní položku do potvrzení dostupné akce, při nedostupnosti ji vůbec nezobrazuje a doplňuje předání ID alba skladbám; uživatel potvrdil shodu s webovým YTM křížovým testem. Alba a playlisty jsou následující část 6a; odběry a odkazy 6b/6c zatím nehotové.
-
-**6a – Knihovna:** přidání/odebrání podporovaných skladeb, alb a playlistů. Rozlišovat hodnocení Like/Dislike, členství v knihovně a členství v playlistu.
-
-**6b – Interpret:** odebírat / zrušit odběr a správně ukázat aktuální stav.
-
-**6c – Sdílení:** kopírovat odkaz a otevřít v YT Music u položek s vhodným odkazem.
-
-**Přijetí:** změny se ověří proti skutečnému YTM a promítnou do příslušné části GUI. Při chybě se stav vrátí nebo se zobrazí jasné selhání. Soukromým uploadům se nevyrábí neplatný veřejný odkaz.
-
-## 7. Správa playlistů – součást 1.0
-
-Samostatný mezikrok vzhledu 0.3.12-dev po přijetí ukládání kolekcí: kompaktní hlavička s menu ⋮ místo velkého akčního tlačítka a záložky/řazení interpreta vedle sebe s automatickým zalomením. Uživatel otestoval a přijal, commit `543732c`. Funkční rozsah ukládání se nemění.
-
-Na výslovný pokyn uživatele po commitu `c3de56b` přecházíme ke kroku 7. V 0.3.10-dev je uživatelsky otestovaná a přijatá první část 7a (commit `cb4ce81`): uložení jedné skladby do vlastního playlistu, výslovná volba duplicit a vytvoření nového soukromého playlistu se skladbou. Po skutečném testu vytvoření playlistu opravené následné ověřování (omezené opakování čtení, rozlišení potvrzeného zápisu a neověřeného obsahu, ruční Ověřit znovu bez opakování zápisu); uživatel ověřil vytvoření i přidávání včetně duplicit. Následně upravené automatické zavírání po ověřeném úspěchu a výrazné potvrzení duplicity přes OK uživatel také ověřil a přijal. V 0.3.11-dev je uživatelsky otestovaná a přijatá druhá část 7a (commit `b114cea`): uložení právě otevřeného seznamu skladeb do vlastního či nového soukromého playlistu, s počtem výběru, pořadím a dávkovou politikou duplicit. Obecná tvorba/prázdný playlist, úpravy údajů, pořadí/odebírání a smazání zatím neimplementované. Zbývající části kroku 6 a dřívějšího plánu zůstávají otevřené.
-
-**7a – Přidávání:** dialog pro výběr vlastního editovatelného playlistu, přidání skladby i celé kolekce; možnost vytvořit nový playlist přímo při ukládání. Výslovně vyřešit duplicity.
-
-V 0.3.13-dev je uživatelsky otestovaná a přijatá první část 7b: vytvoření prázdného soukromého playlistu z přehledu Knihovna/Playlisty, oddělené od ukládání skladeb, s validací a ochranou proti opakovanému zápisu. Po prvním uživatelském testu doplněno zachování potvrzené nové karty do načtení ze serveru a tvorba přes ⋮; uživatel ověřil i tuto finální opravu, celek je uložený v commitu `d811929`. Úpravy údajů a další viditelnosti dosud neimplementované.
-
-**7b – Vytvoření a úprava údajů:** název, popis a viditelnost u podporovaných vlastních playlistů.
-
-**7c – Obsah:** odebrání konkrétního výskytu skladby a přesun pořadí. Uchovávat potřebné identifikátory položek playlistu, nikoli jen videoId, aby šlo bezpečně pracovat i s duplicitami.
-
-**7d – Smazání:** pouze u vlastního editovatelného playlistu a s potvrzením. U cizích a automatických playlistů nabídnout jen dostupné akce; odebrání z knihovny nesmí být prezentované jako smazání playlistu.
-
-Úprava uloženého playlistu nesmí přestavět celou právě hrající frontu. Na následné přání uživatele se potvrzené odebrání konkrétního původního výskytu synchronizuje do fronty: čekající pryč ihned, aktuální dohraje a pak se vyřadí. Ručně přidané položky a jejich pořadí zůstávají zachované.
-
-**Přijetí:** na testovacím vlastním playlistu projít vytvoření, přidání, duplicity, přesun, odebrání, přejmenování i smazání a změny ověřit v YTM. Prověřit nedostatečná oprávnění a chybu sítě.
-
-## 8. Obnova session a přihlášení
-
-**8a – Session:** uložit frontu, aktuální skladbu, pozici, repeat/shuffle a potřebné informace o zdroji. Po restartu nabídnout pokračování, nic automaticky nespouštět.
-
-**8b – Přihlášení:** zapojit osvědčený způsob autentizace z CLI do ovladatelného GUI postupu, včetně srozumitelného stavu neplatné session. Desktopová 1.0 nemá vyžadovat ovládání samostatné CLI aplikace pro běžné přihlášení.
-
-**Přijetí:** po restartu lze pokračovat i odmítnout; změněný nebo nedostupný zdroj nezpůsobí pád. Start zůstává lokální a neobnovuje automaticky spojení s Castem. Přihlašovací údaje zůstávají mimo Git.
-
-## 9. MPRIS / systémové ovládání
-
-Play, Pause, PlayPause, Next, Previous, metadata, cover, délka a správné stavy. Doplnit podporované další ovládání podle možností backendu. Ověřit KDE a Bluetooth sluchátka / multimediální klávesy.
-
-**Přijetí:** systém i GUI ovládají tentýž přehrávač a zobrazují shodný stav. Připravit rozhraní tak, aby stejné příkazy po zapojení Castu mířily na zvolený výstup.
-
-## 10. Cast – převzetí fungující logiky CLI
-
-**10a – Výběr výstupu:** ručně vyvolané discovery, lokální zařízení, Chromecast Audio a Cast Groups. Stav dostupnosti a aktuálně zvolený výstup.
-
-**10b – Přehrávání a přepínání:** propojit ověřené funkce CLI pro Local ↔ Cast a Cast1 ↔ Cast2, včetně pozice, hlasitosti a pauzy. Jednotlivé přechody testovat postupně.
-
-**10c – Stav a odpojení:** ztráta zařízení, dlouhá pauza a usnutí session, kontrola živosti a opětovné připojení. GUI nesmí ukazovat připojení, které už nefunguje.
-
-**10d – Celková integrace:** ověřit frontu, repeat/shuffle, rádio, systémová tlačítka a MPRIS pro aktuální výstup. Lokální cache/přednačítání používat jen tam, kde má význam pro daný výstup.
-
-**Přijetí:** reálné přechody mezi Kočičkou a Casty zachovají skladbu, přibližnou pozici a stav přehrávání. Při startu aplikace se žádný Cast sám nevyhledává ani nepřipojuje.
-
-## 11. Příprava a vydání desktopové 1.0
-
-**11a – Kontrola celku:** projít scénáře z předchozích etap, velké kolekce, opakovaná kliknutí, výpadek sítě, nedostupné skladby, chyby účtu a ukončení během načítání.
-
-**11b – Použitelnost a instalace:** zkontrolovat rozložení oken, klávesové ovládání, popisky a chybové zprávy; doplnit ikonu, desktopový spouštěč a ověřený postup instalace se závislostmi. Konkrétní distribuční balíček zvolit před touto etapou.
-
-**11c – Vydání:** aktuální README, seznam známých omezení, uživatelsky přijatý kandidát, čistý Git, release commit/tag a připravený instalační výstup. Publikaci provést až na samostatný pokyn.
-
-**Přijetí:** běžné používání nevyžaduje zásahy do kódu ani CLI přehrávač a nedochází k regresi ověřeného přehrávání nebo Castu.
-
-## Po 1.0
-
-- Podle skutečného zájmu trvalé offline stahování: správa místa, souborů, metadat a přehrávání bez sítě. Není podmínkou první verze.
-- Další vylepšení podle zkušeností z používání.
-- Sailfish OS / Silica port s využitím již ověřené funkční logiky; vlastní rozložení, audio a systémová integrace pro Jollu.
-
-V 0.3.14-dev je uživatelsky otestovaná a přijatá další část 7b: úprava názvu, popisu (včetně vymazání) a viditelnosti vlastního playlistu přes menu detailu. Čerstvé načtení údajů i ověření vlastnictví před zápisem, vazba na ID formuláře, aktualizace zobrazení bez přestavby fronty. Prošlo 111 offline testů a QML kontrola v obou velikostech. Uloženo v commitu `39ab6cc`. Následuje výběr Soukromý/Neveřejný/Veřejný při vytvoření prázdného playlistu i ze skladby/kolekce, s výchozím Soukromý. Další viditelnosti přímo při tvorbě, 7c a 7d dosud nehotové.
-
-V 0.3.15-dev je uživatelsky otestované a přijaté dokončení 7b: výběr Soukromý/Neveřejný/Veřejný přímo při vytvoření prázdného playlistu i při ukládání skladby/kolekce do nového playlistu. Výchozí Soukromý při každém otevření; existující playlist nemění viditelnost. Prošlo 114 offline testů a QML kontrola všech kombinací při 1280×800 a 900×600. Uživatel potvrdil funkčnost, uloženo v commitu `413ba83`. Následuje samostatně 7c.
-
-V 0.3.16-dev je uživatelsky otestovaná a přijatá první část 7c: odebrání konkrétního výskytu skladby z detailu vlastního playlistu podle videoId/setVideoId s čerstvou kontrolou vlastnictví. Uživatel ověřil odebrání a následně schválil doplnění synchronizace: čekající původní výskyt zmizí i z fronty, aktuální může dohrát a pak se vyřadí; ručně přidané skladby, jejich pořadí a aktuální audio/čas se zachovají. Správný návrat přes cover a ochrana proti opožděnému návratu odebrané položky. Prošlo 135 offline testů a aktualizovaná QML kontrola při 1280×800/900×600. Uživatel ověřil i finální synchronizaci, celek je uložený v commitu `ca8c39e`. Změna pořadí a smazání celého playlistu následují samostatně.
-
-Námět uživatele 2026-10-25: multivýběr skladeb podle screenshotu webového YTM (počet vybraných položek a společné akce Uložit do playlistu / Přehrát jako další / Přidat do fronty). Při návrhu zachovat viditelné pořadí výběru a přesnou identitu každého výskytu; pro vlastní playlist lze navázat hromadným odebráním. Uživatel následně schválil předřazení multivýběru s přehráváním na dvojklik/Enter změně pořadí jednotlivých položek 7c.
-
-V 0.3.17-dev je uživatelsky otestovaný a přijatý tento mezikrok: klik/Ctrl/Shift/Ctrl+Shift, Ctrl+A/Escape, vlastní zvýraznění a počet výběru, dvojklik/Enter pro přehrávání a společné akce jako další/na konec/do playlistu. Zachované viditelné pořadí a jednotlivé výskyty, bezpečné zrušení výběru při změně modelu, dosavadní jednoklikové otevírání kolekcí. Prošlo 145 offline testů a QML kontrola v obou velikostech. Uživatel ověřil funkčnost a následně schválil zobrazení lišty hromadných akcí pouze od dvou vybraných skladeb, s ponecháním menu ⋮ u řádků. Uživatel tuto úpravu ověřil. Následně schválil zrušení původního výběru po úspěšné společné akci: enqueue okamžitě, playlist po ověřeném uložení; chyba nebo pouhé zavření dialogu ho zachová a starší dialog nesmaže nový výběr. Prošlo 149 offline testů; uživatel ověřil i finální dokončení akcí, celek je uložený v commitu `142bb2d`. Hromadné odebrání zatím nepřidané; po commitu pokračovat podle domluvy změnou pořadí 7c.
-
-V 0.3.18-dev je uživatelsky otestovaná a přijatá druhá část 7c: přesun jedné konkrétní položky vlastního playlistu přes Posunout nahoru/dolů, s deaktivovanými hranicemi a čerstvou kontrolou vlastnictví/identity/sousedství. Potvrzený přesun se promítne do detailu, uložených browsing snapshots a všech původních výskytů ve frontě včetně aktuální/prošlé části. Aktuální skladba zachovává identitu/audio/čas a přepočítá se její index; ruční sloty se nepřesouvají. Původní omezení na čekající část uživatel při testu odmítl a po zavření aplikace byla synchronizace opravena i pro stopped/paused/loading. Opožděné odpovědi nevracejí potvrzené změny a již pozorované operace se neaplikují znovu. Prošlo 164 offline testů včetně 4 regresních pro přesun aktuální/předchozí položky, stopped/paused/loading a správného nástupce. Uživatel potvrdil i finální opravu synchronizace celé fronty, celek je uložený v commitu `a3e106e`. Po commitu lze pokračovat 7d; přetahování a hromadné odebrání zůstávají samostatnými náměty.
-
-V 0.3.19-dev je uživatelsky otestované a přijaté 7d: Smazat playlist… v menu vlastního detailu, aktuální název a výslovné potvrzení, opakovaná kontrola vlastnictví/názvu před zápisem a práce s přesným ID. Zrušení nezapisuje, nejistý zápis se automaticky neopakuje. Po úspěchu se odstraní karta a otevře přehled, fronta/audio/čas zůstávají, cover smazaného zdroje vede na Frontu. Prošlo 174 offline testů a QML kontrola při 1280×800/900×600. Po prvním skutečném testu uživatel nahlásil úspěšné smazání s chybným nepotvrzením v aplikaci. Doplněno čtecí doověření zmizení ID z úplné a strukturálně ověřené knihovny, neutrální neověřený stav a Ověřit znovu bez opakování mazání. Prochází 182 offline testů; uživatel 2026-10-26 potvrdil i opravu ověřování. Živý log doložil odpověď dict bez statusu, s responseContext. Celek čeká na commit. Ostatní otevřené části plánu včetně hromadného odebrání/přetahování tím nejsou hotové.
+- Trvalé offline stahování, správa stažené knihovny a přehrávání bez sítě. Ani referenční CLI nemá hotovou takovou offline knihovnu; dočasné stažení/cache pro přehrání je jiná funkce.
+- Sailfish OS / Silica port s vlastní ergonomií, audio a systémovou integrací; použít stabilní datovou logiku desktopu.
+- Vyřazené nápady zůstávají vyřazené: připínání do „Poslouchejte znovu“, poděkování u skladby a podobné nepoužívané doplňky. Počty přehrání nejsou podmínkou 1.0.

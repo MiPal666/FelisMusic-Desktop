@@ -1280,7 +1280,7 @@ ApplicationWindow {
             objectName: "collectionMenuButton"
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
-            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist
+            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
             ToolTip.visible: hovered
@@ -1311,6 +1311,14 @@ ApplicationWindow {
             palette.windowText: "#eeeeee"
             palette.highlight: "#6757b8"
             background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+            MenuItem {
+                objectName: "collectionShuffle"
+                text: "Přehrát náhodně"
+                visible: backend.detailMeta.kind === "playlist" || backend.detailMeta.kind === "album"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.shuffleDetail()
+            }
             MenuItem {
                 objectName: "collectionPlaylistSave"
                 text: "Přidat seznam do playlistu…"

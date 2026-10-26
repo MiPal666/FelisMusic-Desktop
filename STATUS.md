@@ -1,6 +1,25 @@
 # FelisMusic Desktop – aktuální stav
 
-Aktualizováno: 2026-10-25 (Europe/Prague).
+Aktualizováno: 2026-10-26 (Europe/Prague).
+
+## Připraveno k uživatelskému testu: 0.3.20-dev – A1 Shuffle kolekce
+
+- Menu ⋮ otevřeného playlistu/alba obsahuje **Přehrát náhodně**. Používá převzaté `get_youtube_shuffle_tracks`: `get_watch_playlist(playlistId=…, shuffle=True)`, limit nejméně 25 nebo počet načtených skladeb. U alba se uchovává skutečné `audioPlaylistId`, nikoli jeho browseId.
+- Fronta přebírá přesné pořadí použitelné odpovědi YTM, včetně opakovaných videoId; nejde o místní náhodné řazení. Přepnutí, Repeat a prefetch používají tutéž frontu. Uložené pořadí playlistu se nezapisuje ani nemění.
+- Návrat přes cover zachová původní kolekci a navigační kontext. Vazba na řádek je podle dostupných výskytů; položka odpovědi mimo původně načtený seznam má index −1. Bez potvrzených occurrence ID se nevyrábějí `_guiPlaylistBinding`: náhodná fronta se neprohlašuje za přesné původní výskyty uloženého playlistu.
+- U prázdné kolekce, nepodporovaného `RDCLAK…` či alba bez audioPlaylistId je akce neaktivní; u uploadů a interpreta se nezobrazuje. Stávající akce přidání kolekce do playlistu zůstává dostupná.
+- Požadavek běží mimo UI vlákno. Původní audio/fronta zůstávají do úspěšné odpovědi; poté se staré audio zastaví před přípravou nového. Chyba nezničí starou frontu. Stop, změna přehrávání/fronty či opuštění detailu během dotazu zneplatní opožděný výsledek i chybu.
+- Kontroly: **192 offline testů**, z toho 10 nových v `tests/test_shuffle.py`; skutečné QML kliknutí na menu, neaktivní nepodporovaná akce, návrat přes cover a pokračování podle fronty v 1280×800 a 900×600. Testy používají falešné API/audio, bez skutečného YTM účtu.
+- **Čeká na Michalův skutečný test a přijetí.** Zamíchání už běžící fronty při zachování aktuální skladby (A2), interpret a doplňování rádia nejsou součástí tohoto podkroku.
+
+## Aktuální souhrn po auditu 2026-10-26
+
+- Přijatá verze **0.3.19-dev**, commit **`99dcad6`**. Správa playlistů **7a–7d hotová**; multivýběr a synchronizace změn playlistu do fronty rovněž přijaté. Poslední funkční etapa prošla 182 offline testy, QML kontrolami a skutečnými uživatelskými testy.
+- [PLAN.md](PLAN.md) je přepsaný na aktuální stav, zbavený rozporů mezi historickými mezistavy. Níže zůstává podrobná historie přijatých etap. Porovnání původní reference `tmp/felismusic.py`, převzatého jádra a GUI je v [CLI-GUI.md](CLI-GUI.md).
+- Přeskočené části: Shuffle 1b; kontextové/kolekční akce a samostatná editace fronty 3a–3c; metadata a přímé navigační vazby 4b/4c; doplňování rádia a artist/collection mixy 5b/5c; zbývající knihovní změny/odběry/odkazy 6a–6c. Samotný bod 7 je hotový; hromadné odebrání a přetahování jsou rozšíření.
+- Oproti CLI GUI nezapojuje YTM Shuffle (včetně interpreta), průběžné rádio, rádio interpreta, resume session, interaktivní login a Cast. Relevantní převzaté definice byly při auditu ověřené proti původní CLI a shodují se v AST. Playlist management a multivýběr naopak jdou nad rámec CLI. MPRIS je nová integrace, nikoli hotový mechanismus CLI.
+- Nejbližší návrh: Shuffle, potom s vysokou prioritou průběžné Rádio/Mix a akce interpreta/kolekcí. Následně uzavřít zbytek 3/4/6 a pokračovat 8 Session/login, 9 MPRIS, 10 Cast a 11 vydání. Zachovat lokální startup a ruční Cast discovery.
+- Při tomto auditu se upravovala pouze dokumentace; nové programování, API zápisy ani nové skutečné testy zařízení se neprováděly.
 
 ## Uzavřený a otestovaný základ
 
@@ -206,7 +225,7 @@ Otestovaný základ **0.3.3.3-dev** je uložený v prvním commitu `f62ec06` na 
 - Fronta se nepřestavuje a audio/čas/pořadí se nemění. Origins skladeb z vymazaného zdroje se odpojí na source=playing/context page 5; cover otevře skutečnou Frontu a další skladby pokračují. Vyčistí se také rodičovské přehledy a historie, aby návrat neobnovil smazanou kartu/detail.
 - Prošlo 174 offline testů (164 předchozích + 10 pro smazání): potvrzení/zrušení, přesné stejnojmenné ID, prázdný playlist, čerstvé vlastnictví/název, automatické/cizí/nesprávné typy, výpadky a nepovolené opakování, neověřený stav, běžící fronta/čas/cover/EOS, opožděné karty a cíle uložení, dvojklik a změna pohledu za běhu požadavku. QML při 1280×800/900×600 ověřeno skutečným menu a dialogem: zrušení bez zápisu, potvrzení, přeživší stejnojmenná karta, filtrování trvale opožděného přehledu, zachování audia/fronty, cover na Frontu, stručná blokovaná chyba, skrytí u cizího a smazání prázdného playlistu. Dialog vizuálně zkontrolován.
 - Uživatel při skutečném testu nahlásil, že playlist byl smazán, ale dialog hlásil nepotvrzený výsledek (log pouze RuntimeError). Následný uživatelský log potvrdil typ dict bez položky status, s přítomným responseContext; úplné tělo odpovědi se nezaznamenává. Po zavření aplikace opravené vyhodnocení: zachování jednoho zápisu, doověření přes úplnou knihovnu s validací skutečného grid rendereru a zahrnutí první stránky do úplného výsledku. Chybějící renderer/parsování/síť se nesmí zaměnit za prázdnou knihovnu. Bez zachyceného členství před zápisem lze potvrdit jen explicitní 404 daného playlistu spolu s čitelným knihovním přehledem; obecný parser error není důkaz. Pro nejasný stav doplněné Ověřit znovu bez dalšího delete_playlist. Diagnostika vypíše jen typ odpovědi, známý stav a přítomnost vybraných klíčů, nikdy tělo odpovědi/auth data.
-- Prochází 182 offline testů (174 předchozích + 8 pro ověření): odpověď bez statusu, výjimka po skutečném smazání, opakované čtení až k potvrzení bez dalšího zápisu, neplatný knihovní renderer, síťová chyba, předem chybějící členství, explicitní not-found a nesoulad validované první stránky s neúplným seznamem. QML při 1280×800/900×600 znovu ověřilo odpověď bez statusu s automatickým doověřením, neutrální neověřený stav a úspěšné Ověřit znovu bez dalšího zápisu, včetně zachovaného audia/fronty. Uživatel 2026-10-26 potvrdil, že mazání funguje a aplikace už výsledek správně potvrdí. Podkrok 7d včetně opravy ověřování je přijatý a čeká na commit. Hromadné odebrání, přetahování myší a dřívější otevřené části plánu zůstávají nedokončené; zatím neoznačovat celý plán 1.0 za hotový.
+- Prochází 182 offline testů (174 předchozích + 8 pro ověření): odpověď bez statusu, výjimka po skutečném smazání, opakované čtení až k potvrzení bez dalšího zápisu, neplatný knihovní renderer, síťová chyba, předem chybějící členství, explicitní not-found a nesoulad validované první stránky s neúplným seznamem. QML při 1280×800/900×600 znovu ověřilo odpověď bez statusu s automatickým doověřením, neutrální neověřený stav a úspěšné Ověřit znovu bez dalšího zápisu, včetně zachovaného audia/fronty. Uživatel 2026-10-26 potvrdil, že mazání funguje a aplikace už výsledek správně potvrdí. Podkrok 7d včetně opravy ověřování je přijatý a uložený v commitu `99dcad6`. Hromadné odebrání, přetahování myší a dřívější otevřené části plánu zůstávají nedokončené; zatím neoznačovat celý plán 1.0 za hotový.
 
 ## Pracovní domluva
 

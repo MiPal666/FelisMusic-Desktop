@@ -2,9 +2,10 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.19-dev**
+- Desktop GUI: **0.3.20-dev** (čeká na uživatelský test)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
-- Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
+- Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
+- Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
 - GUI toolkit: PySide6 + QML
 - FelisMusic CLI 1.0.0 je samostatný, zmrazený projekt / referenční implementace.
 
@@ -323,6 +324,13 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Po potvrzení YTM se přesune řádek i v aplikaci; při běžném přesunu se model neresetuje. Potvrzené operace a jejich výsledná pořadí překlenou opožděné odpovědi serveru. Už obsažené operace se neaplikují podruhé; po dorovnání se pomocná informace zahodí.
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
+
+## 0.3.20-dev – náhodné spuštění playlistu/alba (A1, čeká na uživatelský test)
+
+- Otevři playlist nebo album a v menu hlavičky **⋮ → Přehrát náhodně** vyžádej náhodné pořadí od YTM. U alba se používá jeho audioPlaylistId. Skutečné vrácené pořadí najdeš ve Frontě; uložený playlist se nemění.
+- Next/Previous, Repeat a načítání další skladby předem respektují tuto frontu. Cover vrátí původní kolekci a její navigaci.
+- Nepodporované kolekce a alba bez potřebného ID mají akci neaktivní. Uploady ji nenabízejí. Chyba YTM ponechá původní přehrávání/frontu.
+- Automaticky ověřeno 192 offline testy a QML klikáním při 1280×800/900×600. Skutečný YTM test zatím čeká. Zamíchání běžící fronty bez přerušení aktuální skladby přijde samostatně v A2.
 
 ## 0.3.19-dev – smazání vlastního playlistu (7d)
 
