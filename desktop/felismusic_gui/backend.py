@@ -16,6 +16,9 @@ from PySide6.QtCore import (
     QTimer,
 )
 from ytmusicapi import YTMusic
+from ytmusicapi.parsers.library import get_library_contents
+from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
+from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
 
@@ -168,6 +171,9 @@ class BackendBridge(QObject):
     playlistEditRequested = Signal()
     playlistsChanged = Signal(str)
     trackSelectionChanged = Signal()
+    playlistDeleteChanged = Signal()
+    playlistDeleteRequested = Signal()
+    playlistDeleted = Signal(str, bool)
 
     _songLibraryProbeReady = Signal(int, object, str)
     _resultReady = Signal(str, object)
@@ -206,6 +212,9 @@ class BackendBridge(QObject):
         self._song_library_token = ""
         self._empty_playlist_state = {}
         self._playlist_edit_state = {}
+        self._playlist_delete_state = {}
+        self._playlist_delete_verification = None
+        self._deleted_playlists = set()
         self._pending_removed_playlist_items = {}
         self._pending_playlist_moves = {}
         # Confirmed creations may precede their appearance in YTM's library.
@@ -1683,6 +1692,203 @@ class BackendBridge(QObject):
                 and bool(self._detail_meta.get("playlistId"))
                 and self._detail_meta.get("owned") is True)
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanDeletePlaylist(self):
+        playlist_id = self._detail_meta.get("playlistId", "")
+        normalized = playlist_id.removeprefix("VL")
+        return (self.detailCanEditPlaylist and normalized not in ("LM", "SE")
+                and not normalized.startswith("RD") and playlist_id not in self._deleted_playlists)
+
+    @Property("QVariantMap", notify=playlistDeleteChanged)
+    def playlistDeleteState(self):
+        return self._playlist_delete_state
+
+    @Slot(result=bool)
+    def openPlaylistDelete(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None or not self.detailCanDeletePlaylist:
+            return False
+        playlist_id = self._detail_meta["playlistId"]
+        api = self._ytmusic
+        def task():
+            try:
+                data = api.get_playlist(playlist_id, limit=1)
+                if data.get("owned") is not True or not data.get("title"):
+                    raise ValueError("Not owned")
+                return {"ok": True, "playlistId": playlist_id, "title": data["title"],
+                        "pending": False, "completed": False, "locked": False, "message": ""}
+            except Exception as exc:
+                print(f"FelisMusic potvrzení smazání playlistu: {type(exc).__name__}")
+                raise RuntimeError("Nelze ověřit vlastní playlist pro smazání.") from None
+        self._submit("playlist_delete_read", "Načítám playlist pro potvrzení smazání…", task)
+        return True
+
+    @Slot()
+    def cancelPlaylistDelete(self):
+        if not self._playlist_delete_state.get("pending") and not self._playlist_delete_state.get("completed"):
+            self._playlist_delete_state = {}
+            self.playlistDeleteChanged.emit()
+
+    _playlist_delete_verify_delays = (0.0, 0.5, 1.5)
+
+    @staticmethod
+    def _read_playlist_library_ids(api):
+        # The public method returns [] even when its expected renderer is
+        # absent. Validate the library layout before interpreting an empty list.
+        raw = api._send_request("browse", {"browseId": "FEmusic_liked_playlists"})
+        if not isinstance(raw, dict) or raw.get("error"):
+            raise ValueError("Invalid library response")
+        grid = get_library_contents(raw, ["gridRenderer"])
+        if not isinstance(grid, dict) or not isinstance(grid.get("items"), list):
+            raise ValueError("Missing library renderer")
+        first_page = parse_content_list(grid["items"][1:], parse_playlist)
+        playlists = api.get_library_playlists(limit=None)
+        if not isinstance(playlists, list):
+            raise ValueError("Invalid playlist list")
+        ids = set()
+        for item in playlists:
+            playlist_id = core.playlist_id_from_item(item) if isinstance(item, dict) else None
+            if not playlist_id:
+                raise ValueError("Missing playlist ID")
+            ids.add(str(playlist_id).removeprefix("VL"))
+        # A separately parsed full list must include the validated first page.
+        # A missing renderer in that second response must not look like deletion.
+        if any(str(x["playlistId"]).removeprefix("VL") not in ids for x in first_page):
+            raise ValueError("Incomplete playlist list")
+        return ids
+
+    def _verify_playlist_deletion(self, api, target):
+        playlist_id = target["playlistId"].removeprefix("VL")
+        before = target.get("beforeIds")
+        for delay in self._playlist_delete_verify_delays:
+            if self._closing.wait(delay):
+                return False
+            try:
+                after = self._read_playlist_library_ids(api)
+                if playlist_id in after:
+                    continue
+                if before is not None and playlist_id in before:
+                    return True
+                # Without a before/after library transition, only an explicit
+                # not-found response confirms absence; parser/network errors do not.
+                try:
+                    api.get_playlist(target["playlistId"], limit=1)
+                except YTMusicServerError as exc:
+                    if str(exc).startswith("Server returned HTTP 404:"):
+                        return True
+            except Exception as exc:
+                print(f"FelisMusic ověření smazání playlistu: {type(exc).__name__}")
+        return False
+
+    def _playlist_delete_result(self, api, target):
+        if self._verify_playlist_deletion(api, target):
+            return {"completed": True, "locked": True, "error": False, "canRecheck": False,
+                    "message": f"Smazán playlist: {target['title']}", "verification": target}
+        return {"completed": False, "locked": True, "error": False, "canRecheck": True,
+                "message": "Výsledek smazání zatím není ověřen. Zkus Ověřit znovu nebo zkontroluj playlist ve webovém YTM. Mazání se znovu neodesílá.",
+                "verification": target}
+
+    @Slot()
+    def recheckPlaylistDelete(self):
+        target = self._playlist_delete_verification
+        if (self._busy or self._closing.is_set() or not target
+                or not self._playlist_delete_state.get("canRecheck")):
+            return
+        api = self._ytmusic
+        self._playlist_delete_state = dict(self._playlist_delete_state, pending=True, message="Ověřuji smazání…")
+        self.playlistDeleteChanged.emit()
+        self._submit("playlist_delete_recheck", "Ověřuji smazání playlistu…",
+                     lambda: self._playlist_delete_result(api, target))
+
+    @Slot(result=bool)
+    def confirmPlaylistDelete(self):
+        state = self._playlist_delete_state
+        if (self._busy or self._closing.is_set() or self._ytmusic is None or not state
+                or state.get("pending") or state.get("locked") or state.get("completed")
+                or state["playlistId"] in self._deleted_playlists):
+            return False
+        playlist_id, title = state["playlistId"], state["title"]
+        api = self._ytmusic
+        self._playlist_delete_state = dict(state, pending=True, error=False, message="Mažu playlist…")
+        self.playlistDeleteChanged.emit()
+        def task():
+            attempted = False
+            target = {"playlistId": playlist_id, "title": title, "beforeIds": None}
+            try:
+                data = api.get_playlist(playlist_id, limit=1)
+                if data.get("owned") is not True:
+                    return {"completed": False, "locked": True, "error": True,
+                            "message": "Playlist už není vlastní. Nic nebylo smazáno."}
+                if data.get("title") != title:
+                    return {"completed": False, "locked": True, "error": True,
+                            "message": "Název playlistu se změnil. Zavři potvrzení a otevři ho znovu. Nic nebylo smazáno."}
+                try:
+                    target["beforeIds"] = sorted(self._read_playlist_library_ids(api))
+                except Exception as exc:
+                    print(f"FelisMusic knihovna před smazáním: {type(exc).__name__}")
+                attempted = True
+                response = api.delete_playlist(playlist_id)
+                status = response.get("status") if isinstance(response, dict) else response
+                if status == "STATUS_SUCCEEDED":
+                    return {"completed": True, "locked": True, "error": False, "canRecheck": False,
+                            "message": f"Smazán playlist: {title}"}
+                # Metadata only: never log response bodies, titles or auth data.
+                keys = [key for key in ("status", "responseContext", "actions", "error")
+                        if isinstance(response, dict) and key in response]
+                known_status = status if status in ("STATUS_FAILED", "STATUS_SUCCEEDED") else "jiný/chybí"
+                print(f"FelisMusic odpověď smazání: typ={type(response).__name__}; stav={known_status}; pole={','.join(keys)}")
+                if status == "STATUS_FAILED" or (isinstance(response, dict) and response.get("error")):
+                    return {"completed": False, "locked": True, "error": True, "canRecheck": True,
+                            "message": "YT Music nepotvrdilo smazání. Zkontroluj stav přes Ověřit znovu nebo ve webovém YTM.",
+                            "verification": target}
+                return self._playlist_delete_result(api, target)
+            except Exception as exc:
+                print(f"FelisMusic smazání playlistu: {type(exc).__name__}")
+                if attempted:
+                    return self._playlist_delete_result(api, target)
+                return {"completed": False, "locked": False, "error": True,
+                        "message": "Nelze ověřit vlastnictví playlistu. Nic nebylo smazáno."}
+        self._submit("playlist_delete_write", "Mažu playlist…", task)
+        return True
+
+    def _forget_deleted_playlist(self, playlist_id):
+        self._deleted_playlists.add(playlist_id)
+        self._pending_created_playlists.pop(playlist_id, None)
+        self._pending_playlist_moves.pop(playlist_id, None)
+        self._pending_removed_playlist_items.pop(playlist_id, None)
+        def keep(item):
+            return item.get("kind") != "playlist" or item.get("playlistId") != playlist_id
+        for model in (self._library_items_model, self._playlists_model, self._search_results_model):
+            items = model.snapshot()
+            filtered = [x for x in items if keep(x)]
+            if len(filtered) != len(items):
+                model.set_items(filtered)
+        def clean_snapshot(snapshot):
+            for source, items in snapshot.items():
+                snapshot[source] = [x for x in items if keep(x)]
+        def clean_history(state):
+            state["history"] = [x for x in state.get("history", [])
+                                if x.get("meta", {}).get("playlistId") != playlist_id]
+            for parent in state["history"]:
+                clean_history(parent)
+        clean_snapshot(self._playing_browse_snapshots)
+        for index, song in enumerate(self._queue.tracks if self._queue else []):
+            origin = song.get("_guiOrigin", {})
+            state = origin.get("detail_state", {})
+            clean_snapshot(origin.get("snapshots", {}))
+            clean_history(state)
+            if (state.get("meta", {}).get("playlistId") == playlist_id
+                    or song.get("_guiPlaylistBinding", (None, None))[0] == playlist_id):
+                song["_guiOrigin"] = {"source": "playing", "index": index, "context": {"page": 5}}
+                song.pop("_guiPlaylistBinding", None)
+        self._detail_history = [x for x in self._detail_history if x.get("meta", {}).get("playlistId") != playlist_id]
+        for state in self._detail_history:
+            clean_history(state)
+        return_to_overview = self._detail_meta.get("playlistId") == playlist_id
+        if return_to_overview:
+            self.clearDetail()
+        self.playerChanged.emit()
+        return return_to_overview
+
     @Property("QVariantMap", notify=playlistEditChanged)
     def playlistEditState(self):
         return self._playlist_edit_state
@@ -1799,11 +2005,12 @@ class BackendBridge(QObject):
                                      "targets": [], "pending": True, "completed": False,
                                      "locked": False, "message": ""}
         api = self._ytmusic
+        deleted_ids = set(self._deleted_playlists)
         def task():
             targets = []
             for playlist in api.get_library_playlists(limit=None) or []:
                 pid = str(core.playlist_id_from_item(playlist) or "")
-                if playlist.get("owned") is True and pid and pid not in ("LM", "SE") and not pid.startswith("RD"):
+                if playlist.get("owned") is True and pid and pid not in deleted_ids and pid not in ("LM", "SE") and not pid.startswith("RD"):
                     targets.append({"playlistId": pid, "title": str(playlist.get("title") or "Bez názvu")})
             return sorted(targets, key=lambda x: x["title"].casefold())
         self._submit("playlist_save_choices", "Načítám vlastní playlisty…", task)
@@ -2395,6 +2602,8 @@ class BackendBridge(QObject):
         emit_song_library_changed = False
         emit_playlist_save_requested = False
         emit_playlist_edit_requested = False
+        emit_playlist_delete_requested = False
+        deleted_playlist = None
         changed_playlist_id = ""
         try:
             if name == "initialize":
@@ -2408,6 +2617,24 @@ class BackendBridge(QObject):
                 self._set_connected(True)
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
+
+            elif name == "playlist_delete_read":
+                self._playlist_delete_verification = None
+                self._playlist_delete_state = result
+                self.playlistDeleteChanged.emit()
+                emit_playlist_delete_requested = True
+                self._set_status("Potvrď smazání playlistu")
+
+            elif name in ("playlist_delete_write", "playlist_delete_recheck"):
+                self._playlist_delete_verification = result.get("verification")
+                self._playlist_delete_state = dict(self._playlist_delete_state,
+                    **{key: value for key, value in result.items() if key != "verification"}, pending=False)
+                state = self._playlist_delete_state
+                if state.get("completed"):
+                    playlist_id = state["playlistId"]
+                    deleted_playlist = (playlist_id, self._forget_deleted_playlist(playlist_id))
+                self.playlistDeleteChanged.emit()
+                self._set_status(state["message"])
 
             elif name == "playlist_move_item":
                 if result["ok"]:
@@ -2565,11 +2792,13 @@ class BackendBridge(QObject):
                 self._set_status(f"Historie · {len(result)} položek")
 
             elif name == "playlists":
+                result = [x for x in result if x.get("playlistId") not in self._deleted_playlists]
                 self._playlists_model.set_items(result)
                 self._set_status(f"Playlisty · {len(result)}")
 
             elif name.startswith("library:"):
                 if name == "library:playlists":
+                    result = [x for x in result if x.get("playlistId") not in self._deleted_playlists]
                     received_ids = {item.get("playlistId") for item in result}
                     for playlist_id in received_ids:
                         self._pending_created_playlists.pop(playlist_id, None)
@@ -2592,6 +2821,7 @@ class BackendBridge(QObject):
                 self._set_status(f"{label} · {len(result)}")
 
             elif name == "search":
+                result = [x for x in result if x.get("kind") != "playlist" or x.get("playlistId") not in self._deleted_playlists]
                 self._search_results_model.set_items(result)
                 self._set_status(f"Výsledků hledání · {len(result)}")
 
@@ -2632,6 +2862,10 @@ class BackendBridge(QObject):
             self.playlistSaveRequested.emit()
         if emit_playlist_edit_requested:
             self.playlistEditRequested.emit()
+        if emit_playlist_delete_requested:
+            self.playlistDeleteRequested.emit()
+        if deleted_playlist:
+            self.playlistDeleted.emit(*deleted_playlist)
         if changed_playlist_id:
             self.playlistsChanged.emit(changed_playlist_id)
 
@@ -3429,7 +3663,7 @@ class BackendBridge(QObject):
     def loadPlaylistTracks(self, playlist_id, title):
         playlist_id = (playlist_id or "").strip()
         title = (title or "Playlist").strip()
-        if not playlist_id:
+        if not playlist_id or playlist_id in self._deleted_playlists:
             return
 
         pending_moves = list(self._pending_playlist_moves.get(playlist_id, []))

@@ -152,6 +152,14 @@ ApplicationWindow {
                     && backend.detailTitle.length === 0)
                 backend.loadLibrarySection("songs", root.currentLibraryOrder)
         }
+        function onPlaylistDeleteRequested() { playlistDeleteDialog.open() }
+        function onPlaylistDeleteChanged() {
+            if (backend.playlistDeleteState.completed && !backend.playlistDeleteState.pending)
+                playlistDeleteDialog.close()
+        }
+        function onPlaylistDeleted(playlistId, returnToOverview) {
+            if (returnToOverview) root.selectLibrarySection("playlists", "Playlisty")
+        }
         function onPlaylistEditRequested() {
             playlistEditName.text = backend.playlistEditState.title || ""
             playlistEditDescription.text = backend.playlistEditState.description || ""
@@ -222,6 +230,89 @@ ApplicationWindow {
         Layout.fillWidth: true
         model: ["Soukromý", "Neveřejný (přístup přes odkaz)", "Veřejný"]
         Accessible.name: "Viditelnost playlistu"
+    }
+
+    Dialog {
+        id: playlistDeleteDialog
+        objectName: "playlistDeleteDialog"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 540)
+        padding: 18
+        closePolicy: backend.playlistDeleteState.pending ? Popup.NoAutoClose : Popup.CloseOnEscape
+        onClosed: backend.cancelPlaylistDelete()
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label {
+            text: "Smazat playlist?"
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                objectName: "playlistDeleteTitle"
+                text: backend.playlistDeleteState.title || ""
+                font.bold: true
+                font.pixelSize: 18
+                color: "white"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                text: "Smaže se celý playlist z YouTube Music. Tuto akci nelze vrátit. Samotné skladby tím neodstraníš."
+                color: "#dddddd"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                text: "Přehrávací fronta zůstane zachovaná."
+                color: "#aaaaaa"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                objectName: "playlistDeleteMessage"
+                text: backend.playlistDeleteState.message || ""
+                visible: text.length > 0
+                color: backend.playlistDeleteState.error ? "#ffaaaa" : "#cccccc"
+                Layout.fillWidth: true
+                wrapMode: Text.WordWrap
+            }
+            BusyIndicator {
+                running: !!backend.playlistDeleteState.pending
+                visible: running
+                Layout.alignment: Qt.AlignHCenter
+            }
+        }
+        footer: DialogButtonBox {
+            background: Item { }
+            PlayerTextButton {
+                objectName: "playlistDeleteSubmit"
+                text: "Smazat playlist"
+                implicitWidth: 140
+                enabled: !backend.busy && !backend.playlistDeleteState.pending
+                         && !backend.playlistDeleteState.locked && !!backend.playlistDeleteState.playlistId
+                onClicked: backend.confirmPlaylistDelete()
+                background: Rectangle { color: parent.enabled ? "#743333" : "#3c3030"; border.color: "#985050"; radius: 4 }
+            }
+            PlayerTextButton {
+                objectName: "playlistDeleteRecheck"
+                text: "Ověřit znovu"
+                implicitWidth: 125
+                visible: !!backend.playlistDeleteState.canRecheck
+                enabled: !backend.busy && !backend.playlistDeleteState.pending
+                onClicked: backend.recheckPlaylistDelete()
+            }
+            PlayerTextButton {
+                objectName: "playlistDeleteCancel"
+                text: backend.playlistDeleteState.locked ? "Zavřít" : "Zrušit"
+                implicitWidth: 85
+                enabled: !backend.playlistDeleteState.pending
+                onClicked: playlistDeleteDialog.close()
+            }
+        }
     }
 
     Dialog {
@@ -1235,6 +1326,14 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
                 onTriggered: backend.openPlaylistEdit()
+            }
+            MenuItem {
+                objectName: "collectionPlaylistDelete"
+                text: "Smazat playlist…"
+                visible: backend.detailCanDeletePlaylist
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.openPlaylistDelete()
             }
         }
     }

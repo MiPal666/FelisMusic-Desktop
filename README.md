@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.18-dev**
+- Desktop GUI: **0.3.19-dev**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Postup dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - GUI toolkit: PySide6 + QML
@@ -323,3 +323,11 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Po potvrzení YTM se přesune řádek i v aplikaci; při běžném přesunu se model neresetuje. Potvrzené operace a jejich výsledná pořadí překlenou opožděné odpovědi serveru. Už obsažené operace se neaplikují podruhé; po dorovnání se pomocná informace zahodí.
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
+
+## 0.3.19-dev – smazání vlastního playlistu (7d)
+
+- V menu otevřeného vlastního playlistu je **⋮ → Smazat playlist…**, také u prázdného playlistu. Cizí a známé automatické playlisty tuto akci nenabízejí.
+- Před potvrzením se načte aktuální název a vlastnictví. Dialog upozorní na smazání celého playlistu z YTM; **Zrušit** nebo Escape nic nezapisuje. Teprve **Smazat playlist** provede akci podle zachyceného jedinečného ID, takže stejně pojmenované playlisty neovlivní.
+- Bezprostředně před zápisem se znovu ověří vlastnictví i potvrzený název. Pokud se název mezitím změnil, je nutné otevřít nové potvrzení. Během mazání se další odeslání i zavření zablokuje.
+- Po přímém potvrzení YTM nebo následném ověření smazání dialog zmizí, karta se odebere a otevřený smazaný detail se vrátí do Knihovna → Playlisty. Opožděný přehled nebo hledání smazanou kartu během této session nevrátí. Pokud odpověď neobsahuje očekávané potvrzení, následuje omezené čtecí ověření zmizení konkrétního ID z úplné knihovny, kde před zápisem bylo. Neověřený stav zůstane jako neutrální zpráva s tlačítkem **Ověřit znovu**, které už mazání neodesílá. Chyba sítě nebo nečitelný přehled nejsou důkazem smazání.
+- Přehrávání, čas, fronta a její pořadí zůstávají zachované. Skladby z již smazaného zdroje odkazují na samotnou Frontu, takže kliknutí na cover neotevře neexistující playlist a přehrávání může pokračovat.
