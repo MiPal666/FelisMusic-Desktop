@@ -6,12 +6,14 @@ Referenční zdroje: lokálně dodaná původní CLI `tmp/felismusic.py`, převz
 
 Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i uživatelsky ověřené a přijaté v commitu `2c51536`. Níže je tato položka aktualizovaná; ostatní závěry auditu zůstávají platné.
 
+**0.3.23-dev / A2**: zamíchání existující fronty je implementované a uživatelsky přijaté. Oproti destruktivnímu nahrazení zbytku v CLI zachovává přesné GUI výskyty i ručně přidané položky a YTM používá jako zdroj pořadí kolekční části. Ruční výskyty se navíc lokálně promíchají a rozmístí mezi ni.
+
 ## Co skutečně chybí v GUI oproti fungující CLI
 
 | Funkce | CLI reference | GUI nyní | Co je třeba dopojit |
 |---|---|---|---|
-| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | Samostatně zbývá zamíchání běžící fronty a Shuffle interpreta. |
-| Zamíchání běžící fronty | Ano: `apply_youtube_shuffle` zachová aktuální skladbu a zamíchá zbytek. | Ne. | Adaptace na GUI výskyty, ruční vložení, aktuální audio, označení fronty a prefetch. CLI nenabízí hotový návrat přepínačem k původnímu pořadí. |
+| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | A2 hotovo; samostatně zbývá Shuffle interpreta. |
+| Zamíchání běžící fronty | Ano: `apply_youtube_shuffle` zachová aktuální skladbu a zamíchá zbytek. | A2 hotovo a uživatelsky přijato v 0.3.23-dev. | Ověřené automaticky i uživatelským testem. Jednorázová akce, nikoli návrat přepínačem k původnímu pořadí. |
 | Náhodně interpreta | Ano: `artist_action_queue(mode="shuffle")` používá YTM shuffleId. | Ne. | Zachovat shuffleId z detailu interpreta a dopojit akci. |
 | Mix/Rádio ze skladby | Ano: aktivace a další bloky. | Částečně: `startRadioFrom` vytvoří první blok, využívá `get_radio_block` a filtrování CLI. | Průběžné doplňování, ne jen první dávka. |
 | Doplňování rádia | Ano: `refill_radio_queue` / `maybe_refill_radio_queue`, seed poslední skladbou, filtr duplicit, odklad při chybě. | Ne: GUI tuto funkci nevolá a jeho poll přehrávače rádio nedoplňuje. | Asynchronní spouštění před koncem, bezpečné připojení bloku do existující fronty, prefetch a ochrana před starým výsledkem. |

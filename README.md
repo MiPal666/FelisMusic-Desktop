@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.21-dev** (uživatelsky ověřeno)
+- Desktop GUI: **0.3.23-dev** (uživatelsky ověřeno)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -324,6 +324,15 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Po potvrzení YTM se přesune řádek i v aplikaci; při běžném přesunu se model neresetuje. Potvrzené operace a jejich výsledná pořadí překlenou opožděné odpovědi serveru. Už obsažené operace se neaplikují podruhé; po dorovnání se pomocná informace zahodí.
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
+
+## 0.3.23-dev – zamíchání aktuální fronty (A2, uživatelsky přijato)
+
+- Ve **Frontě → Zamíchat** se vyžádá YTM Shuffle původního playlistu/alba. Funguje pro normálně i náhodně spuštěnou kolekci s podporovaným zdrojovým ID. Fronta bez takového ID, uploady, rádio a nepodporované kolekce mají tlačítko neaktivní.
+- Aktuální skladba se přesune na první místo a pokračuje beze změny času, hlasitosti, hodnocení a Repeat; pauza i Stop zůstávají zachované. Stejně jako v CLI mohou za aktuální skladbou znovu být dříve přehrané skladby kolekce.
+- Existující výskyty se neztrácejí a nepřibývají další: kolekční část přebírá dostupné pořadí YTM, nevrácené položky zůstávají za ní a ručně vložené položky se lokálně promíchají a vloží do náhodných míst mezi ně. Přesné duplicity a původ každé položky se zachovají.
+- Další skladba se přednačte podle nového pořadí. Cover dál vrací příslušnou kolekci. Změna pořadí uloženého playlistu nepřepíše náhodné pořadí fronty; odebrání známého konkrétního výskytu se dál promítá.
+- Samotné přidání respektuje „jako další“/„na konec“; ruční položky se náhodně přemístí až stisknutím **Zamíchat**. Náhoda může někdy ponechat stejnou pozici.
+- Nový stisk znovu zamíchá; nejde o přepínač pro obnovení původního pořadí. Chyba či zneplatněný požadavek ponechá původní frontu a audio.
 
 ## 0.3.21-dev – Repeat patří k aktuální frontě (uživatelsky přijato)
 

@@ -147,6 +147,9 @@ ApplicationWindow {
         target: backend
         function onDetailTitleChanged() { backend.clearTrackSelection() }
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onQueueShuffled() {
+            if (root.currentPage === 5) Qt.callLater(root.revealQueueRow)
+        }
         function onSongLibraryChanged() {
             if (root.currentPage === 1 && root.currentLibrarySection === "songs"
                     && backend.detailTitle.length === 0)
@@ -2187,6 +2190,17 @@ ApplicationWindow {
                                     text: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0"
                                     color: "#b9b0ff"
                                     font.pixelSize: 16
+                                }
+                                Button {
+                                    objectName: "queueShuffleButton"
+                                    text: "Zamíchat"
+                                    enabled: backend.connected && !backend.busy && backend.playerCanShuffle
+                                    hoverEnabled: true
+                                    ToolTip.visible: hovered
+                                    ToolTip.text: backend.playerCanShuffle
+                                                  ? "Zamíchat podle YTM; aktuální skladba pokračuje"
+                                                  : "Pro tuto frontu není YTM Shuffle dostupné"
+                                    onClicked: backend.shuffleQueue()
                                 }
                                 Button {
                                     text: "Na aktuální"

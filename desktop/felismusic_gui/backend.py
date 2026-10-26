@@ -1,4 +1,5 @@
 from collections import Counter
+import random
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
@@ -161,6 +162,7 @@ class BackendBridge(QObject):
     playerTrackChanged = Signal()
     playbackSourceCaptured = Signal()
     radioStarted = Signal()
+    queueShuffled = Signal()
     songLibraryMenuChanged = Signal()
     songLibraryChanged = Signal()
     playlistSaveChanged = Signal()
@@ -1445,6 +1447,7 @@ class BackendBridge(QObject):
             playable,
             name=self._queue_name_for_source(source),
             start_index=start_index,
+            source_playlist_id=self._detail_shuffle_id() if source == "detail" else None,
         )
         # Repeat belongs to this playback queue, not to future collections.
         self._repeat_mode = "off"
@@ -1599,7 +1602,7 @@ class BackendBridge(QObject):
         return True
 
     def _sync_playlist_queue_order(self, detail):
-        if self._queue is None:
+        if self._queue is None or self._queue.shuffle_active:
             return
         playlist_id = detail["meta"]["playlistId"]
         order = {x.get("setVideoId"): i for i, x in enumerate(detail["tracks"]) if x.get("setVideoId")}
@@ -2300,6 +2303,88 @@ class BackendBridge(QObject):
         # An explicit queue edit while the API is working supersedes its result.
         return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
 
+    @Property(bool, notify=playerChanged)
+    def playerCanShuffle(self):
+        return (self.playerHasTrack and self.playerCanEditQueue and not self._queue.radio_active
+                and not self._queue.current().get("_guiRemoveAfterPlayback")
+                and self._queue.source_playlist_id not in self._deleted_playlists
+                and core.youtube_shuffle_supported(self._queue.source_playlist_id))
+
+    @Slot(result=bool)
+    def shuffleQueue(self):
+        if self._busy or self._ytmusic is None or not self.playerCanShuffle:
+            return False
+        generation = self._playback_generation
+        marker = self._radio_queue_marker()
+        current = self._queue.current()
+        api = self._ytmusic
+        playlist_id, count = self._queue.source_playlist_id, self._queue.count()
+
+        def task():
+            result = {"generation": generation, "marker": marker, "current": current}
+            try:
+                result["tracks"] = core.get_youtube_shuffle_tracks(api, playlist_id, count)
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+
+        self._submit("shuffle_queue", "YouTube Music míchá frontu…", task)
+        return True
+
+    def _apply_queue_shuffle(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or not self.playerCanShuffle or self._queue.current() is not result["current"]):
+            return
+        if result.get("error"):
+            self._set_status("Frontu se nepodařilo zamíchat")
+            self.errorOccurred.emit(result["error"])
+            return
+        # Adapt the CLI's current-first YTM shuffle without replacing exact
+        # occurrences with ambiguous watch-playlist rows. Never lose GUI extras
+        # or invent duplicates when the server repeats an ID or omits a song.
+        current = result["current"]
+        remaining = [song for song in self._queue.tracks if song is not current]
+        manual = [song for song in remaining if song.get("_guiManualEnqueue")]
+        collection = [song for song in remaining if not song.get("_guiManualEnqueue")]
+        buckets = {}
+        for song in collection:
+            buckets.setdefault(song.get("videoId"), []).append(song)
+        ordered = []
+        used = set()
+        for item in result["tracks"]:
+            bucket = buckets.get(item.get("videoId"), [])
+            if bucket:
+                song = bucket.pop(0)
+                ordered.append(song)
+                used.add(id(song))
+        ordered.extend(song for song in collection if id(song) not in used)
+        if manual:
+            # YTM cannot order songs added only to our local queue. Mix their
+            # exact occurrences into random slots, preserving YTM's relative
+            # collection order while also randomizing the manual items.
+            random.shuffle(manual)
+            manual_slots = set(random.sample(range(len(ordered) + len(manual)), len(manual)))
+            manual_items, collection_items = iter(manual), iter(ordered)
+            ordered = [next(manual_items) if index in manual_slots else next(collection_items)
+                       for index in range(len(ordered) + len(manual))]
+        with self._transport_lock:
+            self._queue.tracks = [current, *ordered]
+            self._queue.index = 0
+            self._queue.shuffle_active = True
+            self._queue_source_indices = [song.get("_guiOrigin", {}).get("index", -1)
+                                          for song in self._queue.tracks]
+            self._player_track_marker = (id(self._queue), 0, current.get("videoId"))
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._sync_queue_model()
+        self.playerChanged.emit()
+        if self._player_state in ("playing", "paused"):
+            self._prefetch_next_track()
+        self._set_status("Fronta zamíchána · aktuální skladba pokračuje")
+        self.queueShuffled.emit()
+
     @Property(bool, notify=detailTitleChanged)
     def detailCanShuffle(self):
         meta = self._detail_meta
@@ -2460,6 +2545,7 @@ class BackendBridge(QObject):
         tracks = []
         for index in indices:
             track = self._playback_track(items[index])
+            track["_guiManualEnqueue"] = True
             if source == "playing":
                 track["_guiOrigin"] = deepcopy(self._queue.tracks[index].get("_guiOrigin", {}))
             else:
@@ -2687,7 +2773,10 @@ class BackendBridge(QObject):
         deleted_playlist = None
         changed_playlist_id = ""
         try:
-            if name == "shuffle_detail":
+            if name == "shuffle_queue":
+                self._apply_queue_shuffle(result)
+
+            elif name == "shuffle_detail":
                 self._apply_detail_shuffle(result)
 
             elif name == "initialize":

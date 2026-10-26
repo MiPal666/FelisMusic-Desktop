@@ -2,13 +2,26 @@
 
 Aktualizováno: 2026-10-26 (Europe/Prague).
 
+## Přijato uživatelem: 0.3.23-dev – A2 zamíchání existující fronty
+
+- **Fronta → Zamíchat** používá společný CLI helper `get_youtube_shuffle_tracks` a current-first postup CLI `apply_youtube_shuffle`, adaptovaný na uchování objektů GUI. Normálně spuštěné album/playlist nyní uchovává zdrojové playlistId/audioPlaylistId; také A1 frontu lze znovu zamíchat.
+- Zachová se tentýž queue/current objekt, audio, čas, pauza/Stop, hlasitost, hodnocení, Repeat a origin kontext. Aktuální výskyt se přesune na index 0; nepředstírá se nová skladba a nespouští se znovu audio ani dotaz na hodnocení. UI ukáže aktuální první řádek. Původní kolekce má nadále svoje řazení.
+- Odpověď YTM řadí existující kolekční výskyty, jeden přesný objekt na jeden odpovídající řádek. Nevrácené položky se neztratí; připojí se za vrácené. Cizí/nepoužitelné výsledky a přebytečné duplicity nevytvářejí nové výskyty. Ručně vložené objekty mají `_guiManualEnqueue`, lokálně se promíchají a vloží do náhodných míst mezi kolekční část; vlastní původy a přesné identity zůstanou zachované. I dříve hrané skladby zůstávají v zamíchané kolekci, jako v CLI.
+- Prefetch se zneplatní a přesměruje na skutečného nového nástupce. Náhodnou frontu nepřepíše následné přesunutí skladby v uloženém playlistu; odstranění známého přesného výskytu se dál synchronizuje. Z A1 watch odpovědi se nadále nevymýšlejí occurrence bindings.
+- Opožděná odpověď i chyba se ignorují po Stop/Next/novém přehrávání nebo zásahu do fronty. Pouhé procházení, pauza, seek či změna Repeat zamíchání neruší. Chyba ponechá starou frontu/audio. Rádio, neznámý/kurátorovaný zdroj, smazaný playlist, přechod mezi skladbami a právě odstraňovaný aktuální výskyt akci nepovolí.
+- Automatické kontroly: **212 offline testů**, z toho 15 nových v `tests/test_queue_shuffle.py`; přesné duplicity v různých místech YTM pořadí, ruční vložení stejného videoId, neúplná odpověď, opětovné zamíchání, aktivní/pauzované/zastavené audio, origin, Repeat, prefetch/cancel, zastaralé výsledky, pořadí a odebrání v playlistu. Bez účtu a fyzického audio zařízení.
+- QML kontrola skutečným klikáním při 1280×800/900×600: tlačítko, index 1/N, nepřerušené přehrávání a čas, pauza/Stop, Repeat, album i playlist, cover do původního pořadí, EOS do nového nástupce a neaktivní nepodporovaný zdroj. Bez QML chyb.
+- Po skutečném testu 0.3.22 uživatel požádal zahrnout do míchání také ručně vložené skladby. Oprava 0.3.23 zachovává YTM pořadí kolekční části, ale náhodně promíchá ruční výskyty a rozmístí je mezi ostatní. Testy zahrnují normální/již zamíchanou a playing/paused/stopped frontu, vložení jako další i na konec a právě hrající ruční výskyt.
+- QML opravy 0.3.23: skutečný stisk Zamíchat pro normální i již zamíchanou, hrající i zastavenou frontu při 1280×800/900×600. Ověřené nové pozice obou ručních položek, nezměněná identita/current audio a přechod po EOS na ručního nového nástupce. Testovací náhoda má určený výsledek, bez QML chyb.
+- **Michal 2026-10-26 potvrdil po několika ručních testech funkčnost a přijetí finální opravy.** Automatické doplňování rádia zatím není součástí této etapy.
+
 ## Přijato uživatelem: 0.3.21-dev – Repeat pro aktuální frontu
 
 - Nová fronta z prohlíženého seznamu (včetně opětovného spuštění stejné kolekce), náhodné spuštění kolekce, nové Rádio/Mix a první vložení do prázdné fronty nastaví Repeat na Vypnuto. Reset probíhá až při úspěšném vytvoření fronty; chyba nebo zneplatněná odpověď zachová starý stav.
 - Pohyb a výběr přímo ve Frontě, Pause/Play, Stop/Play, Next/Previous, procházení, cover a přidávání do existující fronty Repeat zachovávají. Budoucí A2 zamíchání téže fronty ho rovněž zachová.
 - Automatické kontroly: 197 offline testů; aktualizované původní scénáře zapínají Repeat po spuštění kolekce. Nové kontroly pokrývají všechny prohlížecí zdroje, opětovné spuštění stejné kolekce, výběr ve Frontě, pauzu/Stop a návrat, procházení/cover, neplatný výběr a první vložení. Stávající testy Shuffle/Rádia navíc ověřují reset až po úspěchu a zachování při chybě.
 - QML ověřené skutečným klikáním při 1280×800 a 900×600 pro oba režimy: viditelný reset tlačítka po novém albu/Shuffle, zachování při návratu přes cover, výběru ve Frontě, pauze, Stop/Play a Next/Previous. Bez QML chyb; API i audio jsou testovací.
-- Michal potvrdil skutečný test a přijetí 2026-10-26: Repeat funguje podle domluvy. A2 a další Rádio zatím nejsou rozpracované.
+- Michal potvrdil skutečný test a přijetí 2026-10-26: Repeat funguje podle domluvy. Uloženo v commitu `6272381`.
 
 ## Přijato uživatelem: 0.3.20-dev – A1 Shuffle kolekce
 
