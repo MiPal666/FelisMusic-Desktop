@@ -206,6 +206,10 @@ ApplicationWindow {
             root.currentPage = 5
             Qt.callLater(root.revealQueueRow)
         }
+        function onArtistPlaybackStarted() {
+            root.currentPage = 5
+            Qt.callLater(root.revealQueueRow)
+        }
         function onErrorOccurred(message) {
             root.errorText = message
             errorDialog.open()
@@ -1284,6 +1288,7 @@ ApplicationWindow {
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
             visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle
+                     || backend.detailMeta.kind === "artist"
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
             ToolTip.visible: hovered
@@ -1321,6 +1326,22 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.shuffleDetail()
+            }
+            MenuItem {
+                objectName: "artistRadio"
+                text: "Spustit mix"
+                visible: backend.detailMeta.kind === "artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanArtistRadio && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.startArtistPlayback("radio")
+            }
+            MenuItem {
+                objectName: "artistShuffle"
+                text: "Přehrát náhodně"
+                visible: backend.detailMeta.kind === "artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanArtistShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.startArtistPlayback("shuffle")
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"

@@ -10,16 +10,18 @@ Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i u
 
 **0.3.24-dev / B1**: průběžné doplňování skladbového mixu je implementované přes CLI `refill_radio_queue` nad snapshotem fronty a uživatelsky přijaté.
 
+**0.3.25-dev / B2**: Mix i Náhodně interpreta jsou implementované přes CLI `artist_action_queue`, s přímými radioId/shuffleId a menu ⋮ na všech kartách interpreta. Uživatelsky přijato; mix využívá průběžné doplňování B1.
+
 ## Co skutečně chybí v GUI oproti fungující CLI
 
 | Funkce | CLI reference | GUI nyní | Co je třeba dopojit |
 |---|---|---|---|
-| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | A2 hotovo; samostatně zbývá Shuffle interpreta. |
+| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | A2 hotovo; Shuffle interpreta přijaté v B2. |
 | Zamíchání běžící fronty | Ano: `apply_youtube_shuffle` zachová aktuální skladbu a zamíchá zbytek. | A2 hotovo a uživatelsky přijato v 0.3.23-dev. | Ověřené automaticky i uživatelským testem. Jednorázová akce, nikoli návrat přepínačem k původnímu pořadí. |
-| Náhodně interpreta | Ano: `artist_action_queue(mode="shuffle")` používá YTM shuffleId. | Ne. | Zachovat shuffleId z detailu interpreta a dopojit akci. |
+| Náhodně interpreta | Ano: `artist_action_queue(mode="shuffle")` používá YTM shuffleId. | B2 hotovo a uživatelsky přijato v 0.3.25-dev. | Shoda s webovým YTM ověřená uživatelem; nové pořadí při každém spuštění není zaručené. |
 | Mix/Rádio ze skladby | Ano: aktivace a další bloky. | První blok i B1 doplňování přijaté v 0.3.24-dev. | Skutečně ověřené dva navazující bloky; další zdroje mixů samostatně. |
 | Doplňování rádia | Ano: `refill_radio_queue` / `maybe_refill_radio_queue`, seed poslední skladbou, filtr duplicit, odklad při chybě. | B1 implementované v 0.3.24-dev: CLI refill na oddělené kopii, připojení na UI vlákně, single-flight, odklad chyb, ochrana výsledku. | Uživatelsky přijaté doplňování více bloků; prefetch a čekání na konci ověřené také automaticky/QML. |
-| Mix/Rádio interpreta | Ano: `artist_action_queue(mode="radio")` používá radioId a radio_active. | Ne. | Uchovat radioId a připojit k mechanismu doplňování. |
+| Mix/Rádio interpreta | Ano: `artist_action_queue(mode="radio")` používá radioId a radio_active. | B2 uživatelsky přijaté v 0.3.25-dev. | Aktivace ověřená uživatelem; návaznost na B1 automaticky/QML. |
 | Obnova přehrávání po restartu | Ano: `save_resume_session`, `load_resume_session`, `offer_resume_session`. | Ne. Shutdown zastaví audio a uklidí cache, frontu k pokračování neukládá. | GUI nabídka pokračování/odmítnutí, fronta/pozice/režimy/kontext; vhodný uložený formát. |
 | Přihlášení a obnova přihlášení | Ano: interaktivní `AuthManager`, izolovaný profil podporovaného browseru. | Pouze čtení existujících FCM hlaviček v `initialize`; žádný GUI login postup. | GUI ovládání existujícího loginu a chyb/obnovy session, bez textového menu v běžném použití. |
 | Cast a přepínání výstupů | Ano: discovery, `OutputState`, `refresh_outputs`, `switch_playback_output`, obsluha stavu/odpojení. | Pouze Local/GStreamer. | Výběr výstupu a postupné reálné testy Local ↔ Cast ↔ Cast, skupin, pauzy/pozice/hlasitosti, výpadků a úklidu. |

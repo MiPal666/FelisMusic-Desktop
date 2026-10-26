@@ -2,7 +2,7 @@
 
 Aktualizováno: **2026-10-26 (Europe/Prague)** po porovnání kódu GUI, původní CLI reference `tmp/felismusic.py` a převzatého `desktop/felismusic_gui/legacy_core.py`.
 
-Aktuální uživatelsky přijatá verze: **0.3.24-dev** (B1 přijato 2026-10-26, připraveno ke commitu). A2 je uložené v commitu **`869838b`**. Předchozí úprava Repeat je uložená v commitu **`6272381`**. Shuffle A1 je uložený v commitu **`2c51536`**. Poslední ověřování: **228 offline testů**, QML 1280×800/900×600 a skutečné uživatelské testy YTM. Historie změn a přijetí je v [STATUS.md](STATUS.md); věcné porovnání funkcí v [CLI-GUI.md](CLI-GUI.md). Tento plán popisuje současný stav, nikoli postupně zastarávající historické mezistavy.
+Aktuální uživatelsky přijatá verze: **0.3.25-dev** (B2 přijato 2026-10-26, připraveno ke commitu). B1 je uložený v commitu **`eac3b3d`**. A2 je uložené v commitu **`869838b`**. Předchozí úprava Repeat je uložená v commitu **`6272381`**. Shuffle A1 je uložený v commitu **`2c51536`**. Poslední ověřování: **241 offline testů**, QML 1280×800/900×600 a skutečné uživatelské testy YTM. Historie změn a přijetí je v [STATUS.md](STATUS.md); věcné porovnání funkcí v [CLI-GUI.md](CLI-GUI.md). Tento plán popisuje současný stav, nikoli postupně zastarávající historické mezistavy.
 
 **A1 přijato uživatelem a commitnuto:** náhodné spuštění playlistu/alba, Repeat, přechody a návrat přes cover ověřené ve skutečném YTM. Kolekce zachovává své řazení, Fronta ukazuje skutečné pořadí přehrávání; toto chování uživatel výslovně chce zachovat.
 
@@ -11,6 +11,8 @@ Přijato uživatelem **0.3.21-dev**: Repeat patří k aktuální frontě. Nové 
 Přijato uživatelem **0.3.23-dev / A2**: tlačítko **Fronta → Zamíchat**, zachování aktuálního audia/času/pauzy/Repeat a přesných výskytů. Pořadí kolekční části určuje YTM; ruční položky se lokálně promíchají a náhodně rozptýlí mezi kolekční část. Michal potvrdil funkčnost po několika ručních testech. B1 – průběžné doplňování Rádia/Mixu – je následující samostatný podkrok.
 
 Přijato uživatelem **0.3.24-dev / B1**: automatické doplňování mixu ze skladby přes CLI `refill_radio_queue` na pozadí. Při nejvýše pěti zbývajících skladbách doplní nový blok; při chybě či žádných nových výsledcích odloží pokus o 30 sekund. Dosažený přirozený konec může po doplnění automaticky navázat, Stop to zruší. Prošlo 228 offline testů a QML ověření; Michal potvrdil skutečné doplňování dvou navazujících bloků a růst Fronty v GUI i logu. Následuje B2 – akce interpreta přes ⋮.
+
+Přijato uživatelem **0.3.25-dev / B2**: **menu ⋮ v hlavičce interpreta → Spustit mix / Přehrát náhodně**, přes vrácené radioId/shuffleId a CLI `artist_action_queue`. Mix pokračuje přes B1, Shuffle je konečná fronta. Akce fungují na všech kartách interpreta a dostupnost se řídí každým ID samostatně. Prošlo 241 offline testů a QML kontroly; Michal potvrdil funkčnost a shodu opakovaných front s webovým YTM. B3 – Mix alba/playlistu – zatím není implementovaný.
 
 ## Rozsah a pracovní domluva
 
@@ -30,7 +32,7 @@ Přijato uživatelem **0.3.24-dev / B1**: automatické doplňování mixu ze skl
 | **2. Fronta + Info + Stop** | **Hotovo** v původním rozsahu. | Samostatné zásahy do fronty patří do 3c. |
 | **3. Kontextová menu** | Menu skladeb, vložení jedné či vybraných skladeb jako další/na konec, multivýběr hotové. | **3a:** Info/hodnocení konkrétní vybrané skladby v menu. **3b:** přímé přehrávací a vkládací akce celých kolekcí. **3c:** odebrání/přesun přímo ve Frontě. |
 | **4. Detaily a navigace** | **4a hotovo:** interpret – dostupné úplné skladby/alba/singly/EP, řazení, otevření alba a návrat. Kompaktní hlavičky hotové. | **4b:** dostupná metadata hlaviček. **4c:** přímé přechody skladba → album/interpret a album → interpret. |
-| **5. Rádio / Mix** | **5a hotovo:** mix z jedné skladby, první blok doporučení. Mixy pro vás lze načíst a otevřít. | **5b / B1 hotovo:** uživatelsky přijato v 0.3.24-dev. **5c:** Mix/Náhodně interpreta a podporované akce kolekcí přes menu ⋮. |
+| **5. Rádio / Mix** | **5a hotovo:** mix z jedné skladby, první blok doporučení. Mixy pro vás lze načíst a otevřít. | **5b / B1 hotovo:** uživatelsky přijato v 0.3.24-dev. **5c / B2:** Mix/Náhodně interpreta přijaté v 0.3.25. **B3:** Mix alba/playlistu přes ⋮. |
 | **6. Knihovna a odběry** | Přímé přidání/odebrání podporované skladby v knihovně hotové. | **6a zbytek:** alba/playlisty. **6b:** odběry interpretů. **6c:** kopírování/otevírání odkazů. |
 | **7. Správa playlistů** | **7a–7d hotové, uživatelsky přijaté a commitnuté.** | Další náměty: hromadné odebrání a přetahování; nezpochybňují dokončení domluveného rozsahu 7a–7d. |
 | **8. Session a přihlášení** | GUI používá existující FCM přihlášení. | **8a:** uložit/obnovit přehrávání. **8b:** přihlásit/obnovit přihlášení z GUI. |
@@ -54,7 +56,7 @@ Uživatel zdůraznil časté používání Mix/Rádia. Proto se po bodu 7 nepost
 ### B. Rádio / Mix – vysoká priorita (5b/5c)
 
 1. **B1 – Průběžné doplňování mixu ze skladby (hotovo, uživatelsky přijato v 0.3.24-dev).** Dopojit mechanismus `refill_radio_queue` / `maybe_refill_radio_queue`: načítat před koncem fronty, další blok seedovat vhodnou poslední skladbou, filtrovat již přítomné/nepoužitelné výsledky. Operaci provádět mimo UI vlákno, zachovat audio, aktualizovat frontu a prefetch. Zrušit nebo ignorovat starý výsledek při změně zdroje. Při chybě omezený další pokus, nikoli opakování v každém pollu.
-2. **B2 – Mix a Náhodně interpreta.** Uchovat YTM `radioId`/`shuffleId`, které GUI dosud nevyužívá. Převzít datovou logiku `artist_action_queue`. Rádio interpreta musí spolupracovat s doplňováním B1. Mix i Náhodně nabídnout přes menu ⋮, nepřidávat samostatná tlačítka.
+2. **B2 – Mix a Náhodně interpreta (hotovo, uživatelsky přijato v 0.3.25-dev).** GUI uchovává YTM `radioId`/`shuffleId` v metadatech interpreta. Převzít datovou logiku `artist_action_queue`. Rádio interpreta musí spolupracovat s doplňováním B1. Mix i Náhodně nabídnout přes menu ⋮, nepřidávat samostatná tlačítka.
 3. **B3 – Dostupné mixy kolekcí a sjednocení jejich chování.** Mix playlistu a alba nabídnout přes menu ⋮, bez dalších samostatných tlačítek. Pro skladbu používat videoId / RDAMVM, pro playlist RDAMPL + playlistId, pro album RDAMPL + audioPlaylistId a pro interpreta vrácené radioId; mix celé kolekce nenahrazovat rádiem její první skladby. Nabídnout akci tam, kde YTM skutečně vrací vhodný zdroj. Rozlišovat otevření existujícího „Mixu pro vás“, vytvoření rádia a konečný playlist. U dynamických mixů ověřit vhodný způsob pokračování; neslibovat neomezené přehrávání každému obyčejnému playlistu.
 
 **Přijetí:** několik skutečně doplněných bloků, duplicity, konec původního bloku, dočasná chyba sítě, přepnutí na jinou frontu během dotazu a zachování aktuální skladby při aktivaci jejího rádia. První blok rádia nebo samotné otevření Mixů pro vás není splněné automatické doplňování.

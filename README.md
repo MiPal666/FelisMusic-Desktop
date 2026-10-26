@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.24-dev** (uživatelsky ověřeno)
+- Desktop GUI: **0.3.25-dev** (uživatelsky ověřeno)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -325,13 +325,21 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
 
+## 0.3.25-dev – Mix a Náhodně interpreta (B2, uživatelsky přijato)
+
+- Otevři interpreta a v **⋮ v jeho hlavičce** zvol **Spustit mix** nebo **Přehrát náhodně**. Nabídka funguje na kartách Skladby / Alba / Singly a EP; obě akce vždy cílí na interpreta jako celek, nikoli na právě zobrazenou část katalogu.
+- Používá se převzaté `artist_action_queue`: přímo `radioId` či `shuffleId` z YTM, nikoli rádio první skladby ani místní náhodné řazení. Chybí-li některé ID, odpovídající akce je neaktivní. Menu zůstává dostupné i při prázdné katalogové části.
+- Výsledek se otevře jako skutečná Fronta. Mix je průběžně doplňovaný přes B1; Náhodně je konečná fronta. Cover u obou vrací Frontu, která obsahuje skutečně vrácený výběr YTM. Nové přehrávání vypne Repeat; původní audio/fronta zůstávají až do úspěšné odpovědi.
+- Při chybě se původní přehrávání zachová. Stop, nový výběr, zásah do fronty či opuštění detailu zneplatní starou odpověď. Nová akce interpreta má přednost před starým automatickým doplňováním.
+- Prošlo 241 offline testů a QML kontroly při 1280×800 a 900×600. Uživatel přijal Mix i Náhodně interpreta a ověřil shodu výsledků s webovým YTM. Opakované spuštění může vrátit stejnou frontu; interval změny není doložený. Mix celého alba/playlistu přes ⋮ přijde v B3.
+
 ## 0.3.24-dev – průběžné pokračování Mixu ze skladby (B1, uživatelsky přijato)
 
 - Spusť **menu skladby → Spustit mix**. Při pěti nebo méně skladbách zbývajících za aktuální položkou se na pozadí připojí další doporučení z YTM. Průběžně přibývají do stejné Fronty; nepřerušují audio, nemění Repeat/pauzu a nepřitahují seznam zpět na aktuální řádek.
 - Používá převzatou logiku CLI: zdrojem dalšího bloku je poslední skladba fronty. Nepřehratelné skladby, chybějící ID, již přítomné skladby i duplicity uvnitř odpovědi se vyřadí. Přednačítání naváže na nového nástupce.
 - Po chybě nebo odpovědi bez nových skladeb následuje další pokus nejdříve za 30 sekund, bez chybového dialogu. Pokud mezitím fronta dohraje, po úspěšném doplnění naváže. **Stop** zruší toto automatické pokračování a funguje i během čekání po dohrání.
 - Nové přehrávání/Mix/Shuffle a změny obsahu fronty zneplatní starou odpověď. Procházení, pauza a běžný přechod na další skladbu ve stejném mixu doplňování neruší. Účetní API požadavky jsou řazené za sebou, transport zůstává dostupný.
-- Prošlo 228 offline testů a QML kontroly při 1280×800/900×600. Uživatel ověřil dva navazující bloky i nárůst počtu v GUI/logu (186 → 276 skladeb). Mix playlistu/alba/interpreta přes ⋮ je další samostatná etapa, zatím není přidaný.
+- Prošlo 228 offline testů a QML kontroly při 1280×800/900×600. Uživatel ověřil dva navazující bloky i nárůst počtu v GUI/logu (186 → 276 skladeb). Mix playlistu/alba přes ⋮ je další samostatná etapa; akce interpreta navazují v 0.3.25-dev.
 
 ## 0.3.23-dev – zamíchání aktuální fronty (A2, uživatelsky přijato)
 

@@ -164,6 +164,7 @@ class BackendBridge(QObject):
     playbackSourceCaptured = Signal()
     radioStarted = Signal()
     queueShuffled = Signal()
+    artistPlaybackStarted = Signal()
     songLibraryMenuChanged = Signal()
     songLibraryChanged = Signal()
     playlistSaveChanged = Signal()
@@ -2483,6 +2484,72 @@ class BackendBridge(QObject):
         meta = self._detail_meta
         return meta.get("playlistId", "") if meta.get("kind") == "playlist" else meta.get("shufflePlaylistId", "")
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanArtistRadio(self):
+        return self._detail_meta.get("kind") == "artist" and bool(self._detail_meta.get("radioId"))
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanArtistShuffle(self):
+        return self._detail_meta.get("kind") == "artist" and bool(self._detail_meta.get("shuffleId"))
+
+    @Slot(str, result=bool)
+    def startArtistPlayback(self, mode):
+        if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
+                or mode not in ("radio", "shuffle")
+                or not (self.detailCanArtistRadio if mode == "radio" else self.detailCanArtistShuffle)):
+            return False
+        self._radio_refill_revision += 1
+        artist_id = self._detail_meta["browseId"]
+        artist_name = self._detail_title
+        playlist_id = self._detail_meta["radioId" if mode == "radio" else "shuffleId"]
+        generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
+
+        def task():
+            result = {"artistId": artist_id, "mode": mode, "generation": generation, "marker": marker}
+            try:
+                queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
+                if queue is None or queue.empty():
+                    raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu interpreta.")
+                tracks = queue.tracks
+                if mode == "radio":
+                    tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), tracks)
+                    tracks = core.limit_radio_tracks_for_test(tracks)
+                result.update(name=queue.name, tracks=[self._playback_track(self._track(x)) for x in tracks])
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+
+        self._submit("artist_playback", f"Načítám {'mix' if mode == 'radio' else 'náhodné pořadí'} · {artist_name}…", task)
+        return True
+
+    def _apply_artist_playback(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or self._detail_meta.get("kind") != "artist"
+                or self._detail_meta.get("browseId") != result["artistId"]):
+            return
+        if result.get("error"):
+            self._set_status("Frontu interpreta se nepodařilo načíst")
+            self.errorOccurred.emit(result["error"])
+            return
+        self._radio_waiting_for_tracks = None
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._queue = core.PlaybackQueue(result["tracks"], name=result["name"],
+            radio_active=result["mode"] == "radio", shuffle_active=result["mode"] == "shuffle")
+        self._repeat_mode = "off"
+        self._queue_source = "playing"
+        self._queue_source_indices = list(range(self._queue.count()))
+        self._playing_browse_snapshots = {}
+        self._playing_detail_title = ""
+        for index, song in enumerate(self._queue.tracks):
+            song["_guiOrigin"] = {"source": "playing", "index": index, "context": {"page": 5}}
+        self._sync_queue_model()
+        self._set_player_from_queue()
+        self._start_current_async(direction=1, stop_current=True)
+        self.artistPlaybackStarted.emit()
+
     @Slot(result=bool)
     def shuffleDetail(self):
         if (self._busy or not self.playerCanEditQueue or self._ytmusic is None
@@ -2867,7 +2934,10 @@ class BackendBridge(QObject):
         deleted_playlist = None
         changed_playlist_id = ""
         try:
-            if name == "shuffle_queue":
+            if name == "artist_playback":
+                self._apply_artist_playback(result)
+
+            elif name == "shuffle_queue":
                 self._apply_queue_shuffle(result)
 
             elif name == "shuffle_detail":
@@ -3716,7 +3786,10 @@ class BackendBridge(QObject):
                     if block.get("browseId") and (section == "songs" or block.get("params")):
                         pointers[section] = {key: block[key] for key in ("browseId", "params") if key in block}
                 meta = {"kind": "artist", "section": "songs", "sections": sections,
-                        "pointers": pointers, "orders": {}, "thumbnail": self._thumbnail(data)}
+                        "pointers": pointers, "orders": {}, "thumbnail": self._thumbnail(data),
+                        "browseId": browse_id,
+                        "radioId": data["radioId"].strip() if isinstance(data.get("radioId"), str) else "",
+                        "shuffleId": data["shuffleId"].strip() if isinstance(data.get("shuffleId"), str) else ""}
                 self._load_artist_section(ytmusic, meta, "songs")
 
 
