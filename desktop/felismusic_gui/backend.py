@@ -3,6 +3,7 @@ import random
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
+from time import monotonic
 from typing import Any
 
 from PySide6.QtCore import (
@@ -184,6 +185,7 @@ class BackendBridge(QObject):
     _playbackFailed = Signal(int, str)
     _ratingStatusReady = Signal(int, str, str)
     _ratingActionReady = Signal(int, str, str, str, str)
+    _radioRefillReady = Signal(object)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -199,6 +201,9 @@ class BackendBridge(QObject):
         self._transport_lock = Lock()
         self._prefetch_future = None
         self._prefetch_revision = 0
+        self._radio_refill_pending = False
+        self._radio_refill_revision = 0
+        self._radio_waiting_for_tracks = None
         self._ytmusic = None
         self._status = "Připravuji backend…"
         self._account_name = "YouTube Music"
@@ -299,6 +304,7 @@ class BackendBridge(QObject):
         self._liked_order = ""
 
         self._songLibraryProbeReady.connect(self._apply_song_library_probe, Qt.ConnectionType.QueuedConnection)
+        self._radioRefillReady.connect(self._apply_radio_refill, Qt.ConnectionType.QueuedConnection)
         self._resultReady.connect(
             self._apply_result,
             Qt.ConnectionType.QueuedConnection,
@@ -463,6 +469,10 @@ class BackendBridge(QObject):
     @Property(str, notify=playerChanged)
     def playerRepeatMode(self):
         return self._repeat_mode
+
+    @Property(bool, notify=playerChanged)
+    def playerWaitingForRadio(self):
+        return self._queue is not None and self._radio_waiting_for_tracks is self._queue
 
     @Slot()
     def cycleRepeat(self):
@@ -1166,6 +1176,7 @@ class BackendBridge(QObject):
         self.playerChanged.emit()
 
     def _start_current_async(self, direction=1, stop_current=False):
+        self._radio_waiting_for_tracks = None
         if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
 
@@ -1336,6 +1347,8 @@ class BackendBridge(QObject):
         ):
             return
 
+        self._maybe_refill_radio()
+
         try:
             status = self._local_output.media_controller.status
         except Exception:
@@ -1399,6 +1412,9 @@ class BackendBridge(QObject):
                 return
             self._player_state = "idle"
             self._player_position = self._player_duration
+            if self._queue.radio_active:
+                self._radio_waiting_for_tracks = self._queue
+                self._set_status("Mix · čekám na další doporučení…")
             changed = True
 
         if changed:
@@ -2303,6 +2319,77 @@ class BackendBridge(QObject):
         # An explicit queue edit while the API is working supersedes its result.
         return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
 
+    def _maybe_refill_radio(self):
+        queue = self._queue
+        if (self._closing.is_set() or self._busy or self._radio_refill_pending
+                or self._ytmusic is None or queue is None or queue.empty() or not queue.radio_active
+                or self._playback_transitioning
+                or (self._player_state not in ("playing", "paused")
+                    and self._radio_waiting_for_tracks is not queue)
+                or queue.count() - queue.index - 1 > core.current_mix_refill_threshold()
+                or monotonic() < queue.radio_refill_retry_after):
+            return False
+        # CLI mutates its queue synchronously. Give it a detached list and apply
+        # only the new suffix on the Qt thread; playback may advance meanwhile.
+        snapshot = core.PlaybackQueue(list(queue.tracks), start_index=queue.index, radio_active=True)
+        snapshot.radio_refill_retry_after = queue.radio_refill_retry_after
+        count = snapshot.count()
+        marker, revision, api = self._radio_queue_marker(), self._radio_refill_revision, self._ytmusic
+        self._radio_refill_pending = True
+
+        def work():
+            result = {"queue": queue, "marker": marker, "revision": revision}
+            try:
+                core.refill_radio_queue(api, snapshot)
+                result.update(tracks=snapshot.tracks[count:], retry=snapshot.radio_refill_retry_after)
+            except Exception as exc:
+                print(f"FelisMusic doplnění mixu: {type(exc).__name__}")
+                result.update(tracks=[], retry=monotonic() + 30)
+            self._radioRefillReady.emit(result)
+
+        # Share the API executor to serialize account requests, but do not set
+        # global busy: browsing, transport and menus remain usable during refill.
+        self._executor.submit(work)
+        return True
+
+    @Slot(object)
+    def _apply_radio_refill(self, result):
+        self._radio_refill_pending = False
+        queue = result["queue"]
+        if (self._closing.is_set() or queue is not self._queue or not queue.radio_active
+                or result["revision"] != self._radio_refill_revision
+                or result["marker"] != self._radio_queue_marker()):
+            return
+        queue.radio_refill_retry_after = result["retry"]
+        if not result["tracks"]:
+            if not self._busy:
+                self._set_status("Další část mixu zatím není dostupná · zkusím znovu za 30 s")
+            return
+        previous_next = self._next_prefetch_id()
+        start = queue.count()
+        for offset, raw in enumerate(result["tracks"]):
+            item = self._track(raw)
+            track = self._playback_track(item)
+            track["_guiOrigin"] = {"source": "playing", "index": start + offset, "context": {"page": 5}}
+            queue.tracks.append(track)
+            self._queue_source_indices.append(start + offset)
+            self._playing_tracks_model.insert_item(start + offset, item)
+        self.playerChanged.emit()
+        if self._radio_waiting_for_tracks is queue and self._player_state == "idle":
+            self._radio_waiting_for_tracks = None
+            if queue.next():
+                self._set_player_from_queue()
+                self._start_current_async(direction=1)
+            return
+        if previous_next != self._next_prefetch_id():
+            self._prefetch_revision += 1
+            if self._prefetch_future is not None:
+                self._prefetch_future.cancel()
+            if self._player_state in ("playing", "paused") and not self._playback_transitioning:
+                self._prefetch_next_track()
+        if not self._busy:
+            self._set_status(f"Mix doplněn · +{len(result['tracks'])} skladeb · celkem {queue.count()}")
+
     @Property(bool, notify=playerChanged)
     def playerCanShuffle(self):
         return (self.playerHasTrack and self.playerCanEditQueue and not self._queue.radio_active
@@ -2401,6 +2488,9 @@ class BackendBridge(QObject):
         if (self._busy or not self.playerCanEditQueue or self._ytmusic is None
                 or not self.detailCanShuffle):
             return False
+        # A user-requested replacement takes priority over an older refill,
+        # whose append would otherwise invalidate this request's queue marker.
+        self._radio_refill_revision += 1
         state = self._detail_state()
         generation = self._playback_generation
         marker = self._radio_queue_marker()
@@ -2473,6 +2563,7 @@ class BackendBridge(QObject):
         if (not item.get("videoId") or self._is_upload(item)
                 or item.get("kind", "song") not in ("song", "video", "")):
             return False
+        self._radio_refill_revision += 1
         seed = self._playback_track(item)
         generation = self._playback_generation
         marker = self._radio_queue_marker()
@@ -2503,6 +2594,7 @@ class BackendBridge(QObject):
             self.errorOccurred.emit(result["error"])
             return
         tracks = result["tracks"]
+        self._radio_waiting_for_tracks = None
         current = self._queue.current() if self.playerHasTrack else None
         keep_audio = (current is not None and current.get("videoId") == tracks[0]["videoId"]
                       and self._player_state in ("playing", "paused"))
@@ -2583,6 +2675,8 @@ class BackendBridge(QObject):
     @Slot()
     def stopPlayback(self):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
+        self._radio_refill_revision += 1
+        self._radio_waiting_for_tracks = None
         if self._closing.is_set() or self._local_output is None or not self.playerHasTrack:
             return
         with self._transport_lock:

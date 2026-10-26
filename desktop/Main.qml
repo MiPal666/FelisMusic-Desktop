@@ -2430,7 +2430,7 @@ ApplicationWindow {
                                     objectName: "stopButton"
                                     iconKind: "stop"
                                     implicitWidth: 42
-                                    enabled: backend.playerHasTrack && backend.playerState !== "idle"
+                                    enabled: backend.playerHasTrack && (backend.playerState !== "idle" || backend.playerWaitingForRadio)
                                     hoverEnabled: true
                                     onClicked: backend.stopPlayback()
                                     ToolTip.visible: hovered

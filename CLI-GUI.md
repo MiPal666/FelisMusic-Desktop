@@ -8,6 +8,8 @@ Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i u
 
 **0.3.23-dev / A2**: zamíchání existující fronty je implementované a uživatelsky přijaté. Oproti destruktivnímu nahrazení zbytku v CLI zachovává přesné GUI výskyty i ručně přidané položky a YTM používá jako zdroj pořadí kolekční části. Ruční výskyty se navíc lokálně promíchají a rozmístí mezi ni.
 
+**0.3.24-dev / B1**: průběžné doplňování skladbového mixu je implementované přes CLI `refill_radio_queue` nad snapshotem fronty a uživatelsky přijaté.
+
 ## Co skutečně chybí v GUI oproti fungující CLI
 
 | Funkce | CLI reference | GUI nyní | Co je třeba dopojit |
@@ -15,8 +17,8 @@ Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i u
 | YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | A2 hotovo; samostatně zbývá Shuffle interpreta. |
 | Zamíchání běžící fronty | Ano: `apply_youtube_shuffle` zachová aktuální skladbu a zamíchá zbytek. | A2 hotovo a uživatelsky přijato v 0.3.23-dev. | Ověřené automaticky i uživatelským testem. Jednorázová akce, nikoli návrat přepínačem k původnímu pořadí. |
 | Náhodně interpreta | Ano: `artist_action_queue(mode="shuffle")` používá YTM shuffleId. | Ne. | Zachovat shuffleId z detailu interpreta a dopojit akci. |
-| Mix/Rádio ze skladby | Ano: aktivace a další bloky. | Částečně: `startRadioFrom` vytvoří první blok, využívá `get_radio_block` a filtrování CLI. | Průběžné doplňování, ne jen první dávka. |
-| Doplňování rádia | Ano: `refill_radio_queue` / `maybe_refill_radio_queue`, seed poslední skladbou, filtr duplicit, odklad při chybě. | Ne: GUI tuto funkci nevolá a jeho poll přehrávače rádio nedoplňuje. | Asynchronní spouštění před koncem, bezpečné připojení bloku do existující fronty, prefetch a ochrana před starým výsledkem. |
+| Mix/Rádio ze skladby | Ano: aktivace a další bloky. | První blok i B1 doplňování přijaté v 0.3.24-dev. | Skutečně ověřené dva navazující bloky; další zdroje mixů samostatně. |
+| Doplňování rádia | Ano: `refill_radio_queue` / `maybe_refill_radio_queue`, seed poslední skladbou, filtr duplicit, odklad při chybě. | B1 implementované v 0.3.24-dev: CLI refill na oddělené kopii, připojení na UI vlákně, single-flight, odklad chyb, ochrana výsledku. | Uživatelsky přijaté doplňování více bloků; prefetch a čekání na konci ověřené také automaticky/QML. |
 | Mix/Rádio interpreta | Ano: `artist_action_queue(mode="radio")` používá radioId a radio_active. | Ne. | Uchovat radioId a připojit k mechanismu doplňování. |
 | Obnova přehrávání po restartu | Ano: `save_resume_session`, `load_resume_session`, `offer_resume_session`. | Ne. Shutdown zastaví audio a uklidí cache, frontu k pokračování neukládá. | GUI nabídka pokračování/odmítnutí, fronta/pozice/režimy/kontext; vhodný uložený formát. |
 | Přihlášení a obnova přihlášení | Ano: interaktivní `AuthManager`, izolovaný profil podporovaného browseru. | Pouze čtení existujících FCM hlaviček v `initialize`; žádný GUI login postup. | GUI ovládání existujícího loginu a chyb/obnovy session, bez textového menu v běžném použití. |
@@ -48,7 +50,7 @@ Podstatné: přítomnost CLI kódu v `legacy_core.py` neznamená, že je funkce 
 | Knihovní změny a odběry | GUI umí přímé členství podporované skladby v knihovně. Zbývají alba/playlisty a odběry interpretů (6a/6b); toto není hotové editační rozhraní referenční CLI. |
 | Odkazy a přímá navigace | Plánované kopírování/otevření odkazů a přechody skladba → album/interpret, album → interpret. Uložené albumId samo o sobě není hotová navigační akce. |
 | Metadata hlaviček a menu Info/hodnocení jiné skladby | GUI úpravy navazující na současné hlavičky a Info/hodnocení aktuálního audia; dosud nekompletní (4b a 3a). |
-| Mix kolekce dle možností YTM | Zbývající plán 5c. CLI explicitně má rádio skladby a interpreta; neoznačovat všechny budoucí kolekční mixy za převzetí již existujícího univerzálního CLI menu. |
+| Mix kolekce dle možností YTM | Zbývající plán 5c. CLI explicitně má rádio skladby a interpreta. Pro playlist/album je ověřená dokumentovaná cesta RDAMPL + playlistId/audioPlaylistId; samostatné GUI akce budou v menu ⋮. Neoznačovat je za již hotové univerzální CLI menu. |
 | MPRIS | Není implementované v referenční CLI ani v GUI; nová desktopová systémová integrace (9). |
 | Instalace/spouštěč/release a celková revize vzhledu | Příprava desktopové 1.0 (11), nikoli chybějící přehrávací algoritmus CLI. |
 | Hromadné odebrání a drag-and-drop | Další náměty; jednotlivé odebrání a přesun přes menu v bodu 7 jsou hotové. |

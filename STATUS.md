@@ -2,6 +2,17 @@
 
 Aktualizováno: 2026-10-26 (Europe/Prague).
 
+## Přijato uživatelem: 0.3.24-dev – B1 průběžné doplňování rádia
+
+- GUI poll volá `_maybe_refill_radio` pro aktivní/pauzovaný mix při nejvýše pěti budoucích skladbách, nebo při přirozeném konci čekajícím na další blok. Převzaté `core.refill_radio_queue` pracuje na snapshotu fronty mimo Qt vlákno; zachovává seed poslední skladbou, filtr dostupnosti/duplicit, testovací omezení bloku a 30sekundový odklad po chybě či bez nových výsledků.
+- Nanejvýš jeden refill současně. Používá stejný jednovláknový API executor jako ostatní účetní požadavky, takže nedochází ke konkurenčnímu používání klienta. Nezapíná globální busy a jeho dokončení nezruší busy případné uživatelské operace. Přesun ve Frontě, pauza a transport mohou pokračovat.
+- Na UI vlákně připojí pouze nové skladby do stejné fronty a modelu přes rowsInserted, bez resetu listu a falešné změny aktuální skladby. Zachová audio/čas/hodnocení/hlasitost/Repeat/pauzu i index a origin aktuálního výskytu. Nové položky mají zdroj playing / stránku Fronta; případný nový bezprostřední nástupce se přednačte.
+- Identita fronty, její skladby a revize Stop/nového požadavku chrání před opožděnou odpovědí. Běžný Next/Previous nebo výběr jiné skladby v téže frontě blok nezneplatní. Nové přehrávání/Mix/Shuffle, ruční editace obsahu, Stop a shutdown ho zneplatní; nový uživatelský Mix/Shuffle má přednost už od svého zadání.
+- Když poslední skladba přirozeně dohraje před příchodem odpovědi, GUI čeká v idle se stavovou zprávou a po nových doporučeních přejde na skutečného nového nástupce. Chyba nemá modální dialog; další pokus po nejméně 30 s. Stop je při tomto čekání dostupný a zruší pozdější automatické spuštění. Při obyčejném Stop se na pozadí další bloky nenačítají.
+- Kontroly: **228 offline testů**, z toho 16 nových v `tests/test_radio_refill.py`: hranice/single-flight, dostupnost a duplicity, několik bloků, seed, ruční kopie, běžné Next, pauza/Repeat, prefetch/EOS, čekání a Stop, omezené opakování chyb, nový zdroj/Mix/Shuffle, editace, serializace API a zachování busy, testovací limit. U staršího testu přesunu se před porovnáním ratingu vyčká dokončení jeho původního asynchronního načítání; odstraněna závislost na pořadí callbacků.
+- QML při 1280×800 a 900×600: spuštění přes skutečné menu skladby, doplnění při pollu bez restartu audia/změny scrollu, počet a index Fronty, pauza během požadavku, aktivní Stop při čekání, ignorování pozdní odpovědi a obnovené pokračování do dalšího bloku. Bez QML chyb. API/audio jsou testovací, bez přístupu k reálnému účtu.
+- **Michal 2026-10-26 potvrdil skutečné doplňování a přijetí B1.** V GUI i logu ověřil dva navazující bloky: ze 148 vrácených skladeb přibylo nejprve 43 (celkem 186), následně 90 (celkem 276). Log potvrzuje také probíhající přednačítání. Pauza, Stop a chybové scénáře jsou automaticky/QML ověřené; z této zprávy se jim nepřisuzuje samostatný skutečný uživatelský test. Mix interpreta a playlistu/alba jsou další samostatné kroky a budou v menu ⋮, bez nových samostatných tlačítek.
+
 ## Přijato uživatelem: 0.3.23-dev – A2 zamíchání existující fronty
 
 - **Fronta → Zamíchat** používá společný CLI helper `get_youtube_shuffle_tracks` a current-first postup CLI `apply_youtube_shuffle`, adaptovaný na uchování objektů GUI. Normálně spuštěné album/playlist nyní uchovává zdrojové playlistId/audioPlaylistId; také A1 frontu lze znovu zamíchat.
@@ -13,7 +24,7 @@ Aktualizováno: 2026-10-26 (Europe/Prague).
 - QML kontrola skutečným klikáním při 1280×800/900×600: tlačítko, index 1/N, nepřerušené přehrávání a čas, pauza/Stop, Repeat, album i playlist, cover do původního pořadí, EOS do nového nástupce a neaktivní nepodporovaný zdroj. Bez QML chyb.
 - Po skutečném testu 0.3.22 uživatel požádal zahrnout do míchání také ručně vložené skladby. Oprava 0.3.23 zachovává YTM pořadí kolekční části, ale náhodně promíchá ruční výskyty a rozmístí je mezi ostatní. Testy zahrnují normální/již zamíchanou a playing/paused/stopped frontu, vložení jako další i na konec a právě hrající ruční výskyt.
 - QML opravy 0.3.23: skutečný stisk Zamíchat pro normální i již zamíchanou, hrající i zastavenou frontu při 1280×800/900×600. Ověřené nové pozice obou ručních položek, nezměněná identita/current audio a přechod po EOS na ručního nového nástupce. Testovací náhoda má určený výsledek, bez QML chyb.
-- **Michal 2026-10-26 potvrdil po několika ručních testech funkčnost a přijetí finální opravy.** Automatické doplňování rádia zatím není součástí této etapy.
+- **Michal 2026-10-26 potvrdil po několika ručních testech funkčnost a přijetí finální opravy; commit `869838b`.** Automatické doplňování rádia zatím není součástí této etapy.
 
 ## Přijato uživatelem: 0.3.21-dev – Repeat pro aktuální frontu
 

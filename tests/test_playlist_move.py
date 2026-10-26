@@ -170,6 +170,7 @@ class PlaylistMoveTests(support.AudioPlaybackTestCase):
 
     def test_move_current_across_duplicate_keeps_audio_time_rating_and_next(self):
         self.play_detail()
+        self.until(lambda: self.b.playerLikeStatus != 'UNKNOWN')
         queue = self.b._queue; current = queue.current(); stops = len(self.stops)
         self.b._player_position = 73
         rating = self.b.playerLikeStatus
