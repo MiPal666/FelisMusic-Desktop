@@ -2,13 +2,13 @@
 
 Aktualizováno: 2026-10-26 (Europe/Prague).
 
-## Připraveno k uživatelskému testu: 0.3.21-dev – Repeat pro aktuální frontu
+## Přijato uživatelem: 0.3.21-dev – Repeat pro aktuální frontu
 
 - Nová fronta z prohlíženého seznamu (včetně opětovného spuštění stejné kolekce), náhodné spuštění kolekce, nové Rádio/Mix a první vložení do prázdné fronty nastaví Repeat na Vypnuto. Reset probíhá až při úspěšném vytvoření fronty; chyba nebo zneplatněná odpověď zachová starý stav.
 - Pohyb a výběr přímo ve Frontě, Pause/Play, Stop/Play, Next/Previous, procházení, cover a přidávání do existující fronty Repeat zachovávají. Budoucí A2 zamíchání téže fronty ho rovněž zachová.
 - Automatické kontroly: 197 offline testů; aktualizované původní scénáře zapínají Repeat po spuštění kolekce. Nové kontroly pokrývají všechny prohlížecí zdroje, opětovné spuštění stejné kolekce, výběr ve Frontě, pauzu/Stop a návrat, procházení/cover, neplatný výběr a první vložení. Stávající testy Shuffle/Rádia navíc ověřují reset až po úspěchu a zachování při chybě.
 - QML ověřené skutečným klikáním při 1280×800 a 900×600 pro oba režimy: viditelný reset tlačítka po novém albu/Shuffle, zachování při návratu přes cover, výběru ve Frontě, pauze, Stop/Play a Next/Previous. Bez QML chyb; API i audio jsou testovací.
-- Čeká na skutečný uživatelský test a přijetí. A2 a další Rádio zatím nejsou rozpracované.
+- Michal potvrdil skutečný test a přijetí 2026-10-26: Repeat funguje podle domluvy. A2 a další Rádio zatím nejsou rozpracované.
 
 ## Přijato uživatelem: 0.3.20-dev – A1 Shuffle kolekce
 

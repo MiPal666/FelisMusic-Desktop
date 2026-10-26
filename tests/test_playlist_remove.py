@@ -185,8 +185,8 @@ class PlaylistRemoveTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b._player_track_marker[1:], (1, 'B'))
 
     def test_current_finishes_once_even_in_repeat_one(self):
-        self.b._repeat_mode = 'one'
         self.play_detail(1)
+        self.b.cycleRepeat(); self.b.cycleRepeat()
         self.b.removeDetailPlaylistItem('A', 'second'); self.ready()
         self.assertEqual(self.queue_ids(), ['first', 'second', 'third'])
         self.assertEqual(self.b._next_prefetch_id(), 'B')
@@ -199,7 +199,7 @@ class PlaylistRemoveTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.played, ['A', 'B', 'B'])
 
     def test_removed_last_track_wraps_in_repeat_all(self):
-        self.b._repeat_mode = 'all'; self.play_detail(2)
+        self.play_detail(2); self.b.cycleRepeat()
         self.b.removeDetailPlaylistItem('B', 'third'); self.ready()
         self.eos(); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.queue_ids(), ['first', 'second'])
@@ -216,7 +216,7 @@ class PlaylistRemoveTests(support.AudioPlaybackTestCase):
 
     def test_removing_only_current_clears_queue_after_finish(self):
         self.data['tracks'] = [self.data['tracks'][0]]
-        self.b._repeat_mode = 'all'; self.play_detail()
+        self.play_detail(); self.b.cycleRepeat()
         self.b.removeDetailPlaylistItem('A', 'first'); self.ready()
         self.assertTrue(self.b.playerHasTrack)
         self.eos()

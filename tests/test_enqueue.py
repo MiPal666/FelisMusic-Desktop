@@ -144,8 +144,8 @@ class EnqueueTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.detailTracksModel.snapshot()[0]['likeStatus'],'DISLIKE')
 
     def test_append_at_end_retargets_repeat_all_wrap_prefetch(self):
-        self.b.cycleRepeat()
         self.start('A', 'B')
+        self.b.cycleRepeat()
         self.until(lambda: 'B' in support.core.LOCAL_AUDIO_CACHE)
         self.b.nextTrack(); self.until(lambda: self.b.playerState == 'playing')
         self.assertTrue(self.b.enqueueFrom('detail', 0, False, self.other()))
@@ -157,8 +157,8 @@ class EnqueueTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.downloads['X'], 1)
 
     def test_repeat_one_is_preserved_after_inserting_next(self):
-        self.b.cycleRepeat(); self.b.cycleRepeat()
         self.start('A', 'B')
+        self.b.cycleRepeat(); self.b.cycleRepeat()
         self.b.enqueueFrom('detail', 0, True, self.other())
         self.assertEqual(self.b.playerRepeatMode, 'one')
         self.assertNotIn('X', self.downloads)

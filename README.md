@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.21-dev** (čeká na uživatelský test)
+- Desktop GUI: **0.3.21-dev** (uživatelsky ověřeno)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -325,7 +325,7 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
 
-## 0.3.21-dev – Repeat patří k aktuální frontě (čeká na uživatelský test)
+## 0.3.21-dev – Repeat patří k aktuální frontě (uživatelsky přijato)
 
 - Spuštění nové fronty dvojklikem/Enter ze seznamu skladeb, přes **Přehrát náhodně** či vytvořením nového rádia přepne Repeat na **Vypnuto**. Platí i pro nové spuštění téže kolekce.
 - Výběr skladby přímo ve Frontě, Next/Previous, Pause/Play, Stop/Play, procházení a návrat přes cover nastavení zachovají. Stejně tak vložení skladeb do existující fronty.

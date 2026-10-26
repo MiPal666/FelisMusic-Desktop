@@ -53,7 +53,7 @@ class RadioTests(support.AudioPlaybackTestCase):
         self.assertTrue(self.b.restorePlayingSource(5))
         self.assertEqual(self.b.playingTracksModel.count, 3)
 
-    def test_paused_current_seed_keeps_pause_and_repeat(self):
+    def test_paused_current_seed_keeps_pause_but_new_radio_resets_repeat(self):
         self.start('A', 'B')
         self.b._player_state = 'paused'
         self.b._player_position = 37
@@ -62,12 +62,13 @@ class RadioTests(support.AudioPlaybackTestCase):
         self.b.startRadioFrom('playing', 0); self.ready()
         self.assertEqual(self.b.playerState, 'paused')
         self.assertEqual(self.b.playerPosition, 37)
-        self.assertEqual(self.b.playerRepeatMode, 'one')
+        self.assertEqual(self.b.playerRepeatMode, 'off')
         self.assertEqual(self.played, ['A'])
         self.assertEqual(len(self.stops), stops)
 
     def test_other_seed_starts_selected_song_and_replaces_only_on_success(self):
         self.start('A', 'B')
+        self.b.cycleRepeat()
         self.b.searchResultsModel.set_items([dict(self.song('S'), kind='song'), dict(self.song('unselected'), kind='song')])
         self.block = [self.song('X'), self.song('S'), self.song('Y')]
         self.block_radio = True
@@ -75,11 +76,13 @@ class RadioTests(support.AudioPlaybackTestCase):
         self.until(self.radio_entered.is_set)
         self.assertEqual(self.ids(), ['A', 'B'])
         self.assertEqual(self.b.playerTitle, 'A')
+        self.assertEqual(self.b.playerRepeatMode, 'all')
         self.release.set(); self.ready()
         self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.ids(), ['S', 'X', 'Y'])
         self.assertEqual(self.played, ['A', 'S'])
         self.assertEqual(self.b.playerQueueIndex, 0)
+        self.assertEqual(self.b.playerRepeatMode, 'off')
 
     def test_filtering_unavailable_missing_ids_duplicates_and_seed(self):
         self.b.searchResultsModel.set_items([dict(self.song('S'), kind='video')])
@@ -93,6 +96,7 @@ class RadioTests(support.AudioPlaybackTestCase):
 
     def test_failure_or_only_seed_does_not_change_queue_or_audio(self):
         self.start('A', 'B'); queue = self.b._queue; stops = len(self.stops)
+        self.b.cycleRepeat(); self.b.cycleRepeat()
         for block in ([], [self.song('A')]):
             self.block = block
             self.b.startRadioFrom('library', 0); self.ready()
@@ -104,6 +108,7 @@ class RadioTests(support.AudioPlaybackTestCase):
         self.assertEqual(len(self.stops), stops)
         self.assertEqual(len(self.errors), 3)
         self.assertFalse(self.started)
+        self.assertEqual(self.b.playerRepeatMode, 'one')
 
     def test_stop_supersedes_pending_radio(self):
         self.start('A', 'B'); queue = self.b._queue
