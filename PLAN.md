@@ -2,9 +2,11 @@
 
 Aktualizováno: **2026-10-26 (Europe/Prague)** po porovnání kódu GUI, původní CLI reference `tmp/felismusic.py` a převzatého `desktop/felismusic_gui/legacy_core.py`.
 
-Aktuální uživatelsky přijatá verze: **0.3.19-dev**, commit **`99dcad6`**. Poslední ověřování: **182 offline testů**, QML 1280×800/900×600 a skutečné uživatelské testy YTM. Historie změn a přijetí je v [STATUS.md](STATUS.md); věcné porovnání funkcí v [CLI-GUI.md](CLI-GUI.md). Tento plán popisuje současný stav, nikoli postupně zastarávající historické mezistavy.
+Aktuální uživatelsky přijatá verze: **0.3.20-dev**, commit **`2c51536`**. Poslední ověřování: **192 offline testů**, QML 1280×800/900×600 a skutečné uživatelské testy YTM. Historie změn a přijetí je v [STATUS.md](STATUS.md); věcné porovnání funkcí v [CLI-GUI.md](CLI-GUI.md). Tento plán popisuje současný stav, nikoli postupně zastarávající historické mezistavy.
 
-Rozpracováno **0.3.20-dev / A1**: náhodné spuštění otevřeného playlistu/alba přes YTM je implementované a čeká na skutečný uživatelský test. Automaticky ověřeno 192 offline testy a QML menu/návratem přes cover v 1280×800 a 900×600. A2 a Rádio zůstávají další samostatné podkroky.
+**A1 přijato uživatelem a commitnuto:** náhodné spuštění playlistu/alba, Repeat, přechody a návrat přes cover ověřené ve skutečném YTM. Kolekce zachovává své řazení, Fronta ukazuje skutečné pořadí přehrávání; toto chování uživatel výslovně chce zachovat.
+
+Rozpracováno **0.3.21-dev**: Repeat patří k aktuální frontě. Nové přehrávání z kolekce/vyhledávání, nový Shuffle či rádio jej vypne až při úspěšném vytvoření fronty. Pohyb uvnitř fronty, procházení, cover, Pause/Play, Stop/Play a vkládání skladeb jej zachovají. Čeká na uživatelský test; potom A2 a Rádio jako samostatné podkroky.
 
 ## Rozsah a pracovní domluva
 
@@ -20,7 +22,7 @@ Rozpracováno **0.3.20-dev / A1**: náhodné spuštění otevřeného playlistu/
 
 | Bod | Současný stav | Co zbývá |
 |---|---|---|
-| **1. Repeat / Shuffle** | Repeat off/all/one hotový. A1 náhodné spuštění playlistu/alba připravené k uživatelskému testu. | Přijetí A1; **A2:** zamíchání za běhu. |
+| **1. Repeat / Shuffle** | Repeat a A1 náhodné spuštění playlistu/alba přijaté. | Přijetí úpravy Repeat pro novou frontu (0.3.21); **A2:** zamíchání za běhu. |
 | **2. Fronta + Info + Stop** | **Hotovo** v původním rozsahu. | Samostatné zásahy do fronty patří do 3c. |
 | **3. Kontextová menu** | Menu skladeb, vložení jedné či vybraných skladeb jako další/na konec, multivýběr hotové. | **3a:** Info/hodnocení konkrétní vybrané skladby v menu. **3b:** přímé přehrávací a vkládací akce celých kolekcí. **3c:** odebrání/přesun přímo ve Frontě. |
 | **4. Detaily a navigace** | **4a hotovo:** interpret – dostupné úplné skladby/alba/singly/EP, řazení, otevření alba a návrat. Kompaktní hlavičky hotové. | **4b:** dostupná metadata hlaviček. **4c:** přímé přechody skladba → album/interpret a album → interpret. |
@@ -40,7 +42,7 @@ Uživatel zdůraznil časté používání Mix/Rádia. Proto se po bodu 7 nepost
 
 ### A. Shuffle (1b)
 
-1. **A1 – Spustit kolekci náhodně přes YTM (implementováno, čeká na uživatelský test).** Uchovat skutečné zdrojové playlistId; u alba jeho audioPlaylistId. Použít `get_youtube_shuffle_tracks`, nikoli tiše nahradit YTM Shuffle lokálním `random.shuffle`. U nepodporovaných zdrojů, včetně CLI výjimky `RDCLAK…`, je akce neaktivní; u uploadů se nezobrazuje.
+1. **A1 – Spustit kolekci náhodně přes YTM (hotovo, přijato, commit `2c51536`).** Uchovat skutečné zdrojové playlistId; u alba jeho audioPlaylistId. Použít `get_youtube_shuffle_tracks`, nikoli tiše nahradit YTM Shuffle lokálním `random.shuffle`. U nepodporovaných zdrojů, včetně CLI výjimky `RDCLAK…`, je akce neaktivní; u uploadů se nezobrazuje.
 2. **A2 – Zamíchat běžící frontu.** Vycházet z `apply_youtube_shuffle`: aktuální audio/pozice/hodnocení pokračují, aktualizuje se skutečná fronta a prefetch. Předem dohodnout chování ručně přidaných položek a duplicit; neidentifikovat výskyty jen podle videoId. CLI dělá jednorázové zamíchání, nikoli hotový přepínač návratu k původnímu pořadí – takový návrat by byl samostatně navržená funkce.
 
 **Přijetí:** skutečné YTM pořadí, označení aktuální skladby, Next/Previous/Repeat, správný nástupce v prefetch a dostupnost jen u podporovaných zdrojů. Uploadům bez odpovídajícího YTM endpointu nevyrábět nefunkční shuffle.

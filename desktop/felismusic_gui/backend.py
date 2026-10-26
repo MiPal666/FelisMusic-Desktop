@@ -1446,6 +1446,8 @@ class BackendBridge(QObject):
             name=self._queue_name_for_source(source),
             start_index=start_index,
         )
+        # Repeat belongs to this playback queue, not to future collections.
+        self._repeat_mode = "off"
         self._sync_queue_model()
         self._playing_browse_snapshots = {self._queue_source: items}
         if self._queue_source == "detail":
@@ -2363,6 +2365,7 @@ class BackendBridge(QObject):
         self._queue = core.PlaybackQueue(
             tracks, name=result["state"]["title"],
             source_playlist_id=result["playlistId"], shuffle_active=True)
+        self._repeat_mode = "off"
         self._queue_source = "detail"
         self._queue_source_indices = indices
         self._playing_browse_snapshots = result["origin"]["snapshots"]
@@ -2424,6 +2427,7 @@ class BackendBridge(QObject):
         if self._prefetch_future is not None:
             self._prefetch_future.cancel()
         self._queue = core.PlaybackQueue(tracks, name=f"Mix: {tracks[0]['title']}", radio_active=True)
+        self._repeat_mode = "off"
         self._queue_source = "playing"
         self._queue_source_indices = list(range(len(tracks)))
         self._playing_browse_snapshots = {}
@@ -2467,6 +2471,7 @@ class BackendBridge(QObject):
             self._queue_source = source
             self._queue_source_indices = list(indices)
             self._queue = core.PlaybackQueue(tracks, name=self._queue_name_for_source(source))
+            self._repeat_mode = "off"
             origin = tracks[0]["_guiOrigin"]
             self._playing_browse_snapshots = origin.get("snapshots", {})
             self._playing_detail_title = origin.get("detail_title", "")

@@ -45,8 +45,8 @@ class ShuffleTests(support.AudioPlaybackTestCase):
 
     def test_server_order_queue_mapping_cover_prefetch_and_repeat(self):
         self.playlist()
-        self.b._repeat_mode = 'all'
         self.shuffle()
+        self.b.cycleRepeat()
         self.api.get_watch_playlist.assert_called_once_with(playlistId='PLsource', limit=25, shuffle=True)
         self.assertEqual(self.ids(), ['C', 'A', 'B'])
         self.assertEqual([x['videoId'] for x in self.b.playingTracksModel.snapshot()], self.ids())
@@ -70,8 +70,8 @@ class ShuffleTests(support.AudioPlaybackTestCase):
     def test_album_uses_audio_playlist_id_and_previous_selection_repeat_one(self):
         self.b.openLibraryItem('album', 'MPREalbum', '', 'Album'); self.ready()
         self.assertTrue(self.b.detailCanShuffle)
-        self.b._repeat_mode = 'one'
         self.shuffle()
+        self.b.cycleRepeat(); self.b.cycleRepeat()
         self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=25, shuffle=True)
         self.eos(); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.played, ['C', 'C'])
@@ -81,20 +81,22 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playerVideoId, 'A')
         self.assertEqual(self.ids(), ['C', 'A', 'B'])
 
-    def test_replaces_audio_only_after_success_and_keeps_repeat(self):
+    def test_replaces_audio_and_resets_repeat_only_after_success(self):
         self.start('old', 'next'); old = self.b._queue
         self.playlist(); self.b._repeat_mode = 'one'
         self.block_request = True
         self.assertTrue(self.b.shuffleDetail()); self.until(self.entered.is_set)
         self.assertIs(self.b._queue, old)
         self.assertEqual(self.played, ['old'])
+        self.assertEqual(self.b.playerRepeatMode, 'one')
         self.release.set(); self.ready(); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.played, ['old', 'C'])
-        self.assertEqual(self.b.playerRepeatMode, 'one')
+        self.assertEqual(self.b.playerRepeatMode, 'off')
         self.assertIn(True, self.stops)
 
     def test_empty_and_failed_response_leave_old_audio_and_queue(self):
         self.start('old', 'next'); old = self.b._queue
+        self.b.cycleRepeat(); self.b.cycleRepeat()
         self.playlist()
         self.block = []
         self.b.shuffleDetail(); self.ready()
@@ -103,6 +105,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.assertIs(self.b._queue, old)
         self.assertEqual(self.played, ['old'])
         self.assertEqual(len(self.errors), 2)
+        self.assertEqual(self.b.playerRepeatMode, 'one')
 
     def test_server_filtering_duplicates_and_unmatched_source_index(self):
         self.playlist()

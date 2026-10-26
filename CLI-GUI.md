@@ -4,13 +4,13 @@ Audit: **2026-10-26**, Desktop **0.3.19-dev**, přijatý commit **`99dcad6`**. A
 
 Referenční zdroje: lokálně dodaná původní CLI `tmp/felismusic.py`, převzaté jádro [legacy_core.py](desktop/felismusic_gui/legacy_core.py), GUI [backend.py](desktop/felismusic_gui/backend.py) a [Main.qml](desktop/Main.qml). `tmp/felismusic.py` je lokální reference, nikoli instalační soubor aplikace. Aktuální pořadí dalších prací určuje [PLAN.md](PLAN.md), historie a uživatelská přijetí jsou v [STATUS.md](STATUS.md).
 
-Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je implementované, automaticky ověřené a čeká na uživatelský test. Níže je tato položka aktualizovaná; ostatní závěry auditu zůstávají platné.
+Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i uživatelsky ověřené a přijaté v commitu `2c51536`. Níže je tato položka aktualizovaná; ostatní závěry auditu zůstávají platné.
 
 ## Co skutečně chybí v GUI oproti fungující CLI
 
 | Funkce | CLI reference | GUI nyní | Co je třeba dopojit |
 |---|---|---|---|
-| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 implementované v 0.3.20-dev, čeká na uživatelský test. | Ověřit skutečné YTM pořadí playlistu/alba, frontu, Repeat a návrat přes cover. |
+| YTM Shuffle kolekce | Ano: `get_youtube_shuffle_tracks`, `collection_queue_menu`. U alba používá audioPlaylistId; nepodporuje `RDCLAK…` a zdroje bez playlistId. | A1 hotovo a uživatelsky přijato v 0.3.20-dev (`2c51536`). | Samostatně zbývá zamíchání běžící fronty a Shuffle interpreta. |
 | Zamíchání běžící fronty | Ano: `apply_youtube_shuffle` zachová aktuální skladbu a zamíchá zbytek. | Ne. | Adaptace na GUI výskyty, ruční vložení, aktuální audio, označení fronty a prefetch. CLI nenabízí hotový návrat přepínačem k původnímu pořadí. |
 | Náhodně interpreta | Ano: `artist_action_queue(mode="shuffle")` používá YTM shuffleId. | Ne. | Zachovat shuffleId z detailu interpreta a dopojit akci. |
 | Mix/Rádio ze skladby | Ano: aktivace a další bloky. | Částečně: `startRadioFrom` vytvoří první blok, využívá `get_radio_block` a filtrování CLI. | Průběžné doplňování, ne jen první dávka. |

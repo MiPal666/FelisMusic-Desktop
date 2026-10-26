@@ -2,7 +2,7 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.20-dev** (čeká na uživatelský test)
+- Desktop GUI: **0.3.21-dev** (čeká na uživatelský test)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -225,7 +225,7 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Nabídka „⋮“ / pravé tlačítko u veřejné skladby nebo videa obsahuje **Spustit mix**. Používá stejné vytváření rádia jako CLI; nahraným soukromým skladbám a epizodám tuto akci nenabízíme.
 - Po úspěšném načtení nahradí dosavadní frontu mixem začínajícím vybranou skladbou a otevře **Frontu** s názvem **Mix: název skladby**. Pokud vybraná skladba již hraje nebo je pozastavená, pokračuje ze stejného místa a zachová pauzu. Jiná nebo zastavená skladba se spustí od začátku.
 - Během vytváření se dosavadní fronta ani označení aktuální skladby nemění. Chyba ponechá původní přehrávání. Stop, jiný výběr nebo vložení položky do fronty během čekání zneplatní opožděný výsledek mixu.
-- Doporučení jsou z YTM, nepřehratelné položky a duplicitní videoId se filtrují. Zachovává se repeat a přednačítání následující skladby. Cover u skladeb mixu otevře jeho aktuální frontu.
+- Doporučení jsou z YTM, nepřehratelné položky a duplicitní videoId se filtrují. Od 0.3.21 se při vytvoření nového mixu repeat vypíná; přednačítání následující skladby funguje dál. Cover u skladeb mixu otevře jeho aktuální frontu.
 - První samostatně testovatelný podkrok obsahuje **jeden blok doporučení**. Průběžné doplňování je následující podkrok 5b, mixy interpreta/kolekce pak 5c.
 
 - Podkrok 5a uživatel otestoval na skutečném přehrávání a přijal 2026-10-25.
@@ -325,12 +325,18 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
 
-## 0.3.20-dev – náhodné spuštění playlistu/alba (A1, čeká na uživatelský test)
+## 0.3.21-dev – Repeat patří k aktuální frontě (čeká na uživatelský test)
+
+- Spuštění nové fronty dvojklikem/Enter ze seznamu skladeb, přes **Přehrát náhodně** či vytvořením nového rádia přepne Repeat na **Vypnuto**. Platí i pro nové spuštění téže kolekce.
+- Výběr skladby přímo ve Frontě, Next/Previous, Pause/Play, Stop/Play, procházení a návrat přes cover nastavení zachovají. Stejně tak vložení skladeb do existující fronty.
+- Neúspěšný nebo zneplatněný požadavek na Shuffle/Rádio ponechá původní Repeat i frontu. Při pouhém otevření jiného alba se Repeat ještě nemění.
+
+## 0.3.20-dev – náhodné spuštění playlistu/alba (A1, uživatelsky přijato)
 
 - Otevři playlist nebo album a v menu hlavičky **⋮ → Přehrát náhodně** vyžádej náhodné pořadí od YTM. U alba se používá jeho audioPlaylistId. Skutečné vrácené pořadí najdeš ve Frontě; uložený playlist se nemění.
 - Next/Previous, Repeat a načítání další skladby předem respektují tuto frontu. Cover vrátí původní kolekci a její navigaci.
 - Nepodporované kolekce a alba bez potřebného ID mají akci neaktivní. Uploady ji nenabízejí. Chyba YTM ponechá původní přehrávání/frontu.
-- Automaticky ověřeno 192 offline testy a QML klikáním při 1280×800/900×600. Skutečný YTM test zatím čeká. Zamíchání běžící fronty bez přerušení aktuální skladby přijde samostatně v A2.
+- Automaticky ověřeno 192 offline testy a QML klikáním při 1280×800/900×600. Uživatel potvrdil skutečné přehrávání playlistu/alba, Repeat, přechody a návrat přes cover; commit `2c51536`. Zamíchání běžící fronty bez přerušení aktuální skladby přijde samostatně v A2.
 
 ## 0.3.19-dev – smazání vlastního playlistu (7d)
 

@@ -2,7 +2,15 @@
 
 Aktualizováno: 2026-10-26 (Europe/Prague).
 
-## Připraveno k uživatelskému testu: 0.3.20-dev – A1 Shuffle kolekce
+## Připraveno k uživatelskému testu: 0.3.21-dev – Repeat pro aktuální frontu
+
+- Nová fronta z prohlíženého seznamu (včetně opětovného spuštění stejné kolekce), náhodné spuštění kolekce, nové Rádio/Mix a první vložení do prázdné fronty nastaví Repeat na Vypnuto. Reset probíhá až při úspěšném vytvoření fronty; chyba nebo zneplatněná odpověď zachová starý stav.
+- Pohyb a výběr přímo ve Frontě, Pause/Play, Stop/Play, Next/Previous, procházení, cover a přidávání do existující fronty Repeat zachovávají. Budoucí A2 zamíchání téže fronty ho rovněž zachová.
+- Automatické kontroly: 197 offline testů; aktualizované původní scénáře zapínají Repeat po spuštění kolekce. Nové kontroly pokrývají všechny prohlížecí zdroje, opětovné spuštění stejné kolekce, výběr ve Frontě, pauzu/Stop a návrat, procházení/cover, neplatný výběr a první vložení. Stávající testy Shuffle/Rádia navíc ověřují reset až po úspěchu a zachování při chybě.
+- QML ověřené skutečným klikáním při 1280×800 a 900×600 pro oba režimy: viditelný reset tlačítka po novém albu/Shuffle, zachování při návratu přes cover, výběru ve Frontě, pauze, Stop/Play a Next/Previous. Bez QML chyb; API i audio jsou testovací.
+- Čeká na skutečný uživatelský test a přijetí. A2 a další Rádio zatím nejsou rozpracované.
+
+## Přijato uživatelem: 0.3.20-dev – A1 Shuffle kolekce
 
 - Menu ⋮ otevřeného playlistu/alba obsahuje **Přehrát náhodně**. Používá převzaté `get_youtube_shuffle_tracks`: `get_watch_playlist(playlistId=…, shuffle=True)`, limit nejméně 25 nebo počet načtených skladeb. U alba se uchovává skutečné `audioPlaylistId`, nikoli jeho browseId.
 - Fronta přebírá přesné pořadí použitelné odpovědi YTM, včetně opakovaných videoId; nejde o místní náhodné řazení. Přepnutí, Repeat a prefetch používají tutéž frontu. Uložené pořadí playlistu se nezapisuje ani nemění.
@@ -10,7 +18,7 @@ Aktualizováno: 2026-10-26 (Europe/Prague).
 - U prázdné kolekce, nepodporovaného `RDCLAK…` či alba bez audioPlaylistId je akce neaktivní; u uploadů a interpreta se nezobrazuje. Stávající akce přidání kolekce do playlistu zůstává dostupná.
 - Požadavek běží mimo UI vlákno. Původní audio/fronta zůstávají do úspěšné odpovědi; poté se staré audio zastaví před přípravou nového. Chyba nezničí starou frontu. Stop, změna přehrávání/fronty či opuštění detailu během dotazu zneplatní opožděný výsledek i chybu.
 - Kontroly: **192 offline testů**, z toho 10 nových v `tests/test_shuffle.py`; skutečné QML kliknutí na menu, neaktivní nepodporovaná akce, návrat přes cover a pokračování podle fronty v 1280×800 a 900×600. Testy používají falešné API/audio, bez skutečného YTM účtu.
-- **Čeká na Michalův skutečný test a přijetí.** Zamíchání už běžící fronty při zachování aktuální skladby (A2), interpret a doplňování rádia nejsou součástí tohoto podkroku.
+- **Michal potvrdil skutečný test a přijetí; commit `2c51536`.** Ověřeno album/playlist, Repeat, přechody tam/zpět a návrat přes cover. Uživatel chce zachovat rozdíl mezi původním řazením kolekce a skutečnou náhodně uspořádanou Frontou. Zamíchání už běžící fronty při zachování aktuální skladby (A2), interpret a doplňování rádia nejsou součástí tohoto podkroku.
 
 ## Aktuální souhrn po auditu 2026-10-26
 
