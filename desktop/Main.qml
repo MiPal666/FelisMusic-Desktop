@@ -2328,8 +2328,8 @@ ApplicationWindow {
                                     hoverEnabled: true
                                     ToolTip.visible: hovered
                                     ToolTip.text: backend.playerCanShuffle
-                                                  ? "Zamíchat podle YTM; aktuální skladba pokračuje"
-                                                  : "Pro tuto frontu není YTM Shuffle dostupné"
+                                                  ? "Zamíchat frontu; aktuální skladba pokračuje"
+                                                  : "Tuto frontu nyní nelze zamíchat"
                                     onClicked: backend.shuffleQueue()
                                 }
                                 Button {

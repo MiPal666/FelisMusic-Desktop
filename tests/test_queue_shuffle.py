@@ -1,5 +1,4 @@
-"""In-place YTM ordering with exact GUI occurrences and fake audio/API."""
-from copy import deepcopy
+"""In-place local shuffle with exact GUI occurrences and fake audio/API."""
 from threading import Event
 from unittest.mock import Mock, patch
 import test_prefetch as support
@@ -14,19 +13,21 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
                       for i, v in enumerate(('A', 'B', 'C', 'D'))]
         self.api.get_playlist.return_value = dict(title='Mine', owned=True, tracks=self.songs)
         self.api.get_album.return_value = dict(title='Album', audioPlaylistId='OLAKalbum', tracks=self.songs)
-        self.block = [self.song(v) for v in ('D', 'A', 'C', 'B')]
-        self.entered = Event(); self.block_request = False
-        self.api.get_watch_playlist.side_effect = self.watch
+        self.entered = Event(); self.block_request = False; self.fail_shuffle = False
+        mixer = patch.object(support.backend.random, 'shuffle', side_effect=self.mix)
+        mixer.start(); self.addCleanup(mixer.stop)
+
+    def mix(self, rows):
+        self.entered.set()
+        if self.block_request:
+            self.release.wait(3)
+        if self.fail_shuffle:
+            raise RuntimeError('Test failure')
+        rows.reverse()
 
     @staticmethod
     def song(vid):
         return dict(videoId=vid, title=vid)
-
-    def watch(self, **kwargs):
-        self.entered.set()
-        if self.block_request:
-            self.release.wait(3)
-        return {'tracks': deepcopy(self.block)}
 
     def ready(self):
         self.until(lambda: not self.b.busy)
@@ -52,7 +53,7 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         before = (len(self.stops), len(self.played), self.b._playback_generation)
         self.assertTrue(self.b.shuffleQueue()); self.ready()
         self.assertIs(self.b._queue, queue); self.assertIs(queue.current(), current)
-        self.assertEqual(self.ids(), ['B', 'D', 'A', 'C'])
+        self.assertEqual(self.ids(), ['B', 'D', 'C', 'A'])
         self.assertEqual(self.b.playerQueueIndex, 0)
         self.assertEqual(self.b.playerSourceIndex, 1)
         self.assertEqual(self.b.playerPosition, 67)
@@ -61,7 +62,7 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.assertIs(current['_guiOrigin'], origin)
         self.assertEqual((len(self.stops), len(self.played), self.b._playback_generation), before)
         self.assertFalse(events)
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='PLmine', limit=25, shuffle=True)
+        self.api.get_watch_playlist.assert_not_called()
         self.until(lambda: 'C' in self.cancelled)
         self.until(lambda: 'D' in support.core.LOCAL_AUDIO_CACHE)
         self.b.clearDetail(); self.b.restorePlayingSource(1)
@@ -78,7 +79,7 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playerPosition, 37)
         self.assertEqual(self.b.playerRepeatMode, 'one')
         self.assertEqual(self.played, ['B'])
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=25, shuffle=True)
+        self.api.get_watch_playlist.assert_not_called()
 
     def test_stopped_queue_is_reordered_without_starting_audio(self):
         self.play_detail(); self.b.stopPlayback(); self.b.cycleRepeat()
@@ -86,7 +87,7 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playerState, 'idle'); self.assertEqual(self.b.playerPosition, 0)
         self.assertEqual(self.b.playerRepeatMode, 'all'); self.assertEqual(self.played, ['B'])
 
-    def test_manual_insertions_duplicates_and_partial_server_response_keep_exact_objects(self):
+    def test_manual_insertions_and_duplicates_keep_exact_objects(self):
         self.songs.insert(2, dict(self.songs[1], setVideoId='duplicate-B'))
         self.play_detail()
         self.b._search_results_model.set_items([dict(kind='song', videoId='B', title='Manual B'),
@@ -94,15 +95,13 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.b.enqueueFrom('search', 0, True, {'page': 0})
         self.b.enqueueFrom('search', 1, False, {'page': 0})
         originals = list(self.b._queue.tracks); current = self.b._queue.current()
-        self.block = [self.song(v) for v in ('D', 'D', 'B', 'unrelated')]
-        with patch.object(support.backend.random, 'shuffle', side_effect=lambda items: items.reverse()), \
-             patch.object(support.backend.random, 'sample', return_value=[0, 3]):
+        with patch.object(support.backend.random, 'shuffle', side_effect=lambda items: items.reverse()):
             self.assertTrue(self.b.shuffleQueue()); self.ready()
-        self.assertEqual(self.ids(), ['B', 'X', 'D', 'B', 'B', 'A', 'C'])
+        self.assertEqual(self.ids(), ['B', 'X', 'D', 'C', 'B', 'B', 'A'])
         self.assertEqual({id(x) for x in self.b._queue.tracks}, {id(x) for x in originals})
         self.assertIs(self.b._queue.current(), current)
         self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks if x.get('setVideoId')],
-                         ['set-1', 'set-3', 'duplicate-B', 'set-0', 'set-2'])
+                         ['set-1', 'set-3', 'set-2', 'duplicate-B', 'set-0'])
         self.assertTrue(all(x['_guiOrigin']['context'] == {'page': 0}
                             for x in self.b._queue.tracks if x.get('_guiManualEnqueue')))
 
@@ -128,10 +127,10 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
                     queue = self.b._queue; current = queue.current()
                     originals = {id(x) for x in queue.tracks}
                     before = (len(self.played), len(self.stops), self.b.playerPosition)
-                    with patch.object(support.backend.random, 'shuffle', side_effect=lambda items: items.reverse()), \
-                         patch.object(support.backend.random, 'sample', return_value=[0, 2]):
+                    expected = [current, *reversed([song for song in queue.tracks if song is not current])]
+                    with patch.object(support.backend.random, 'shuffle', side_effect=lambda items: items.reverse()):
                         self.assertTrue(self.b.shuffleQueue()); self.ready()
-                    self.assertEqual(self.ids(), ['B', 'Y', 'D', 'X', 'A', 'C'])
+                    self.assertEqual(queue.tracks, expected)
                     self.assertIs(self.b._queue, queue); self.assertIs(queue.current(), current)
                     self.assertEqual({id(x) for x in queue.tracks}, originals)
                     self.assertEqual(self.b.playerState, state)
@@ -146,54 +145,47 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.b.nextTrack(); self.until(lambda: self.b.playerState == 'playing')
         queue = self.b._queue; current = queue.current()
         originals = {id(x) for x in queue.tracks}; plays = len(self.played)
-        with patch.object(support.backend.random, 'sample', return_value=[0]):
-            self.b.shuffleQueue(); self.ready()
+        self.b.shuffleQueue(); self.ready()
         self.assertIs(queue.current(), current)
-        self.assertEqual(self.ids(), ['X', 'X', 'D', 'A', 'C', 'B'])
+        self.assertEqual(self.ids(), ['X', 'X', 'D', 'C', 'B', 'A'])
         self.assertEqual({id(x) for x in queue.tracks}, originals)
         self.assertEqual(len(self.played), plays)
 
     def test_repeat_shuffle_uses_same_queue_and_occurrences_each_time(self):
         self.play_detail(); queue = self.b._queue
         original = {id(x) for x in queue.tracks}
-        for order in (('D', 'A', 'C'), ('C', 'A', 'D')):
-            self.block = [self.song(v) for v in order]
+        for _ in range(2):
+            expected = ['B', *reversed([song['videoId'] for i, song in enumerate(queue.tracks) if i != queue.index])]
             self.assertTrue(self.b.shuffleQueue()); self.ready()
-            self.assertEqual(self.ids(), ['B', *order])
+            self.assertEqual(self.ids(), expected)
             self.assertIs(self.b._queue, queue)
             self.assertEqual({id(x) for x in queue.tracks}, original)
         self.assertEqual(self.played, ['B'])
 
-    def test_server_order_between_duplicate_occurrences_is_preserved(self):
+    def test_duplicate_occurrences_retain_their_edit_identity(self):
         self.songs.insert(2, dict(self.songs[0], setVideoId='duplicate-A'))
-        self.block = [self.song(v) for v in ('A', 'C', 'A', 'D')]
         self.play_detail(); self.b.shuffleQueue(); self.ready()
-        self.assertEqual(self.ids(), ['B', 'A', 'C', 'A', 'D'])
+        self.assertEqual(self.ids(), ['B', 'D', 'C', 'A', 'A'])
         self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks],
-                         ['set-1', 'set-0', 'set-2', 'duplicate-A', 'set-3'])
+                         ['set-1', 'set-3', 'set-2', 'duplicate-A', 'set-0'])
 
     def test_already_random_collection_can_be_reshuffled(self):
         self.b.loadPlaylistTracks('PLmine', 'Mine'); self.ready()
         with patch.object(support.backend.random, 'shuffle', side_effect=lambda rows: rows.reverse()):
             self.b.shuffleDetail(); self.ready(); self.until(lambda: self.b.playerState == 'playing')
         current = self.b._queue.current()
-        self.block = [self.song(v) for v in ('C', 'B', 'A', 'D')]
         self.b.shuffleQueue(); self.ready()
         self.assertIs(self.b._queue.current(), current)
-        self.assertEqual(self.ids(), ['D', 'C', 'B', 'A'])
+        self.assertEqual(self.ids(), ['D', 'A', 'B', 'C'])
         self.assertEqual(self.played, ['D'])
 
-    def test_failure_and_empty_response_preserve_queue_audio_and_repeat(self):
+    def test_failure_preserves_queue_audio_and_repeat(self):
         self.play_detail(); queue = self.b._queue; original = list(queue.tracks)
-        self.b.cycleRepeat()
-        for failure in ('empty', 'exception'):
-            self.block = []
-            if failure == 'exception':
-                self.api.get_watch_playlist.side_effect = RuntimeError('Offline')
-            self.b.shuffleQueue(); self.ready()
-            self.assertIs(self.b._queue, queue); self.assertEqual(queue.tracks, original)
-            self.assertEqual(queue.index, 1); self.assertEqual(self.b.playerRepeatMode, 'all')
-        self.assertEqual(len(self.errors), 2); self.assertEqual(self.played, ['B'])
+        self.b.cycleRepeat(); self.fail_shuffle = True
+        self.b.shuffleQueue(); self.ready()
+        self.assertIs(self.b._queue, queue); self.assertEqual(queue.tracks, original)
+        self.assertEqual(queue.index, 1); self.assertEqual(self.b.playerRepeatMode, 'all')
+        self.assertEqual(len(self.errors), 1); self.assertEqual(self.played, ['B'])
 
     def test_stop_next_new_playback_and_enqueue_supersede_pending_result(self):
         for change in ('stop', 'next', 'new', 'enqueue'):
@@ -220,22 +212,22 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.b.shuffleQueue(); self.until(self.entered.is_set)
         self.b.clearDetail(); self.status.player_state = 'PAUSED'; self.b._player_state = 'paused'
         self.release.set(); self.ready()
-        self.assertEqual(self.ids(), ['B', 'D', 'A', 'C'])
+        self.assertEqual(self.ids(), ['B', 'D', 'C', 'A'])
         self.assertEqual(self.b.playerState, 'paused')
 
     def test_stale_failure_is_silent(self):
-        self.play_detail(); self.block_request = True; self.block = []
+        self.play_detail(); self.block_request = True; self.fail_shuffle = True
         self.b.shuffleQueue(); self.until(self.entered.is_set)
         self.b.stopPlayback(); self.release.set(); self.ready()
         self.assertFalse(self.errors)
 
-    def test_missing_source_radio_curated_deleted_and_loading_are_disabled(self):
+    def test_local_sources_supported_but_radio_deleted_and_transition_are_disabled(self):
         self.assertFalse(self.b.shuffleQueue())
-        self.start('A', 'B'); self.assertFalse(self.b.playerCanShuffle)
+        self.start('A', 'B'); self.assertTrue(self.b.playerCanShuffle)
         self.play_detail(); queue = self.b._queue
         for pid in (None, '', 'RDCLAKunsupported'):
             queue.source_playlist_id = pid
-            self.assertFalse(self.b.shuffleQueue())
+            self.assertTrue(self.b.playerCanShuffle)
         queue.source_playlist_id = 'PLmine'
         queue.radio_active = True; self.assertFalse(self.b.shuffleQueue())
         queue.radio_active = False
@@ -251,7 +243,39 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
         self.api.edit_playlist.return_value = 'STATUS_SUCCEEDED'
         self.api.remove_playlist_items.return_value = 'STATUS_SUCCEEDED'
         self.b.moveDetailPlaylistItem('A', 'set-0', 1); self.ready()
-        self.assertEqual(self.ids(), ['B', 'D', 'A', 'C'])
+        self.assertEqual(self.ids(), ['B', 'D', 'C', 'A'])
         self.b.removeDetailPlaylistItem('A', 'set-0'); self.ready()
         self.assertEqual(self.ids(), ['B', 'D', 'C'])
         self.assertEqual(self.played, ['B'])
+
+    def test_artist_or_manual_queue_without_source_id_can_be_shuffled_without_api(self):
+        self.play_detail(); self.b._queue.source_playlist_id = None
+        self.b._ytmusic = None
+        self.assertTrue(self.b.playerCanShuffle)
+        self.assertTrue(self.b.shuffleQueue()); self.ready()
+        self.assertEqual(self.ids(), ['B', 'D', 'C', 'A'])
+        self.api.get_watch_playlist.assert_not_called()
+
+    def test_large_queue_keeps_all_objects_and_bindings_without_network(self):
+        self.songs[:] = [dict(videoId=str(i % 2000), title=str(i),
+                             setVideoId=f'set-{i}', likeStatus='LIKE') for i in range(2200)]
+        self.play_detail(index=300)
+        queue = self.b._queue; current = queue.current(); original = list(queue.tracks)
+        before = (len(self.played), len(self.stops), self.b._playback_generation)
+        self.assertTrue(self.b.shuffleQueue()); self.ready()
+        self.assertIs(queue.current(), current)
+        expected = [current, *reversed(original[:300] + original[301:])]
+        self.assertTrue(all(a is b for a, b in zip(queue.tracks, expected)))
+        self.assertEqual(queue.count(), 2200)
+        self.assertEqual(len({x['_guiPlaylistBinding'] for x in queue.tracks}), 2200)
+        self.assertEqual((len(self.played), len(self.stops), self.b._playback_generation), before)
+        self.api.get_playlist.assert_called_once()
+        self.api.get_watch_playlist.assert_not_called()
+
+    def test_loading_and_incomplete_queues_are_not_shuffled(self):
+        self.play_detail()
+        for state in ('loading', 'error'):
+            self.b._watch_stream = dict(queue=self.b._queue, state=state)
+            self.assertFalse(self.b.playerCanShuffle)
+            self.assertFalse(self.b.shuffleQueue())
+        self.b._watch_stream = None

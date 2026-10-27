@@ -1,5 +1,9 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
+**Doplněný samostatný krok – Nahrané:** lokální náhodné přehrávání nahraných skladeb, alb a skladeb interpreta. Možnosti Mixu nahraných zdrojů nejprve ověřit podle skutečných možností API; podporu zatím neslibovat a nenahrazovat ji potichu katalogovou skladbou. Implementace dosud nezačala.
+
+**0.3.41-dev:** lokální Zamíchat aktuální frontu bez serverového pořadí, se zachováním aktuálního výskytu/audia/času/pauzy/Repeat, všech ručních i duplicitních výskytů. 337 offline testů a obě QML velikosti prošly; Michal skutečným testem potvrdil funkčnost. Po přijetí/commitu sjednocení stránkování detailů playlistů. Předchozí commit 6135d69.
+
 **0.3.40-dev:** Michal ověřil lokální Shuffle interpreta; menu sjednoceno na Přehrát náhodně → Spustit mix, stejně jako u alb/playlistů. Přehrávací logika se v této drobné úpravě nemění.
 
 **0.3.39-dev:** lokální Shuffle interpreta nad již načtenou sekcí Skladby, všechny dostupné výskyty, bez watch požadavku/limitu Mixu. Cover zachovává původní záložku. Mix/refill nezměněny. Čeká na skutečný test; potom lokální přemíchání aktuální fronty a stránkování playlistových detailů. Album uložené v e408639.

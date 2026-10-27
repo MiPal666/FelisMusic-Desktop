@@ -2473,28 +2473,29 @@ class BackendBridge(QObject):
         return (self.playerHasTrack and self.playerCanEditQueue and not self._queue.radio_active
                 and not self.playerQueueLoading and not self.playerQueueIncomplete
                 and not self._queue.current().get("_guiRemoveAfterPlayback")
-                and self._queue.source_playlist_id not in self._deleted_playlists
-                and core.youtube_shuffle_supported(self._queue.source_playlist_id))
+                and self._queue.source_playlist_id not in self._deleted_playlists)
 
     @Slot(result=bool)
     def shuffleQueue(self):
-        if self._busy or self._ytmusic is None or not self.playerCanShuffle:
+        if self._busy or not self.playerCanShuffle:
             return False
         generation = self._playback_generation
         marker = self._radio_queue_marker()
         current = self._queue.current()
-        api = self._ytmusic
-        playlist_id, count = self._queue.source_playlist_id, self._queue.count()
+        # Copy only the sequence, preserving every exact occurrence object.
+        remaining = [song for index, song in enumerate(self._queue.tracks)
+                     if index != self._queue.index]
 
         def task():
             result = {"generation": generation, "marker": marker, "current": current}
             try:
-                result["tracks"] = core.get_youtube_shuffle_tracks(api, playlist_id, count)
+                random.shuffle(remaining)
+                result["ordered"] = remaining
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("shuffle_queue", "YouTube Music míchá frontu…", task)
+        self._submit("shuffle_queue", "Míchám frontu…", task)
         return True
 
     def _apply_queue_shuffle(self, result):
@@ -2506,34 +2507,8 @@ class BackendBridge(QObject):
             self._set_status("Frontu se nepodařilo zamíchat")
             self.errorOccurred.emit(result["error"])
             return
-        # Adapt the CLI's current-first YTM shuffle without replacing exact
-        # occurrences with ambiguous watch-playlist rows. Never lose GUI extras
-        # or invent duplicates when the server repeats an ID or omits a song.
         current = result["current"]
-        remaining = [song for song in self._queue.tracks if song is not current]
-        manual = [song for song in remaining if song.get("_guiManualEnqueue")]
-        collection = [song for song in remaining if not song.get("_guiManualEnqueue")]
-        buckets = {}
-        for song in collection:
-            buckets.setdefault(song.get("videoId"), []).append(song)
-        ordered = []
-        used = set()
-        for item in result["tracks"]:
-            bucket = buckets.get(item.get("videoId"), [])
-            if bucket:
-                song = bucket.pop(0)
-                ordered.append(song)
-                used.add(id(song))
-        ordered.extend(song for song in collection if id(song) not in used)
-        if manual:
-            # YTM cannot order songs added only to our local queue. Mix their
-            # exact occurrences into random slots, preserving YTM's relative
-            # collection order while also randomizing the manual items.
-            random.shuffle(manual)
-            manual_slots = set(random.sample(range(len(ordered) + len(manual)), len(manual)))
-            manual_items, collection_items = iter(manual), iter(ordered)
-            ordered = [next(manual_items) if index in manual_slots else next(collection_items)
-                       for index in range(len(ordered) + len(manual))]
+        ordered = result["ordered"]
         with self._transport_lock:
             self._queue.tracks = [current, *ordered]
             self._queue.index = 0

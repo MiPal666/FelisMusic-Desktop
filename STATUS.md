@@ -2,6 +2,15 @@
 
 Aktualizováno: 2026-10-27 (Europe/Prague).
 
+## 0.3.41-dev – lokální přemíchání aktuální fronty, přijato
+
+- Michal skutečným testem potvrdil „funguje“. Lokální přemíchání fronty přijato, připraveno k commitu.
+- Předchozí krok uložen Michalem jako **6135d69**, potom povolil přemíchání fronty. `shuffleQueue` nyní lokálně zamíchá kopii pořadí všech zbývajících přesných výskytů bez get_youtube_shuffle_tracks/get_watch_playlist. Ruční i kolekční výskyty se míchají společně. Vynechá se pouze aktuální pozice, nikoli všechny skladby se stejným videoId.
+- Aktuální výskyt zůstává tentýž objekt a stane se prvním ve Frontě; audio se znovu nespouští, čas/pausa/rating/Repeat se nemění. Ostatní zahrnují i již přehrané skladby, jako dosud. Zachovány objekty, původy, edit bindingy a duplicity; přepočítají se source indexy/marker a přednačítání nového nástupce. Při Stop je fronta zamíchaná bez rozjezdu. Marker/generace/current hlídají opožděný výsledek; chyba nezmění frontu.
+- Lokální míchání nepotřebuje source_playlist_id ani přihlášeného API klienta; podporuje také frontu interpreta/ručně sestavenou frontu. Dosavadní ochrany rádia, neúplné/načítající se fronty, přechodu audia, odebrané aktuální položky a smazaného zdrojového playlistu zachovány. QML tooltip už netvrdí, že míchá YTM. Mix/refill a načítání kolekcí se nemění.
+- **337 offline testů prošlo**, z toho 18 upravených/nových testů aktuální fronty: běžná/náhodná/pauza/Stop, ruční výskyty, duplicity, přesné objekty/bindingy, čas/rating/Repeat, rušení starého prefetch a nový nástupce, opakované míchání, selhání a zastaralé výsledky, editace zdrojového playlistu, 2200 výskytů, fronta bez source ID i API a odmítnutí neúplných front. QML 900×600/1280×800: skutečný klik na Zamíchat, stejný audio objekt/čas bez restartu, nové pořadí a cover; bez QML varování. API/audio mockované.
+- Skutečný test: ve Frontě Zamíchat během hraní i pauzy, včetně přidaných skladeb a fronty interpreta; čas a skladba mají pokračovat, ostatní pozice se promíchat. Ověřit i Stop a cover. Po přijetí/commitu dalším krokem sjednocení načítání playlistových detailů po blocích, nikoli další serverové Shuffle.
+
 ## 0.3.40-dev – stejné pořadí akcí interpreta jako u kolekcí, přijato
 
 - Michal potvrdil také výsledné pořadí menu v 0.3.40: „je to ok“. Podkrok přijat, připravený k commitu.

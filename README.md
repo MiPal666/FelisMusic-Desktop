@@ -4,9 +4,9 @@
 
 Příprava náhodné fronty už nekopíruje celý původní seznam pro každou skladbu zvlášť. Cover a přesné výskyty zůstávají zachované; načítání playlistových detailů po blocích je další samostatný krok.
 
-„Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. Přemíchání existující fronty zatím používá předchozí postup; Mix/Rádio se nemění.
+„Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.40-dev** (Shuffle interpreta ověřené, sjednocené pořadí akcí v menu)
+- Desktop GUI: **0.3.41-dev** (lokální přemíchání aktuální fronty ověřeno uživatelem)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
