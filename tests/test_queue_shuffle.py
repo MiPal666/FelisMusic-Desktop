@@ -174,7 +174,8 @@ class QueueShuffleTests(support.AudioPlaybackTestCase):
 
     def test_already_random_collection_can_be_reshuffled(self):
         self.b.loadPlaylistTracks('PLmine', 'Mine'); self.ready()
-        self.b.shuffleDetail(); self.ready(); self.until(lambda: self.b.playerState == 'playing')
+        with patch.object(support.backend.random, 'shuffle', side_effect=lambda rows: rows.reverse()):
+            self.b.shuffleDetail(); self.ready(); self.until(lambda: self.b.playerState == 'playing')
         current = self.b._queue.current()
         self.block = [self.song(v) for v in ('C', 'B', 'A', 'D')]
         self.b.shuffleQueue(); self.ready()

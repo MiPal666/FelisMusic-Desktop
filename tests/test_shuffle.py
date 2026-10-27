@@ -1,4 +1,4 @@
-"""YTM collection shuffle: real helper, mocked account and audio transport."""
+"""YTM album shuffle: real helper, mocked account and audio transport."""
 from copy import deepcopy
 from threading import Event
 from unittest.mock import Mock
@@ -17,6 +17,8 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.entered = Event()
         self.block_request = False
         self.api.get_watch_playlist.side_effect = self.watch
+        self.shuffled = []
+        self.b.collectionShuffleStarted.connect(lambda: self.shuffled.append(True))
 
     @staticmethod
     def song(vid):
@@ -31,8 +33,10 @@ class ShuffleTests(support.AudioPlaybackTestCase):
     def ready(self):
         self.until(lambda: not self.b.busy)
 
-    def playlist(self, pid='PLsource'):
-        self.b.loadPlaylistTracks(pid, 'Playlist')
+    def album_source(self, pid='PLsource'):
+        if pid.startswith('RD'):
+            self.api.get_album.return_value['audioPlaylistId'] = pid
+        self.b.openLibraryItem('album', 'MPREalbum', '', 'Playlist')
         self.ready()
 
     def ids(self):
@@ -44,22 +48,23 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.until(lambda: self.b.playerState == 'playing')
 
     def test_server_order_queue_mapping_cover_prefetch_and_repeat(self):
-        self.playlist()
+        self.album_source()
         self.shuffle()
         self.b.cycleRepeat()
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='PLsource', limit=25, shuffle=True)
+        self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=0, shuffle=True)
         self.assertEqual(self.ids(), ['C', 'A', 'B'])
+        self.assertEqual(self.shuffled, [True])
         self.assertEqual([x['videoId'] for x in self.b.playingTracksModel.snapshot()], self.ids())
         self.assertEqual(self.b.playerSourceIndex, 2)
         self.assertEqual(self.b.playerQueueIndex, 0)
-        self.assertEqual(self.b._queue.source_playlist_id, 'PLsource')
+        self.assertEqual(self.b._queue.source_playlist_id, 'OLAKalbum')
         self.assertTrue(self.b._queue.shuffle_active)
         self.assertFalse(self.b._queue.radio_active)
         self.assertEqual(self.b.playerRepeatMode, 'all')
         self.until(lambda: 'A' in support.core.LOCAL_AUDIO_CACHE)
         self.b.clearDetail()
         self.assertTrue(self.b.restorePlayingSource(1))
-        self.assertEqual(self.b.detailTitle, 'Playlist')
+        self.assertEqual(self.b.detailTitle, 'Album')
         self.assertEqual([x['videoId'] for x in self.b.detailTracksModel.snapshot()], ['A', 'B', 'C'])
         for expected in ('A', 'B', 'C'):
             self.eos()
@@ -72,7 +77,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.assertTrue(self.b.detailCanShuffle)
         self.shuffle()
         self.b.cycleRepeat(); self.b.cycleRepeat()
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=25, shuffle=True)
+        self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=0, shuffle=True)
         self.eos(); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.played, ['C', 'C'])
         self.b.playFrom('playing', 2); self.until(lambda: self.b.playerState == 'playing')
@@ -83,7 +88,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
 
     def test_replaces_audio_and_resets_repeat_only_after_success(self):
         self.start('old', 'next'); old = self.b._queue
-        self.playlist(); self.b._repeat_mode = 'one'
+        self.album_source(); self.b._repeat_mode = 'one'
         self.block_request = True
         self.assertTrue(self.b.shuffleDetail()); self.until(self.entered.is_set)
         self.assertIs(self.b._queue, old)
@@ -97,7 +102,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
     def test_empty_and_failed_response_leave_old_audio_and_queue(self):
         self.start('old', 'next'); old = self.b._queue
         self.b.cycleRepeat(); self.b.cycleRepeat()
-        self.playlist()
+        self.album_source()
         self.block = []
         self.b.shuffleDetail(); self.ready()
         self.api.get_watch_playlist.side_effect = RuntimeError('Offline')
@@ -106,9 +111,10 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.played, ['old'])
         self.assertEqual(len(self.errors), 2)
         self.assertEqual(self.b.playerRepeatMode, 'one')
+        self.assertFalse(self.shuffled)
 
     def test_server_filtering_duplicates_and_unmatched_source_index(self):
-        self.playlist()
+        self.album_source()
         self.block = [self.song('C'), dict(self.song('bad'), isAvailable=False),
                       {'title': 'No ID'}, self.song('C'), self.song('X')]
         self.shuffle()
@@ -117,7 +123,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         self.assertTrue(all('_guiPlaylistBinding' not in x for x in self.b._queue.tracks))
 
     def test_unsupported_curated_empty_missing_album_id_upload_and_artist(self):
-        self.playlist('RDCLAKunsupported')
+        self.album_source('RDCLAKunsupported')
         self.assertFalse(self.b.detailCanShuffle)
         self.assertFalse(self.b.shuffleDetail())
         self.api.get_album.return_value.pop('audioPlaylistId')
@@ -127,24 +133,24 @@ class ShuffleTests(support.AudioPlaybackTestCase):
                      {'kind': 'artist', 'shufflePlaylistId': 'fake'}):
             self.b._detail_meta = meta
             self.assertFalse(self.b.shuffleDetail())
-        self.api.get_playlist.return_value['tracks'] = []
-        self.playlist()
+        self.api.get_album.return_value['tracks'] = []
+        self.album_source()
         self.assertFalse(self.b.detailCanShuffle)
         self.assertFalse(self.b.shuffleDetail())
         self.api.get_watch_playlist.assert_not_called()
 
     def test_busy_and_double_submission(self):
-        self.playlist(); self.block_request = True
+        self.album_source(); self.block_request = True
         self.assertTrue(self.b.shuffleDetail()); self.until(self.entered.is_set)
         self.assertFalse(self.b.shuffleDetail())
         self.release.set(); self.ready()
         self.assertEqual(self.api.get_watch_playlist.call_count, 1)
 
-    def test_long_playlist_requests_its_size_and_repeat_off_stops_at_end(self):
-        self.api.get_playlist.return_value['tracks'] = [self.song(str(i)) for i in range(80)]
+    def test_album_repeat_off_stops_at_end(self):
+        self.api.get_album.return_value['tracks'] = [self.song(str(i)) for i in range(80)]
         self.block = [self.song('79'), self.song('42')]
-        self.playlist(); self.shuffle()
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='PLsource', limit=80, shuffle=True)
+        self.album_source(); self.shuffle()
+        self.api.get_watch_playlist.assert_called_once_with(playlistId='OLAKalbum', limit=0, shuffle=True)
         self.eos(); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.b.playerVideoId, '42')
         self.eos()
@@ -155,7 +161,7 @@ class ShuffleTests(support.AudioPlaybackTestCase):
         for change in ('stop', 'next', 'enqueue', 'navigate'):
             with self.subTest(change=change):
                 self.start('old', 'next'); old = self.b._queue
-                self.playlist(); self.entered.clear(); self.release.clear()
+                self.album_source(); self.entered.clear(); self.release.clear()
                 self.block_request = True
                 self.b.shuffleDetail(); self.until(self.entered.is_set)
                 if change == 'stop':
@@ -169,9 +175,10 @@ class ShuffleTests(support.AudioPlaybackTestCase):
                 self.release.set(); self.ready()
                 self.assertIs(self.b._queue, old)
                 self.assertNotIn('C', self.played)
+                self.assertFalse(self.shuffled)
 
     def test_stale_failure_is_silent(self):
-        self.start('old'); self.playlist(); self.block_request = True; self.block = []
+        self.start('old'); self.album_source(); self.block_request = True; self.block = []
         self.b.shuffleDetail(); self.until(self.entered.is_set)
         self.b.stopPlayback(); self.release.set(); self.ready()
         self.assertFalse(self.errors)

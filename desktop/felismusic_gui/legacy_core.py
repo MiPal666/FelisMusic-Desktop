@@ -3388,7 +3388,7 @@ class AudioPreparationCancelled(Exception):
     """A background audio preparation is no longer needed."""
 
 
-def get_local_audio_source(video_id, *, cancelled=None):
+def get_local_audio_source(video_id, *, cancelled=None, diagnostics=None):
     """
     Seekovatelný zdroj pro GStreamer.
 
@@ -3398,6 +3398,9 @@ def get_local_audio_source(video_id, *, cancelled=None):
 
     Cast nadále používá přímou URL.
     """
+
+    if diagnostics is not None:
+        diagnostics.audio_begin(video_id)
 
     def check_cancelled(_progress=None):
         if cancelled is not None and cancelled():
@@ -3414,6 +3417,8 @@ def get_local_audio_source(video_id, *, cancelled=None):
             cached
         )
     ):
+        if diagnostics is not None:
+            diagnostics.event("audio.cache_hit")
         _touch_local_cache(
             video_id
         )
@@ -3471,20 +3476,23 @@ def get_local_audio_source(video_id, *, cancelled=None):
     if cancelled is not None:
         options["progress_hooks"] = [check_cancelled]
 
-    with yt_dlp.YoutubeDL(
-        options
-    ) as ydl:
+    if diagnostics is not None:
+        diagnostic_options = diagnostics.audio_options()
+        diagnostic_options["progress_hooks"] = options.get("progress_hooks", []) + diagnostic_options["progress_hooks"]
+        options.update(diagnostic_options)
 
-        info = ydl.extract_info(
-            youtube_url,
-            download=True,
-        )
-
-        check_cancelled()
-
-        path = ydl.prepare_filename(
-            info
-        )
+    try:
+        with yt_dlp.YoutubeDL(options) as ydl:
+            if diagnostics is not None:
+                diagnostics.instrument_downloader(ydl)
+            info = ydl.extract_info(youtube_url, download=True)
+            check_cancelled()
+            path = ydl.prepare_filename(info)
+    except Exception as exc:
+        if diagnostics is not None:
+            diagnostics.event("audio.failed", error=type(exc).__name__, host=diagnostics.download_host,
+                              seconds=round(time.monotonic() - diagnostics.audio_started, 3))
+        raise
 
     # Některé extractory mohou vrátit skutečný filepath
     # přímo v requested_downloads.
@@ -3537,6 +3545,9 @@ def get_local_audio_source(video_id, *, cancelled=None):
         .lstrip(".")
         .lower()
     )
+
+    if diagnostics is not None:
+        diagnostics.event("audio.ready", seconds=round(time.monotonic() - diagnostics.audio_started, 3))
 
     return (
         Path(

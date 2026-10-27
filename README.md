@@ -2,7 +2,11 @@
 
 ## Stav
 
-- Desktop GUI: **0.3.25-dev** (uživatelsky ověřeno)
+Příprava náhodné fronty už nekopíruje celý původní seznam pro každou skladbu zvlášť. Cover a přesné výskyty zůstávají zachované; načítání playlistových detailů po blocích je další samostatný krok.
+
+„Přehrát náhodně“ v detailu playlistu nově zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Alba, interpreti a přemíchání existující fronty zatím používají předchozí postup; Mix/Rádio se nemění.
+
+- Desktop GUI: **0.3.37-dev** (oprava pomalé přípravy náhodné fronty hlavních Oblíbených ověřena uživatelem)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -18,7 +22,7 @@ GUI používá existující FCM session z `~/.config/felismusic/`.
 - Knihovna: Playlisty, Skladby, Alba, Interpreti, Profily, Podcasty, Nahrané,
 - Nahrané: Skladby / Alba / Interpreti,
 - rozkliknutí kolekcí na skladby/epizody,
-- Oblíbená hudba,
+- Oblíbená hudba; menu ⋮ → Přehrát náhodně / Spustit mix (0.3.29 uživatelsky ověřeno),
 - Historie,
 - Mixy pro vás a otevření mixu,
 - obrázky, názvy, interpreti/alba, délky a počty,
@@ -325,13 +329,48 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Všechny původní výskyty tohoto playlistu ve frontě se seřadí podle nového pořadí, také před aktuální skladbou a při zastaveném přehrávání. Právě hrající/pozastavená/zastavená skladba se sleduje podle identity výskytu a dostane nový index; audio, čas ani hodnocení se neresetují. Pozice ručně vložených skladeb zůstávají zachované. Přednačítání se přesměruje na skutečného nástupce a návrat přes cover obnoví nové pořadí playlistu.
 - Pokud nelze před zápisem potvrdit výskyty/souseda/vlastnictví, nic se nezapíše. Nepotvrzený zápis zobrazí stručnou zprávu s pokynem k obnovení a kontrole pořadí.
 
+## 0.3.28-dev – volitelný debug a Fronta po náhodném spuštění
+
+- Normálně spusť `./run-gui.sh`: podrobná diagnostika je standardně vypnutá. Základní dosavadní chybová hlášení zůstávají dostupná.
+- Pro diagnostiku spusť `./run-gui.sh --debug`. Přepínač se zpracuje před argumenty Qt a zapne `[FelisMusic diag]` pro celý běh. Nadále funguje `FELISMUSIC_DIAGNOSTICS=1`; explicitní `--debug` má přednost před hodnotou 0.
+- **⋮ alba/playlistu → Přehrát náhodně** po úspěšném načtení otevře Frontu stejně jako akce interpreta a Mix. Navigační kontext původní kolekce se zachytí ještě před přechodem; cover ji dál obnoví v původním řazení. Neúspěšný či zneplatněný požadavek do Fronty nepřepne.
+- Prošlo 265 offline testů. Skutečný uživatelský test čeká; příčina dřívějšího přechodného zpomalení není prokázaná.
+
+## 0.3.27-dev – diagnostika pomalého načítání
+
+Po hlášených timeoutech a HTTP 503 audia a dlouhém busy při načítání playlistu je před přijetím B3 doplněné měření. Tato etapa nemění timeouty, počty opakování, výběr formátu, směrování serverů ani práci s přihlášením. Dlouhé načítání nyní není nově rušitelné; nejdřív potřebujeme zachytit příčinu.
+
+Spuštění s uložením výstupu:
+
+```bash
+cd ~/src/FelisMusic && ./run-gui.sh --debug 2>&1 | tee /tmp/felismusic-diagnostic.log
+```
+
+Řádky `[FelisMusic diag]` obsahují JSON s relativním časem `t`, ID úlohy `job`, názvem `task` a událostí `event`:
+
+- `job.queued` / `job.start`: `queue_s` ukáže čekání na pracovní vlákno. `audio.play` a `audio.prefetch` se odlišují; API akce mají např. `api.detail`.
+- `http.begin` / `http.end` / `http.error`: skutečné požadavky stávající session ytmusicapi, bezpečný endpoint/hostname, původní timeout, HTTP stav či typ chyby a doba požadavku. Nezapisují se těla, query, cookies nebo přihlašovací hlavičky.
+- `audio.metadata_*`, `audio.js_challenge`, `audio.site_wait`: fáze yt-dlp; doba od začátku přípravy a případná oznámená čekací doba YouTube. Známé události se rozpoznávají z loggeru, jejich nepřítomnost sama nedokazuje vynechání daného kroku.
+- `audio.cdn_http_begin` / `_headers` / `_error`: hostname audio serveru i před prvními daty. Čas `_headers` měří získání odpovědi, nikoli dokončení přenosu celého souboru.
+- `audio.first_data` / `audio.download_progress` / `audio.download_finished`: přijaté bajty/rychlost, hostname a čas. `transfer_s` běží od prvního progress callbacku, nezahrnuje čekání před prvním chunkem; sledovat také předchozí HTTP události a `prepare_s`. Progress nejvýše jednou za pět sekund, navíc první a poslední zpráva.
+- `audio.postprocess_*`, `audio.ready`, `audio.cache_hit`, `audio.output_begin` / `audio.output_ready`: dokončení souboru, cache a spuštění GStreameru. `yt.warning` / `yt.error` zobrazují bezpečné kategorie, HTTP kód a dostupný hostname; původní texty s možnými citlivými URL se nepřebírají.
+
+V původní 0.3.27 byla diagnostika zapnutá automaticky; od 0.3.28 se zapíná přepínačem `--debug` a standardně je vypnutá. CLI volání převzatého jádra bez diagnostického objektu dál funguje původním způsobem. Prošlo 262 offline testů včetně zachování parametrů a kontroly, že do nových diagnostických řádků neunikají citlivé údaje; GUI ověřeno při 1280×800/900×600. Skutečná příčina pomalosti zatím nepotvrzená.
+
+## 0.3.26-dev – Mix celého alba a playlistu (B3, čeká na uživatelský test)
+
+- Otevři album nebo playlist a v **⋮ v hlavičce → Spustit mix** vytvoř doporučení podle celé kolekce. Playlist používá `RDAMPL` + playlistId, album `RDAMPL` + audioPlaylistId. Nejde o mix podle první skladby. Stávající **Přehrát náhodně** zůstává samostatnou akcí.
+- Mix se otevře ve Frontě a průběžně pokračuje pomocí B1. Cover vrací skutečnou Frontu; původní obsah/pořadí alba či playlistu se nemění. Nové přehrávání vypne Repeat. Do úspěšné odpovědi zůstávají původní audio a fronta; při chybě se zachovají.
+- U prázdné kolekce nebo alba bez audioPlaylistId je akce neaktivní; uploady ji nenabízejí. Normalizuje se případný prefix VL a již přítomný RDAMPL se nezdvojuje. Opožděné výsledky po Stop/novém přehrávání/editaci fronty/opuštění detailu se ignorují.
+- Prošlo 253 offline testů a skutečné QML klikání při 1280×800/900×600: album i playlist, ID, Fronta/cover/Repeat, pokračování do nového bloku a neaktivní nedostupné zdroje. Skutečný účet/YTM čeká na uživatelský test. Přehled existujících „Mixů pro vás“ se tímto nemění.
+
 ## 0.3.25-dev – Mix a Náhodně interpreta (B2, uživatelsky přijato)
 
 - Otevři interpreta a v **⋮ v jeho hlavičce** zvol **Spustit mix** nebo **Přehrát náhodně**. Nabídka funguje na kartách Skladby / Alba / Singly a EP; obě akce vždy cílí na interpreta jako celek, nikoli na právě zobrazenou část katalogu.
 - Používá se převzaté `artist_action_queue`: přímo `radioId` či `shuffleId` z YTM, nikoli rádio první skladby ani místní náhodné řazení. Chybí-li některé ID, odpovídající akce je neaktivní. Menu zůstává dostupné i při prázdné katalogové části.
 - Výsledek se otevře jako skutečná Fronta. Mix je průběžně doplňovaný přes B1; Náhodně je konečná fronta. Cover u obou vrací Frontu, která obsahuje skutečně vrácený výběr YTM. Nové přehrávání vypne Repeat; původní audio/fronta zůstávají až do úspěšné odpovědi.
 - Při chybě se původní přehrávání zachová. Stop, nový výběr, zásah do fronty či opuštění detailu zneplatní starou odpověď. Nová akce interpreta má přednost před starým automatickým doplňováním.
-- Prošlo 241 offline testů a QML kontroly při 1280×800 a 900×600. Uživatel přijal Mix i Náhodně interpreta a ověřil shodu výsledků s webovým YTM. Opakované spuštění může vrátit stejnou frontu; interval změny není doložený. Mix celého alba/playlistu přes ⋮ přijde v B3.
+- Prošlo 241 offline testů a QML kontroly při 1280×800 a 900×600. Uživatel přijal Mix i Náhodně interpreta a ověřil shodu výsledků s webovým YTM. Opakované spuštění může vrátit stejnou frontu; interval změny není doložený. Mix celého alba/playlistu přes ⋮ navazuje v 0.3.26-dev / B3.
 
 ## 0.3.24-dev – průběžné pokračování Mixu ze skladby (B1, uživatelsky přijato)
 
@@ -370,3 +409,23 @@ Offline ověření bez účtu a zvukového zařízení: `env/bin/python -m unitt
 - Bezprostředně před zápisem se znovu ověří vlastnictví i potvrzený název. Pokud se název mezitím změnil, je nutné otevřít nové potvrzení. Během mazání se další odeslání i zavření zablokuje.
 - Po přímém potvrzení YTM nebo následném ověření smazání dialog zmizí, karta se odebere a otevřený smazaný detail se vrátí do Knihovna → Playlisty. Opožděný přehled nebo hledání smazanou kartu během této session nevrátí. Pokud odpověď neobsahuje očekávané potvrzení, následuje omezené čtecí ověření zmizení konkrétního ID z úplné knihovny, kde před zápisem bylo. Neověřený stav zůstane jako neutrální zpráva s tlačítkem **Ověřit znovu**, které už mazání neodesílá. Chyba sítě nebo nečitelný přehled nejsou důkazem smazání.
 - Přehrávání, čas, fronta a její pořadí zůstávají zachované. Skladby z již smazaného zdroje odkazují na samotnou Frontu, takže kliknutí na cover neotevře neexistující playlist a přehrávání může pokračovat.
+
+### Postupné načítání velkých seznamů – P1 (0.3.30-dev)
+
+Oblíbená hudba zobrazí první stránku a zbytek doplní na pozadí bez blokování celé aplikace a bez původního limitu 2000. Do dokončení jsou akce a řazení vypnuté; stav je vidět u počtu položek. Po chybě lze načítání zopakovat novým otevřením Oblíbené hudby. Původní řazení A–Z/Z–A se použije až po dokončení. V této etapě se nemění rychlost přípravy Shuffle ani načítání ostatních kolekcí; ty následují samostatně.
+
+Stav nad Oblíbenými: malé kolečko a „Načítám další skladby…“, po dokončení čtyři sekundy „Vše načteno · X skladeb“. Panel neblokuje navigaci ani ovládání hrající hudby.
+
+### Přehrávání před dokončením načítání – P2a (0.3.32-dev)
+
+Během kolečka nad Oblíbenými už lze přehrát viditelnou skladbu dvojklikem nebo výběrem a Enterem. Další stránky rozšíří i tuto frontu; hrající skladba pokračuje. Na dočasném konci fronta počká na další blok, Stop čekání zruší. Stav načítání či neúplnosti je vidět ve Frontě. Případné A–Z se po dokončení projeví v prohlíženém seznamu; spuštěná fronta si ponechá pořadí YTM. Ostatní akce a řazení jsou do dokončení vypnuté. Rychlejší příprava náhodné fronty následuje samostatně.
+
+### Rychlý start Přehrát náhodně – P2b (0.3.33-dev)
+
+Náhodné přehrávání playlistu, alba, Oblíbených a interpreta připravuje audio už z první stránky serverové fronty; další stránky doplní na pozadí se zachováním stejného pořadí YTM. Ve Frontě je vidět doplňování, případné čekání nebo neúplnost po chybě. Stop zruší automatické pokračování, pozdější bloky nepřerušují audio. Cover vrací původní kolekci. Opětovné zamíchání existující fronty je během doplňování vypnuté. Dostupnost akcí nad dosud nenačtenou zdrojovou kolekcí se zatím nemění; zejména u Oblíbených se menu stále aktivuje po načtení seznamu. Příprava audio souboru zůstává samostatnou prodlevou.
+
+Při hlášce „Seznam není úplný“ v náhodné frontě spusť aplikaci s `--debug`. Verze 0.3.34 rozlišuje chybu požadavku, parsování a opakované pokračování pomocí bezpečných počtů a důvodu; samotné načítání zatím nemění.
+
+### Porovnání původního a postupného Shuffle
+
+`env/bin/python tools/compare_shuffle.py --limit 1635` nabídne výběr playlistu z knihovny. Zvol stejný playlist jako při chybě a počet uprav podle zdroje v GUI. Nástroj provede původní načtení a potom jeho odpovědi porovná s novým adaptérem pouze v paměti; druhé náhodné serverové pořadí se nevytváří. Vypíše souhrn položek/různých skladeb a shodu společného začátku. Nepřehrává audio ani nemění playlisty; odpovědi a pokračovací tokeny neukládá na disk. Pro nynější diagnostiku neposuzovat úplnost jen podle celkového počtu položek.

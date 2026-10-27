@@ -16,6 +16,17 @@ from felismusic_gui import backend
 core = backend.core
 
 
+class FakeWatchPages:
+    """Single-page API mock; raw cursor parsing is covered in test_paging."""
+    def __init__(self, api, playlist_id, *, shuffle=True, limit=None):
+        self.api, self.playlist_id, self.shuffle = api, playlist_id, shuffle
+    def next_page(self):
+        kwargs = dict(playlistId=self.playlist_id, limit=0)
+        if self.shuffle:
+            kwargs['shuffle'] = True
+        return self.api.get_watch_playlist(**kwargs).get('tracks', []), False
+
+
 class AudioPlaybackTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -80,6 +91,7 @@ class AudioPlaybackTestCase(unittest.TestCase):
                 return info['path']
 
         self.patches = [
+            patch.object(backend, 'WatchPages', FakeWatchPages),
             patch.object(core, 'LOCAL_CACHE_DIR', self.temp.name),
             patch.object(core, 'LOCAL_AUDIO_CACHE', {}),
             patch.object(core, 'LOCAL_CACHE_ORDER', []),

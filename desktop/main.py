@@ -8,13 +8,14 @@ from PySide6.QtGui import QGuiApplication
 from PySide6.QtQml import QQmlApplicationEngine
 
 from felismusic_gui.backend import BackendBridge
+from felismusic_gui.diagnostics import configure_debug
 
 
-VERSION = "0.3.25-dev"
+VERSION = "0.3.37-dev"
 
 
 def main():
-    app = QGuiApplication(sys.argv)
+    app = QGuiApplication(configure_debug(sys.argv))
     app.setApplicationName("FelisMusic")
     app.setOrganizationName("FelisCatus")
 

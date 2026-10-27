@@ -210,6 +210,10 @@ ApplicationWindow {
             root.currentPage = 5
             Qt.callLater(root.revealQueueRow)
         }
+        function onCollectionShuffleStarted() {
+            root.currentPage = 5
+            Qt.callLater(root.revealQueueRow)
+        }
         function onErrorOccurred(message) {
             root.errorText = message
             errorDialog.open()
@@ -980,6 +984,7 @@ ApplicationWindow {
         required property string playlistId
         required property string browseId
         property string sourceKey: ""
+        property bool partialLiked: sourceKey === "liked" && !backend.likedComplete
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
@@ -1104,7 +1109,7 @@ ApplicationWindow {
                         backend.selectTrack(sourceKey, index,
                                             event.button !== Qt.RightButton && !!(event.modifiers & Qt.ControlModifier),
                                             event.button !== Qt.RightButton && !!(event.modifiers & Qt.ShiftModifier))
-                    if (event.button === Qt.RightButton)
+                    if (event.button === Qt.RightButton && !trackDelegate.partialLiked)
                         trackMenu.popup(trackDelegate, event.x, event.y)
                     return
                 }
@@ -1125,6 +1130,7 @@ ApplicationWindow {
         Button {
             id: menuButton
             objectName: "trackMenuButton"
+            enabled: !trackDelegate.partialLiked
             anchors.right: parent.right
             anchors.rightMargin: 8
             anchors.verticalCenter: parent.verticalCenter
@@ -1287,7 +1293,7 @@ ApplicationWindow {
             objectName: "collectionMenuButton"
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
-            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle
+            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
                      || backend.detailMeta.kind === "artist"
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
@@ -1326,6 +1332,14 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.shuffleDetail()
+            }
+            MenuItem {
+                objectName: "collectionRadio"
+                text: "Spustit mix"
+                visible: backend.detailMeta.kind === "playlist" || backend.detailMeta.kind === "album"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanCollectionRadio && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.startCollectionRadio()
             }
             MenuItem {
                 objectName: "artistRadio"
@@ -2085,6 +2099,26 @@ ApplicationWindow {
                     }
 
                     Item {
+                        id: likedPage
+                        property bool sawLoading: false
+                        Timer {
+                            id: likedCompletionTimer
+                            objectName: "likedCompletionTimer"
+                            interval: 4000
+                        }
+                        Connections {
+                            target: backend
+                            function onLikedLoadChanged() {
+                                if (backend.likedLoading) {
+                                    likedPage.sawLoading = true
+                                    likedCompletionTimer.stop()
+                                } else {
+                                    if (likedPage.sawLoading && backend.likedComplete)
+                                        likedCompletionTimer.restart()
+                                    likedPage.sawLoading = false
+                                }
+                            }
+                        }
                         ColumnLayout {
                             anchors.fill: parent
                             anchors.margins: 22
@@ -2099,8 +2133,33 @@ ApplicationWindow {
                                     font.bold: true
                                 }
                                 Item { Layout.fillWidth: true }
+                                ToolButton {
+                                    id: likedMenuButton
+                                    objectName: "likedMenuButton"
+                                    text: "⋮"
+                                    enabled: backend.connected && !backend.busy
+                                    onClicked: likedMenu.popup(likedMenuButton, 0, height)
+                                    Menu {
+                                        id: likedMenu
+                                        objectName: "likedContextMenu"
+                                        popupType: Popup.Item
+                                        MenuItem {
+                                            objectName: "likedShuffle"
+                                            text: "Přehrát náhodně"
+                                            enabled: backend.likedComplete && backend.likedModel.count > 0 && backend.connected && !backend.busy && backend.playerCanEditQueue
+                                            onTriggered: backend.startLikedPlayback("shuffle")
+                                        }
+                                        MenuItem {
+                                            objectName: "likedRadio"
+                                            text: "Spustit mix"
+                                            enabled: backend.likedComplete && backend.likedModel.count > 0 && backend.connected && !backend.busy && backend.playerCanEditQueue
+                                            onTriggered: backend.startLikedPlayback("radio")
+                                        }
+                                    }
+                                }
                                 ComboBox {
                                     id: likedOrder
+                                    enabled: backend.likedComplete
                                     Layout.preferredWidth: 170
                                     model: ["Výchozí YTM", "A–Z", "Z–A"]
                                     currentIndex: {
@@ -2122,13 +2181,60 @@ ApplicationWindow {
                                 font.pixelSize: 13
                             }
 
+                            Rectangle {
+                                objectName: "likedLoadBanner"
+                                Layout.fillWidth: true
+                                implicitHeight: likedLoadRow.implicitHeight + 24
+                                visible: backend.likedLoading || !backend.likedComplete || likedCompletionTimer.running
+                                color: backend.likedComplete ? "#173328" : backend.likedLoading ? "#23243b" : "#3b2920"
+                                radius: 6
+                                RowLayout {
+                                    id: likedLoadRow
+                                    anchors.fill: parent
+                                    anchors.margins: 12
+                                    spacing: 12
+                                    BusyIndicator {
+                                        objectName: "likedLoadSpinner"
+                                        Layout.preferredWidth: 28
+                                        Layout.preferredHeight: 28
+                                        running: backend.likedLoading
+                                        visible: running
+                                    }
+                                    ColumnLayout {
+                                        Layout.fillWidth: true
+                                        spacing: 4
+                                        Label {
+                                            objectName: "likedLoadTitle"
+                                            Layout.fillWidth: true
+                                            wrapMode: Text.Wrap
+                                            text: backend.likedLoading ? "Načítám další skladby…"
+                                                : backend.likedComplete ? "Vše načteno · " + backend.likedModel.count + " skladeb"
+                                                : "Načítání se nepodařilo dokončit"
+                                            font.pixelSize: 16
+                                            font.bold: true
+                                            color: "#eeeeee"
+                                        }
+                                        Label {
+                                            Layout.fillWidth: true
+                                            visible: !backend.likedComplete
+                                            wrapMode: Text.Wrap
+                                            text: backend.likedLoading
+                                                ? "Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; řazení a ostatní akce až po dokončení."
+                                                : "Seznam není úplný. Otevři Oblíbenou hudbu znovu."
+                                            color: "#bbbbbb"
+                                            font.pixelSize: 13
+                                        }
+                                    }
+                                }
+                            }
+
                             ListView {
                                 id: likedList
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
                                 model: backend.likedModel
-                                delegate: TrackDelegate { sourceKey: "liked" }
+                                delegate: TrackDelegate { sourceKey: "liked"; enabled: backend.likedComplete || backend.likedLoading }
                                 Keys.onPressed: function(event) { root.trackKeys(event, "liked") }
                                 ScrollBar.vertical: ScrollBar { }
  Connections {
@@ -2208,7 +2314,10 @@ ApplicationWindow {
                                 Label {
                                     objectName: "queuePosition"
                                     Layout.fillWidth: true
-                                    text: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0"
+                                    text: (backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0")
+                                          + (backend.playerQueueLoading ? (backend.playerWaitingForTracks ? " · Čekám na další skladby…" : " · Načítám další skladby…")
+                                             : backend.playerQueueIncomplete ? " · Seznam není úplný" : "")
+                                    wrapMode: Text.Wrap
                                     color: "#b9b0ff"
                                     font.pixelSize: 16
                                 }
@@ -2451,7 +2560,7 @@ ApplicationWindow {
                                     objectName: "stopButton"
                                     iconKind: "stop"
                                     implicitWidth: 42
-                                    enabled: backend.playerHasTrack && (backend.playerState !== "idle" || backend.playerWaitingForRadio)
+                                    enabled: backend.playerHasTrack && (backend.playerState !== "idle" || backend.playerWaitingForTracks)
                                     hoverEnabled: true
                                     onClicked: backend.stopPlayback()
                                     ToolTip.visible: hovered

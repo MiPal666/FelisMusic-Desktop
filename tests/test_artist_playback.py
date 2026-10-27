@@ -66,7 +66,7 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
 
     def test_shuffle_uses_artist_shuffle_id_server_order_and_is_finite(self):
         self.open_artist(); self.play('shuffle')
-        self.api.get_watch_playlist.assert_called_once_with(playlistId='RDAartist', limit=support.core.MIX_LIMIT)
+        self.api.get_watch_playlist.assert_called_once_with(playlistId='RDAartist', limit=0)
         self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
         self.assertTrue(self.b._queue.shuffle_active); self.assertFalse(self.b._queue.radio_active)
         self.assertEqual(self.b.playingListTitle, 'Artist - Náhodně')
@@ -80,6 +80,25 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
                             {'title': 'No ID'}, self.song('B')]
         self.open_artist(); self.play('radio')
         self.assertEqual(self.ids(), ['A', 'B'])
+
+    def test_shuffle_cover_restores_artist_tab_after_browsing_elsewhere(self):
+        self.open_artist()
+        self.b.selectArtistSection('albums'); self.ready()
+        self.b.playbackSourceCaptured.connect(lambda: self.b.setPlaybackSourceContext(
+            {'page': 1, 'librarySection': 'artists', 'libraryLabel': 'Interpreti'}))
+        self.play('shuffle')
+        self.assertEqual(self.b.playerQueueSource, 'detail')
+        self.assertEqual(self.b.playerSourceIndex, -1)
+        self.assertEqual(self.b.playerSourceContext['page'], 1)
+        queue = self.b._queue
+        self.b.openLibraryItem('album', 'other', '', 'Other'); self.ready()
+        self.assertTrue(self.b.restorePlayingSource(1))
+        self.assertEqual(self.b.detailMeta['browseId'], 'UCartist')
+        self.assertEqual(self.b.detailMeta['section'], 'albums')
+        self.assertIs(self.b._queue, queue)
+        self.assertEqual(self.b.playerVideoId, 'Y')
+        self.b.playFrom('playing', 1); self.until(lambda: self.b.playerState == 'playing')
+        self.assertEqual(self.b.playerSourceContext['page'], 1)
 
     def test_shuffle_preserves_available_duplicate_occurrences(self):
         self.shuffle_block = [self.song('A'), self.song('A'), self.song('B')]
@@ -175,9 +194,9 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertEqual(old.count(), 8); self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
         self.assertFalse(self.b._queue.radio_active)
 
-    def test_cover_uses_generated_queue_not_visible_artist_tab(self):
-        self.open_artist(); self.b.selectArtistSection('albums'); self.play('shuffle')
+    def test_radio_cover_uses_generated_queue_not_visible_artist_tab(self):
+        self.open_artist(); self.b.selectArtistSection('albums'); self.play('radio')
         self.b.clearDetail()
         self.assertTrue(self.b.restorePlayingSource(5))
         self.assertEqual(self.b.playerQueueSource, 'playing')
-        self.assertEqual(self.b.playingTracksModel.count, 3)
+        self.assertEqual(self.b.playingTracksModel.count, 8)

@@ -1,5 +1,11 @@
 # FelisMusic – porovnání CLI a Desktop GUI
 
+**0.3.37-dev:** opraveno kvadratické kopírování zdrojového seznamu při přípravě hlavních Oblíbených (společný deepcopy memo, zachované indexy/izolace/cover). 346 offline testů a obě QML velikosti prošly, Michal skutečným testem potvrdil funkčnost i opravu pomalé přípravy. Načítání detailů playlistů po blocích zatím neměněno.
+
+**0.3.36-dev:** lokální Shuffle nyní také v hlavních Oblíbených, až po dokončení jejich seznamu; zachovává přesné výskyty a návrat přes cover. 344 offline testů a QML v obou velikostech prošlo, čeká na skutečný test. Další samostatné kroky: alba, interpreti, přemíchání fronty. Mix/refill beze změny.
+
+**Aktuální podkrok 2026-10-27 / 0.3.35-dev:** po prokázaném cyklu serverového Shuffle je připravené lokální „Přehrát náhodně“ pouze v detailu playlistu, nad celým již načteným seznamem se zachováním přesných výskytů. 339 offline testů a QML 900×600/1280×800 prošlo; čeká na Michalův test. Potom samostatně alba, Oblíbené, interpreti a přemíchání fronty. Mix/Rádio beze změny. P3 zatím nezahajovat.
+
 Audit: **2026-10-26**, Desktop **0.3.19-dev**, přijatý commit **`99dcad6`**. Audit je porovnání zdrojového kódu; nové testy zařízení ani zápisy do YTM se při něm neprováděly.
 
 Referenční zdroje: lokálně dodaná původní CLI `tmp/felismusic.py`, převzaté jádro [legacy_core.py](desktop/felismusic_gui/legacy_core.py), GUI [backend.py](desktop/felismusic_gui/backend.py) a [Main.qml](desktop/Main.qml). `tmp/felismusic.py` je lokální reference, nikoli instalační soubor aplikace. Aktuální pořadí dalších prací určuje [PLAN.md](PLAN.md), historie a uživatelská přijetí jsou v [STATUS.md](STATUS.md).
@@ -11,6 +17,16 @@ Navazující změna **0.3.20-dev**: A1 Shuffle playlistu/alba je automaticky i u
 **0.3.24-dev / B1**: průběžné doplňování skladbového mixu je implementované přes CLI `refill_radio_queue` nad snapshotem fronty a uživatelsky přijaté.
 
 **0.3.25-dev / B2**: Mix i Náhodně interpreta jsou implementované přes CLI `artist_action_queue`, s přímými radioId/shuffleId a menu ⋮ na všech kartách interpreta. Uživatelsky přijato; mix využívá průběžné doplňování B1.
+
+**0.3.26-dev / B3**: Mix alba/playlistu je implementovaný přes RDAMPL + zdrojové audioPlaylistId/playlistId, s doplňováním B1 a menu ⋮. Michal 2026-10-27 potvrdil opakované doplňování mixů.
+
+**0.3.29-dev**: návrat coverem ke kartě interpreta po Shuffle a menu Náhodně/Mix pro Oblíbenou hudbu (LL/RDAMPLLL). 271 offline testů a QML kontroly; nové úpravy čekají na skutečný test.
+
+**0.3.30-dev / P1:** Oblíbené se načítají po skutečných pokračovacích stránkách bez limitu 2000; první blok je vidět dříve, zbytek neblokuje globální busy. Do dokončení jsou akce vypnuté. Nová etapa čeká na test; rychlý start přehrávání a další kolekce navazují samostatně. Úpravy 0.3.29 byly uživatelem potvrzené.
+
+**0.3.32-dev / P2a:** normální přehrávání z prvního bloku Oblíbených a doplňování související fronty bez restartu, EOS čekání/Stop a označení neúplnosti. 300 offline testů a QML; čeká na skutečný test. Rychlý Shuffle/ostatní kolekce stále navazují samostatně.
+
+**0.3.33-dev / P2b:** start náhodné fronty už po prvním serverovém bloku pro album/playlist/LL/interpreta, další stránky přes původní watch continuation. Zachován konečný počet podle původního cíle, pořadí YTM, výskyty/cover a EOS/Stop/Repeat. 319 offline testů a QML; čeká na skutečný test. A2 a dostupnost menu při načítání zdrojových dat se nemění; prohlížení dalších kolekcí je P3.
 
 ## Co skutečně chybí v GUI oproti fungující CLI
 
@@ -52,7 +68,7 @@ Podstatné: přítomnost CLI kódu v `legacy_core.py` neznamená, že je funkce 
 | Knihovní změny a odběry | GUI umí přímé členství podporované skladby v knihovně. Zbývají alba/playlisty a odběry interpretů (6a/6b); toto není hotové editační rozhraní referenční CLI. |
 | Odkazy a přímá navigace | Plánované kopírování/otevření odkazů a přechody skladba → album/interpret, album → interpret. Uložené albumId samo o sobě není hotová navigační akce. |
 | Metadata hlaviček a menu Info/hodnocení jiné skladby | GUI úpravy navazující na současné hlavičky a Info/hodnocení aktuálního audia; dosud nekompletní (4b a 3a). |
-| Mix kolekce dle možností YTM | Zbývající plán 5c. CLI explicitně má rádio skladby a interpreta. Pro playlist/album je ověřená dokumentovaná cesta RDAMPL + playlistId/audioPlaylistId; samostatné GUI akce budou v menu ⋮. Neoznačovat je za již hotové univerzální CLI menu. |
+| Mix kolekce dle možností YTM | B3 implementované v 0.3.26-dev, čeká na uživatelský test. CLI explicitně má rádio skladby a interpreta; GUI navíc nabízí Mix celého playlistu/alba přes RDAMPL + playlistId/audioPlaylistId v menu ⋮. Doporučení generuje YTM, pokračování používá B1. |
 | MPRIS | Není implementované v referenční CLI ani v GUI; nová desktopová systémová integrace (9). |
 | Instalace/spouštěč/release a celková revize vzhledu | Příprava desktopové 1.0 (11), nikoli chybějící přehrávací algoritmus CLI. |
 | Hromadné odebrání a drag-and-drop | Další náměty; jednotlivé odebrání a přesun přes menu v bodu 7 jsou hotové. |

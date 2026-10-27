@@ -1,7 +1,6 @@
 from collections import Counter
 import random
 from copy import deepcopy
-from concurrent.futures import ThreadPoolExecutor
 from threading import Event, Lock, Thread
 from time import monotonic
 from typing import Any
@@ -23,6 +22,8 @@ from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
 from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
+from .paging import PlaylistPages, WatchPages
+from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
 class DictListModel(QAbstractListModel):
@@ -107,6 +108,16 @@ class DictListModel(QAbstractListModel):
         self.endInsertRows()
         self.countChanged.emit()
 
+    def append_items(self, items):
+        items = list(items)
+        if not items:
+            return
+        row = len(self._items)
+        self.beginInsertRows(QModelIndex(), row, row + len(items) - 1)
+        self._items.extend(items)
+        self.endInsertRows()
+        self.countChanged.emit()
+
     def remove_item(self, row):
         self.beginRemoveRows(QModelIndex(), row, row)
         self._items.pop(row)
@@ -165,6 +176,7 @@ class BackendBridge(QObject):
     radioStarted = Signal()
     queueShuffled = Signal()
     artistPlaybackStarted = Signal()
+    collectionShuffleStarted = Signal()
     songLibraryMenuChanged = Signal()
     songLibraryChanged = Signal()
     playlistSaveChanged = Signal()
@@ -187,6 +199,9 @@ class BackendBridge(QObject):
     _ratingStatusReady = Signal(int, str, str)
     _ratingActionReady = Signal(int, str, str, str, str)
     _radioRefillReady = Signal(object)
+    _likedPageReady = Signal(object)
+    _watchPageReady = Signal(object)
+    likedLoadChanged = Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -205,6 +220,8 @@ class BackendBridge(QObject):
         self._radio_refill_pending = False
         self._radio_refill_revision = 0
         self._radio_waiting_for_tracks = None
+        self._liked_stream = None
+        self._watch_stream = None
         self._ytmusic = None
         self._status = "Připravuji backend…"
         self._account_name = "YouTube Music"
@@ -303,7 +320,11 @@ class BackendBridge(QObject):
         # "Výchozí YTM" never requires another network request.
         self._liked_default_items = []
         self._liked_order = ""
+        self._liked_load_revision = 0
+        self._liked_load_state = "complete"
 
+        self._watchPageReady.connect(self._apply_watch_page, Qt.ConnectionType.QueuedConnection)
+        self._likedPageReady.connect(self._apply_liked_page, Qt.ConnectionType.QueuedConnection)
         self._songLibraryProbeReady.connect(self._apply_song_library_probe, Qt.ConnectionType.QueuedConnection)
         self._radioRefillReady.connect(self._apply_radio_refill, Qt.ConnectionType.QueuedConnection)
         self._resultReady.connect(
@@ -475,6 +496,28 @@ class BackendBridge(QObject):
     def playerWaitingForRadio(self):
         return self._queue is not None and self._radio_waiting_for_tracks is self._queue
 
+    def _active_queue_stream(self):
+        for stream in (self._watch_stream, self._liked_stream):
+            if stream and stream["queue"] is self._queue:
+                return stream
+        return None
+
+    @Property(bool, notify=playerChanged)
+    def playerQueueLoading(self):
+        stream = self._active_queue_stream()
+        return bool(stream and stream["state"] == "loading")
+
+    @Property(bool, notify=playerChanged)
+    def playerQueueIncomplete(self):
+        stream = self._active_queue_stream()
+        return bool(stream and stream["state"] == "error")
+
+    @Property(bool, notify=playerChanged)
+    def playerWaitingForTracks(self):
+        stream = self._active_queue_stream()
+        return self.playerWaitingForRadio or bool(
+            stream and stream["state"] == "loading" and stream["waiting"])
+
     @Slot()
     def cycleRepeat(self):
         self._repeat_mode = core.cycle_repeat_mode(self._repeat_mode)
@@ -532,7 +575,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and (self._queue.index > 0 or self._repeat_mode == "all")
+            and (self._queue.index > 0 or (self._repeat_mode == "all" and not self.playerQueueLoading))
             and not self._playback_transitioning
         )
 
@@ -541,7 +584,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and (self._queue.index + 1 < self._queue.count() or self._repeat_mode == "all")
+            and (self._queue.index + 1 < self._queue.count() or (self._repeat_mode == "all" and not self.playerQueueLoading))
             and not self._playback_transitioning
         )
 
@@ -680,6 +723,10 @@ class BackendBridge(QObject):
 
     def _sync_queue_model(self):
         """Expose the real playback order, independently of browsing models."""
+        if self._liked_stream and self._liked_stream["queue"] is not self._queue:
+            self._liked_stream = None
+        if self._watch_stream and self._watch_stream["queue"] is not self._queue:
+            self._watch_stream = None
         items = []
         for song in self._queue.tracks if self._queue is not None else []:
             item = self._track(song, upload=str(song.get("_guiKind") or "").startswith("upload_"))
@@ -728,6 +775,9 @@ class BackendBridge(QObject):
 
     @Slot(str, int, bool, bool)
     def selectTrack(self, source, index, control, shift):
+        if source == "liked" and not self.likedComplete and (
+                not self.likedLoading or control or shift or self._busy):
+            return
         items = self._source_items(source)
         if not 0 <= index < len(items) or not items[index].get("videoId"):
             return
@@ -752,6 +802,8 @@ class BackendBridge(QObject):
 
     @Slot(str)
     def selectAllTracks(self, source):
+        if source == "liked" and not self.likedComplete:
+            return
         self._selection_revision += 1
         self._selection_source = source
         self._selection_indices = [i for i, x in enumerate(self._source_items(source)) if x.get("videoId")]
@@ -766,6 +818,8 @@ class BackendBridge(QObject):
 
     @Slot(result=bool)
     def openSelectedPlaylistSave(self):
+        if self._selection_source == "liked" and not self.likedComplete:
+            return False
         if self._busy or self._closing.is_set() or self._ytmusic is None:
             return False
         source = self._source_items(self._selection_source)
@@ -1178,6 +1232,9 @@ class BackendBridge(QObject):
 
     def _start_current_async(self, direction=1, stop_current=False):
         self._radio_waiting_for_tracks = None
+        stream = self._active_queue_stream()
+        if stream:
+            stream["waiting"] = False
         if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
 
@@ -1221,9 +1278,13 @@ class BackendBridge(QObject):
                     break
                 try:
                     url, content_type = core.get_local_audio_source(
-                        song["videoId"], cancelled=cancelled
+                        song["videoId"], cancelled=cancelled, diagnostics=current_trace()
                     )
                     artists = core.artist_names(song)
+                    trace = current_trace()
+                    output_started = monotonic()
+                    if trace:
+                        trace.event("audio.output_begin")
                     with self._transport_lock:
                         if cancelled():
                             return
@@ -1234,6 +1295,8 @@ class BackendBridge(QObject):
                             stream_type="BUFFERED",
                         )
                     mc.block_until_active(timeout=15, cancelled=cancelled)
+                    if trace:
+                        trace.event("audio.output_ready", seconds=round(monotonic() - output_started, 3))
                     if not cancelled():
                         self._playbackReady.emit(generation)
                     return
@@ -1254,7 +1317,7 @@ class BackendBridge(QObject):
                 )
                 self._playbackFailed.emit(generation, text)
 
-        self._playback_executor.submit(work)
+        self._playback_executor.submit(work, _diagnostic_label="audio.play", _diagnostic_video=self._current_video_id())
 
     def _next_prefetch_id(self):
         if self._queue is None or self._queue.empty():
@@ -1298,7 +1361,7 @@ class BackendBridge(QObject):
                 return
             try:
                 print(f"FelisMusic přednačítání: {video_id}")
-                core.get_local_audio_source(video_id, cancelled=cancelled)
+                core.get_local_audio_source(video_id, cancelled=cancelled, diagnostics=current_trace())
                 if not cancelled():
                     print(f"FelisMusic přednačteno: {video_id}")
             except core.AudioPreparationCancelled:
@@ -1309,7 +1372,7 @@ class BackendBridge(QObject):
                 if not cancelled():
                     print(f"FelisMusic přednačítání selhalo ({video_id}): {type(exc).__name__}")
 
-        self._prefetch_future = self._playback_executor.submit(work)
+        self._prefetch_future = self._playback_executor.submit(work, _diagnostic_label="audio.prefetch", _diagnostic_video=video_id)
 
     @Slot(int)
     def _apply_playback_ready(self, generation):
@@ -1404,7 +1467,7 @@ class BackendBridge(QObject):
             advance = self._repeat_mode == "one"
             if not advance:
                 advance = self._queue.next()
-                if not advance and self._repeat_mode == "all":
+                if not advance and self._repeat_mode == "all" and not self.playerQueueLoading:
                     self._queue.index = 0
                     advance = True
             if advance:
@@ -1413,6 +1476,9 @@ class BackendBridge(QObject):
                 return
             self._player_state = "idle"
             self._player_position = self._player_duration
+            if self.playerQueueLoading:
+                self._active_queue_stream()["waiting"] = True
+                self._set_status("Čekám na další skladby…")
             if self._queue.radio_active:
                 self._radio_waiting_for_tracks = self._queue
                 self._set_status("Mix · čekám na další doporučení…")
@@ -1423,6 +1489,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
+        if source == "liked" and not self.likedComplete and (not self.likedLoading or self._busy):
+            return
         if source == "playing":
             # Select within the existing queue; do not rebuild it from a
             # browsing model which may already display something else.
@@ -1484,6 +1552,13 @@ class BackendBridge(QObject):
         for song, original_index in zip(self._queue.tracks, source_indices):
             song["_guiOrigin"] = dict(origin, index=original_index)
         self.playbackSourceCaptured.emit()
+        if source == "liked" and self.likedLoading:
+            self._liked_stream = {
+                "queue": self._queue, "revision": self._liked_load_revision,
+                "origin": self._queue.current()["_guiOrigin"],
+                "items": list(items), "bound": list(zip(self._queue.tracks, source_indices)),
+                "state": "loading", "waiting": False,
+            }
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
 
@@ -1993,6 +2068,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int, result=bool)
     def openPlaylistSave(self, source, index):
+        if source == "liked" and not self.likedComplete:
+            return False
         if self._busy or self._closing.is_set() or self._ytmusic is None:
             return False
         items = self._source_items(source)
@@ -2234,7 +2311,7 @@ class BackendBridge(QObject):
                 # An independent authenticated client keeps the main API worker
                 # free for Mix/browsing while this read is waiting on the network.
                 if self._library_probe_api is None:
-                    self._library_probe_api = YTMusic(dict(self._library_probe_headers))
+                    self._library_probe_api = instrument_ytmusic(YTMusic(dict(self._library_probe_headers)))
                 result = self._fetch_song_library_controls(self._library_probe_api, item["videoId"], item.get("albumId", ""))
             except Exception as exc:
                 error = str(exc)
@@ -2394,6 +2471,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerCanShuffle(self):
         return (self.playerHasTrack and self.playerCanEditQueue and not self._queue.radio_active
+                and not self.playerQueueLoading and not self.playerQueueIncomplete
                 and not self._queue.current().get("_guiRemoveAfterPlayback")
                 and self._queue.source_playlist_id not in self._deleted_playlists
                 and core.youtube_shuffle_supported(self._queue.source_playlist_id))
@@ -2484,6 +2562,61 @@ class BackendBridge(QObject):
         meta = self._detail_meta
         return meta.get("playlistId", "") if meta.get("kind") == "playlist" else meta.get("shufflePlaylistId", "")
 
+    def _collection_radio_source_id(self):
+        value = self._detail_shuffle_id()
+        return value.strip().removeprefix("VL") if isinstance(value, str) else ""
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanCollectionRadio(self):
+        return (self._detail_meta.get("kind") in ("playlist", "album")
+                and bool(self._collection_radio_source_id())
+                and self._collection_radio_source_id() not in self._deleted_playlists
+                and self._detail_tracks_model.count > 0)
+
+    @Slot(result=bool)
+    def startCollectionRadio(self):
+        if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
+                or not self.detailCanCollectionRadio):
+            return False
+        self._radio_refill_revision += 1
+        kind, source_id = self._detail_meta["kind"], self._collection_radio_source_id()
+        title = self._detail_title
+        radio_id = source_id if source_id.startswith("RDAMPL") else "RDAMPL" + source_id
+        generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
+
+        def task():
+            result = {"kind": kind, "sourceId": source_id, "name": f"Mix: {title}",
+                      "generation": generation, "marker": marker}
+            try:
+                # The collection is the seed, never its first video. Albums
+                # supply audioPlaylistId; the MPRE browse ID is not playable.
+                data = api.get_watch_playlist(playlistId=radio_id, limit=core.MIX_LIMIT, radio=True)
+                tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]),
+                    core.usable_tracks(data.get("tracks") or []))
+                tracks = core.limit_radio_tracks_for_test(tracks)
+                if not tracks:
+                    raise RuntimeError("YouTube Music nevrátilo přehratelný mix této kolekce.")
+                result["tracks"] = [self._playback_track(self._track(x)) for x in tracks]
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+
+        self._submit("collection_radio", f"Načítám mix · {title}…", task)
+        return True
+
+    def _apply_collection_radio(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or self._detail_meta.get("kind") != result["kind"]
+                or self._collection_radio_source_id() != result["sourceId"]):
+            return
+        if result.get("error"):
+            self._set_status("Mix kolekce se nepodařilo načíst")
+            self.errorOccurred.emit(result["error"])
+            return
+        self._start_generated_queue(result["tracks"], result["name"], radio=True)
+        self.radioStarted.emit()
+
     @Property(bool, notify=detailTitleChanged)
     def detailCanArtistRadio(self):
         return self._detail_meta.get("kind") == "artist" and bool(self._detail_meta.get("radioId"))
@@ -2501,20 +2634,25 @@ class BackendBridge(QObject):
         self._radio_refill_revision += 1
         artist_id = self._detail_meta["browseId"]
         artist_name = self._detail_title
+        origin = self._make_origin("detail", -1, self._source_items("detail"))
         playlist_id = self._detail_meta["radioId" if mode == "radio" else "shuffleId"]
         generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
 
         def task():
-            result = {"artistId": artist_id, "mode": mode, "generation": generation, "marker": marker}
+            result = {"artistId": artist_id, "mode": mode, "generation": generation, "marker": marker,
+                      "origin": origin}
             try:
-                queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
-                if queue is None or queue.empty():
-                    raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu interpreta.")
-                tracks = queue.tracks
-                if mode == "radio":
-                    tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), tracks)
+                if mode == "shuffle":
+                    tracks = self._first_watch_page(result, api, playlist_id, shuffle=False, limit=core.MIX_LIMIT)
+                    name = f"{artist_name} - Náhodně"
+                else:
+                    queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
+                    if queue is None or queue.empty():
+                        raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu interpreta.")
+                    tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), queue.tracks)
                     tracks = core.limit_radio_tracks_for_test(tracks)
-                result.update(name=queue.name, tracks=[self._playback_track(self._track(x)) for x in tracks])
+                    name = queue.name
+                result.update(name=name, tracks=[self._playback_track(self._track(x)) for x in tracks])
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
@@ -2532,23 +2670,178 @@ class BackendBridge(QObject):
             self._set_status("Frontu interpreta se nepodařilo načíst")
             self.errorOccurred.emit(result["error"])
             return
+        self._start_generated_queue(result["tracks"], result["name"],
+            radio=result["mode"] == "radio", shuffle=result["mode"] == "shuffle",
+            origin=result["origin"] if result["mode"] == "shuffle" else None)
+        if result["mode"] == "shuffle":
+            self._attach_watch_stream(result)
+        self.artistPlaybackStarted.emit()
+
+    def _start_generated_queue(self, tracks, name, radio=False, shuffle=False, origin=None):
         self._radio_waiting_for_tracks = None
         self._prefetch_revision += 1
         if self._prefetch_future is not None:
             self._prefetch_future.cancel()
-        self._queue = core.PlaybackQueue(result["tracks"], name=result["name"],
-            radio_active=result["mode"] == "radio", shuffle_active=result["mode"] == "shuffle")
+        self._queue = core.PlaybackQueue(tracks, name=name, radio_active=radio, shuffle_active=shuffle)
         self._repeat_mode = "off"
         self._queue_source = "playing"
         self._queue_source_indices = list(range(self._queue.count()))
         self._playing_browse_snapshots = {}
         self._playing_detail_title = ""
+        # Copy the origin graph once for the whole queue. Each occurrence
+        # retains its own index/context record, while shared source snapshots
+        # stay shared and isolated from the input. Without a shared memo a
+        # list of N songs was copied N times on the GUI thread.
+        origin_memo = {}
         for index, song in enumerate(self._queue.tracks):
-            song["_guiOrigin"] = {"source": "playing", "index": index, "context": {"page": 5}}
+            song["_guiOrigin"] = (deepcopy(song.get("_guiOrigin", origin), origin_memo) if origin is not None else
+                                  {"source": "playing", "index": index, "context": {"page": 5}})
         self._sync_queue_model()
+        if origin is not None:
+            self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
-        self.artistPlaybackStarted.emit()
+
+    @Slot(str, result=bool)
+    def startLikedPlayback(self, mode):
+        if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
+                or mode not in ("radio", "shuffle") or not self._liked_model.count
+                or not self.likedComplete):
+            return False
+        self._radio_refill_revision += 1
+        items = self._source_items("liked")
+        origin = self._make_origin("liked", -1, items)
+        generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
+
+        def task():
+            result = {"mode": mode, "origin": origin, "generation": generation, "marker": marker}
+            try:
+                if mode == "shuffle":
+                    indices = [i for i, item in enumerate(items) if item.get("videoId")]
+                    random.shuffle(indices)
+                    result["indices"] = indices
+                    tracks = [items[i] for i in indices]
+                else:
+                    data = api.get_watch_playlist(playlistId="RDAMPLLL", limit=core.MIX_LIMIT, radio=True)
+                    tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]),
+                        core.usable_tracks(data.get("tracks") or []))
+                    tracks = core.limit_radio_tracks_for_test(tracks)
+                if not tracks:
+                    raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu oblíbené hudby.")
+                result["tracks"] = [self._playback_track(x if mode == "shuffle" else self._track(x))
+                                    for x in tracks]
+            except Exception as exc:
+                result["error"] = f"{type(exc).__name__}: {exc}"
+            return result
+
+        self._submit("liked_playback", "Načítám oblíbenou hudbu · " +
+                     ("mix…" if mode == "radio" else "náhodně…"), task)
+        return True
+
+    def _apply_liked_playback(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or result["origin"]["snapshots"]["liked"] != self._source_items("liked")):
+            return
+        if result.get("error"):
+            self._set_status("Frontu oblíbené hudby se nepodařilo načíst")
+            self.errorOccurred.emit(result["error"])
+            return
+        shuffle = result["mode"] == "shuffle"
+        origin = result["origin"] if shuffle else None
+        if shuffle:
+            for song, index in zip(result["tracks"], result["indices"]):
+                song["_guiOrigin"] = dict(origin, index=index)
+        self._start_generated_queue(result["tracks"],
+            "Oblíbená hudba – " + ("Náhodně" if shuffle else "Mix"),
+            radio=not shuffle, shuffle=shuffle, origin=origin)
+        if shuffle:
+            self._queue.source_playlist_id = "LL"
+            self._queue_source_indices = result["indices"]
+            self.collectionShuffleStarted.emit()
+        else:
+            self.radioStarted.emit()
+
+    def _first_watch_page(self, result, api, playlist_id, shuffle=True, limit=None):
+        pager = WatchPages(api, playlist_id, shuffle=shuffle, limit=limit)
+        while not self._closing.is_set():
+            raw, more = pager.next_page()
+            tracks = core.usable_tracks(raw)
+            if tracks or not more:
+                if not tracks:
+                    raise RuntimeError("YouTube Music nevrátilo žádnou přehratelnou náhodnou frontu.")
+                result.update(pager=pager, more=more)
+                return tracks
+        raise core.AudioPreparationCancelled()
+
+    def _attach_watch_stream(self, result):
+        if not result.get("more"):
+            return
+        origin = self._current_origin()
+        source = origin.get("source")
+        matches = {}
+        for index, item in enumerate(origin.get("snapshots", {}).get(source, [])):
+            if item.get("videoId"):
+                matches.setdefault(item["videoId"], []).append(index)
+        for song in self._queue.tracks:
+            positions = matches.get(song["videoId"], [])
+            index = song.get("_guiOrigin", {}).get("index", -1)
+            if index in positions:
+                positions.remove(index)
+        self._watch_stream = {"queue": self._queue, "pager": result["pager"],
+            "origin": origin, "matches": matches, "state": "loading", "waiting": False}
+        self.playerChanged.emit()
+        self._schedule_watch_page(self._watch_stream)
+
+    def _schedule_watch_page(self, stream):
+        def submit():
+            if (self._closing.is_set() or stream is not self._watch_stream
+                    or stream["queue"] is not self._queue or stream["state"] != "loading"):
+                return
+            def work():
+                if self._closing.is_set() or stream is not self._watch_stream:
+                    return
+                result = {"stream": stream}
+                try:
+                    tracks, more = stream["pager"].next_page()
+                    result.update(items=[self._track(x) for x in core.usable_tracks(tracks)], more=more)
+                except Exception as exc:
+                    result["error"] = type(exc).__name__
+                    trace = current_trace()
+                    if trace:
+                        trace.event("api.error", error=type(exc).__name__)
+                self._watchPageReady.emit(result)
+            self._executor.submit(work, _diagnostic_label="api.shuffle_page")
+        QTimer.singleShot(0, submit)
+
+    @Slot(object)
+    def _apply_watch_page(self, result):
+        stream = result["stream"]
+        if (self._closing.is_set() or stream is not self._watch_stream
+                or stream["queue"] is not self._queue or stream["state"] != "loading"):
+            return
+        if self._busy:
+            # A user-requested queue replacement validates its old marker
+            # before background appends can alter it. Keep this exact page.
+            QTimer.singleShot(50, lambda: self._apply_watch_page(result))
+            return
+        if result.get("error"):
+            stream.update(state="error", waiting=False)
+            self.playerChanged.emit()
+            self._set_status("Další část náhodné fronty se nepodařilo načíst")
+            return
+        previous_next = self._next_prefetch_id()
+        for item in result["items"]:
+            positions = stream["matches"].get(item["videoId"], [])
+            index = positions.pop(0) if positions else -1
+            track = self._playback_track(item)
+            track["_guiOrigin"] = dict(stream["origin"], index=index)
+            self._queue.tracks.append(track)
+            self._queue_source_indices.append(index)
+        self._playing_tracks_model.append_items(result["items"])
+        self._after_stream_append(stream, previous_next, result["more"])
+        if result["more"]:
+            self._schedule_watch_page(stream)
 
     @Slot(result=bool)
     def shuffleDetail(self):
@@ -2569,13 +2862,23 @@ class BackendBridge(QObject):
             result = {"state": state, "generation": generation, "marker": marker,
                       "origin": origin, "playlistId": playlist_id}
             try:
-                songs = core.get_youtube_shuffle_tracks(api, playlist_id, len(state["tracks"]))
-                result["items"] = [self._track(song) for song in songs]
+                if state["meta"].get("kind") == "playlist":
+                    # Shuffle occurrences, not video IDs: duplicates retain
+                    # their exact original index and playlist edit identity.
+                    indices = [i for i, item in enumerate(state["tracks"]) if item.get("videoId")]
+                    random.shuffle(indices)
+                    if not indices:
+                        raise RuntimeError("Playlist neobsahuje přehratelné skladby.")
+                    result["local_indices"] = indices
+                    result["items"] = [state["tracks"][i] for i in indices]
+                else:
+                    songs = self._first_watch_page(result, api, playlist_id, limit=max(25, len(state["tracks"])))
+                    result["items"] = [self._track(song) for song in songs]
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("shuffle_detail", f"Načítám náhodné pořadí · {state['title']}…", task)
+        self._submit("shuffle_detail", f"Připravuji náhodné pořadí · {state['title']}…", task)
         return True
 
     def _apply_detail_shuffle(self, result):
@@ -2587,17 +2890,20 @@ class BackendBridge(QObject):
             self._set_status("Náhodné pořadí se nepodařilo načíst")
             self.errorOccurred.emit(result["error"])
             return
-        # Keep the server order, including repeated video IDs. Watch responses
-        # do not identify exact playlist occurrences; do not invent bindings.
+        # Local playlist shuffle has exact occurrence indices. Album watch
+        # responses still only identify video IDs until their separate step.
         source_items = result["state"]["tracks"]
         matches = {}
         for index, item in enumerate(source_items):
             matches.setdefault(item.get("videoId"), []).append(index)
         tracks, indices = [], []
-        for item in result["items"]:
+        for offset, item in enumerate(result["items"]):
             positions = matches.get(item["videoId"], [])
-            index = positions.pop(0) if positions else -1
+            index = (result["local_indices"][offset] if "local_indices" in result
+                     else positions.pop(0) if positions else -1)
             track = self._playback_track(item)
+            if "local_indices" in result and item.get("setVideoId"):
+                track["_guiPlaylistBinding"] = (result["playlistId"], item["setVideoId"])
             track["_guiOrigin"] = dict(result["origin"], index=index)
             tracks.append(track)
             indices.append(index)
@@ -2617,10 +2923,15 @@ class BackendBridge(QObject):
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
+        if "local_indices" not in result:
+            self._attach_watch_stream(result)
         self._set_status(f"Náhodně · {self._queue.name} · {len(tracks)} skladeb")
+        self.collectionShuffleStarted.emit()
 
     @Slot(str, int, result=bool)
     def startRadioFrom(self, source, index):
+        if source == "liked" and not self.likedComplete:
+            return False
         if self._busy or not self.playerCanEditQueue or self._ytmusic is None:
             return False
         items = self._source_items(source)
@@ -2695,6 +3006,8 @@ class BackendBridge(QObject):
         return self._enqueue_items(source, [index], play_next, context)
 
     def _enqueue_items(self, source, indices, play_next, context):
+        if source == "liked" and not self.likedComplete:
+            return False
         if not self.playerCanEditQueue or not indices:
             return False
         items = self._source_items(source)
@@ -2744,6 +3057,9 @@ class BackendBridge(QObject):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
         self._radio_refill_revision += 1
         self._radio_waiting_for_tracks = None
+        stream = self._active_queue_stream()
+        if stream:
+            stream["waiting"] = False
         if self._closing.is_set() or self._local_output is None or not self.playerHasTrack:
             return
         with self._transport_lock:
@@ -2793,7 +3109,7 @@ class BackendBridge(QObject):
             self._leave_removed_current(1, stop_current=True)
             return
         moved = self._queue.next()
-        if not moved and self._repeat_mode == "all" and not self._queue.empty():
+        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self.playerQueueLoading:
             self._queue.index = 0
             moved = True
         if moved:
@@ -2808,7 +3124,7 @@ class BackendBridge(QObject):
             self._leave_removed_current(-1, stop_current=True)
             return
         moved = self._queue.previous()
-        if not moved and self._repeat_mode == "all" and not self._queue.empty():
+        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self.playerQueueLoading:
             self._queue.index = self._queue.count() - 1
             moved = True
         if moved:
@@ -2915,6 +3231,9 @@ class BackendBridge(QObject):
             try:
                 result = fn()
             except Exception as exc:  # keep API failures out of QML
+                trace = current_trace()
+                if trace:
+                    trace.event("api.error", error=type(exc).__name__)
                 self._errorReady.emit(
                     name,
                     f"{type(exc).__name__}: {exc}",
@@ -2922,7 +3241,7 @@ class BackendBridge(QObject):
                 return
             self._resultReady.emit(name, result)
 
-        self._executor.submit(work)
+        self._executor.submit(work, _diagnostic_label=f"api.{name}")
 
     @Slot(str, object)
     def _apply_result(self, name: str, result: Any):
@@ -2934,7 +3253,16 @@ class BackendBridge(QObject):
         deleted_playlist = None
         changed_playlist_id = ""
         try:
-            if name == "artist_playback":
+            if name == "liked_first_page":
+                self._apply_liked_page(result)
+
+            elif name == "liked_playback":
+                self._apply_liked_playback(result)
+
+            elif name == "collection_radio":
+                self._apply_collection_radio(result)
+
+            elif name == "artist_playback":
                 self._apply_artist_playback(result)
 
             elif name == "shuffle_queue":
@@ -3568,7 +3896,7 @@ class BackendBridge(QObject):
         def task():
             # Deliberately non-interactive. Existing CLI auth is reused.
             headers = core.AUTH.ytmusic_headers()
-            ytmusic = YTMusic(headers)
+            ytmusic = instrument_ytmusic(YTMusic(headers))
             ytmusic.get_library_playlists(limit=1)
             account = {"accountName": "YouTube Music"}
             try:
@@ -3603,23 +3931,153 @@ class BackendBridge(QObject):
 
         self._submit("mixes", "Načítám mixy pro vás…", task)
 
+    @Property(bool, notify=likedLoadChanged)
+    def likedLoading(self):
+        return self._liked_load_state == "loading"
+
+    @Property(bool, notify=likedLoadChanged)
+    def likedComplete(self):
+        return self._liked_load_state == "complete"
+
     @Slot()
     def loadLiked(self):
-        def task():
-            data = self._require_ytmusic().get_liked_songs(limit=2000)
-            tracks = core.usable_tracks(data.get("tracks") or [])
-            result = []
-            for item in tracks:
+        if self._busy or self._closing.is_set() or self._ytmusic is None:
+            return
+        if self._liked_stream and self._liked_stream["state"] == "loading":
+            self._liked_stream.update(state="error", waiting=False)
+            self.playerChanged.emit()
+        self._liked_load_revision += 1
+        revision = self._liked_load_revision
+        pager = PlaylistPages(self._require_ytmusic(), "LM", liked=True)
+        self._liked_load_state = "loading"
+        self.clearTrackSelection()
+        self.likedLoadChanged.emit()
+        self._submit("liked_first_page", "Načítám oblíbenou hudbu…",
+                     lambda: self._read_liked_page(pager, revision, first=True))
+
+    def _read_liked_page(self, pager, revision, first=False):
+        result = {"pager": pager, "revision": revision, "first": first}
+        if self._closing.is_set() or revision != self._liked_load_revision:
+            return dict(result, stale=True)
+        try:
+            tracks, more = pager.next_page()
+            items = []
+            for item in core.usable_tracks(tracks):
                 normalized = self._track(item)
                 if not normalized.get("likeStatus"):
                     normalized["likeStatus"] = "LIKE"
-                result.append(normalized)
-            return result
+                items.append(normalized)
+            result.update(items=items, more=more)
+        except Exception as exc:
+            result["error"] = type(exc).__name__
+            trace = current_trace()
+            if trace:
+                trace.event("api.error", error=type(exc).__name__)
+        return result
 
-        self._submit("liked", "Načítám oblíbenou hudbu…", task)
+    @Slot(object)
+    def _apply_liked_page(self, result):
+        if (self._closing.is_set() or result["revision"] != self._liked_load_revision
+                or result.get("stale")):
+            return
+        if result.get("error"):
+            if result["first"]:
+                self._set_status("Oblíbenou hudbu se nepodařilo načíst")
+            self._liked_load_state = "error"
+            self._fail_liked_queue(result["revision"])
+            self.likedLoadChanged.emit()
+            # Local page state, not a modal/global busy change. The loaded
+            # prefix remains visible but cannot masquerade as the full list.
+            return
+        if result["first"]:
+            self._set_status("Oblíbená hudba · první blok načten")
+            self._liked_default_items = list(result["items"])
+            self._liked_model.set_items(self._liked_default_items)
+        else:
+            self._liked_default_items.extend(result["items"])
+            self._liked_model.append_items(result["items"])
+        if result["more"]:
+            revision, pager = result["revision"], result["pager"]
+            def submit_page():
+                if self._closing.is_set() or revision != self._liked_load_revision:
+                    return
+                def work():
+                    self._likedPageReady.emit(self._read_liked_page(pager, revision))
+                self._executor.submit(work, _diagnostic_label="api.liked_page")
+            # Yield to the UI and pending user API work between each page.
+            QTimer.singleShot(0, submit_page)
+        else:
+            if self._liked_order:
+                self._liked_model.set_items(self._sort_normalized(
+                    self._liked_default_items, self._liked_order))
+            self._liked_load_state = "complete"
+            self._invalidate_selection("liked")
+        if not result["first"]:
+            self._extend_liked_queue(result["items"], result["revision"], result["more"])
+        self.likedLoadChanged.emit()
+
+    def _fail_liked_queue(self, revision):
+        stream = self._liked_stream
+        if stream and stream["queue"] is self._queue and stream["revision"] == revision:
+            stream.update(state="error", waiting=False)
+            self.playerChanged.emit()
+
+    def _extend_liked_queue(self, items, revision, more):
+        stream = self._liked_stream
+        if (not stream or stream["queue"] is not self._queue
+                or stream["revision"] != revision or stream["state"] != "loading"):
+            return
+        queue = self._queue
+        previous_next = self._next_prefetch_id()
+        start = len(stream["items"])
+        stream["items"].extend(items)
+        for index, item in enumerate(items, start):
+            song = self._playback_track(item)
+            song["_guiOrigin"] = dict(stream["origin"], index=index)
+            queue.tracks.append(song)
+            stream["bound"].append((song, index))
+            self._queue_source_indices.append(index)
+        self._playing_tracks_model.append_items(items)
+        # The queue keeps the original YTM order. Its browsing snapshot can
+        # acquire the requested global sort only once the full list is known.
+        rows = list(range(len(stream["items"])))
+        order = stream["origin"]["liked_order"] if not more else ""
+        if order in ("a_to_z", "z_to_a"):
+            rows.sort(key=lambda i: (str(stream["items"][i].get("title") or "").casefold(),
+                                     str(stream["items"][i].get("subtitle") or "").casefold()),
+                      reverse=order == "z_to_a")
+        mapping = {old: new for new, old in enumerate(rows)}
+        stream["origin"]["snapshots"]["liked"] = [stream["items"][i] for i in rows]
+        for song, index in stream["bound"]:
+            song["_guiOrigin"]["index"] = mapping[index]
+        self._after_stream_append(stream, previous_next, more)
+
+    def _after_stream_append(self, stream, previous_next, more):
+        queue = stream["queue"]
+        was_waiting = stream["waiting"] and self._player_state == "idle"
+        if not more:
+            stream.update(state="complete", waiting=False)
+        self.playerChanged.emit()
+        if was_waiting:
+            if queue.next():
+                self._set_player_from_queue()
+                self._start_current_async(direction=1)
+            elif not more and self._repeat_mode == "all":
+                queue.index = 0
+                self._set_player_from_queue()
+                self._start_current_async(direction=1)
+            return
+        if previous_next != self._next_prefetch_id():
+            self._prefetch_revision += 1
+            if self._prefetch_future is not None:
+                self._prefetch_future.cancel()
+            if self._player_state in ("playing", "paused") and not self._playback_transitioning:
+                self._prefetch_next_track()
 
     @Slot(str)
     def sortLiked(self, order):
+        if not self.likedComplete:
+            return
         order = (order or "").strip()
         self._liked_order = order
         if not self._liked_default_items:
