@@ -2,6 +2,16 @@
 
 Aktualizováno: 2026-10-27 (Europe/Prague).
 
+## 0.3.39-dev – lokální Shuffle interpreta, čeká na skutečný test
+
+- Michal uložil přijaté album jako **e408639** a povolil další podkrok. Interpret nyní míchá již načtenou sekci Skladby lokálně, nikoli stále stejné serverové shuffleId. Při otevření interpreta už existující `_load_artist_section` načítá dostupný songs browseId přes get_playlist(limit=None); toto načítání zůstává. Shuffle znovu nestahuje katalog, nevytváří watch frontu a neomezuje seznam na MIX_LIMIT.
+- Dostupnost akce vychází z neprázdného načteného seznamu skladeb, nikoli shuffleId. Interpret bez načtených skladeb nemá lokální Shuffle; Mix může nadále fungovat podle radioId. Nejde o slib získání celého vydaného katalogu nad rámec toho, co YTM zpřístupní v sekci Skladby.
+- Zachovány všechny přehratelné výskyty včetně duplicit. Na záložce Skladby má každý výskyt přesný index v jejím aktuálním řazení. Při spuštění ze záložky Alba/Singly cover obnoví tuto záložku; skladbám se nevymýšlí index albumové karty (mají -1). Prohlížený seznam se nepřehazuje, fronta je hned konečná. Nové spuštění resetuje Repeat. Stop, změna fronty i změna detailového snapshotu zneplatní pozdní výsledek.
+- Mix interpreta, jeho endpoint a průběžné doplňování zůstávají na YTM. Akce Zamíchat existující frontu stále používá dřívější serverovou cestu a čeká na samostatný podkrok. Stránkování detailů playlistů též zatím neimplementováno.
+- Testy artist playback aktualizovány na lokální Shuffle, radio regresní testy zachovány. Odstraněno 14 integračních testů `test_shuffle_paging.py` pro již nepoužívané uživatelské serverové Shuffle streamy; testy samotného WatchPages/parserů i porovnávací diagnostiky zůstávají. Soukromé pomocné metody watch streamů v backendu zatím ponechány, nedělá se rozsáhlé čištění v tomto funkčním podkroku.
+- Kontroly: **334 offline testů prošlo**. Pět nových testů: Shuffle bez shuffleId, úplné dostupné načtení 205 výskytů přes pointer bez reloadu, přesné indexy a cover záložky Skladby, opakovaná randomizace/Repeat/konec a zneplatnění po Stop či změně záložky. Zachovány radio/refill/selhání/priority, duplicity a cover Alb. QML 900×600/1280×800: Fronta, celý počet bez doplňování, cover do interpreta a Stop; bez QML varování, API/audio mockované.
+- Skutečný test: interpret → ⋮ → Přehrát náhodně (i z Alb/Singlů), zkontrolovat počet podle dostupné sekce Skladby, další spuštění/nové pořadí, cover a Repeat/Next/Previous. Mix zůstává samostatný. Po potvrzení commit, teprve pak lokální přemíchání existující fronty.
+
 ## 0.3.38-dev – lokální Shuffle alb přijato
 
 - Michal skutečným testem potvrdil „album funguje“. Podkrok přijat; připraven k samostatnému commitu.

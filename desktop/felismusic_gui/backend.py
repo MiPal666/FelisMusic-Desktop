@@ -2623,7 +2623,9 @@ class BackendBridge(QObject):
 
     @Property(bool, notify=detailTitleChanged)
     def detailCanArtistShuffle(self):
-        return self._detail_meta.get("kind") == "artist" and bool(self._detail_meta.get("shuffleId"))
+        return (self._detail_meta.get("kind") == "artist"
+                and any(item.get("videoId") for item in
+                        self._detail_meta.get("sections", {}).get("songs", [])))
 
     @Slot(str, result=bool)
     def startArtistPlayback(self, mode):
@@ -2635,15 +2637,23 @@ class BackendBridge(QObject):
         artist_id = self._detail_meta["browseId"]
         artist_name = self._detail_title
         origin = self._make_origin("detail", -1, self._source_items("detail"))
-        playlist_id = self._detail_meta["radioId" if mode == "radio" else "shuffleId"]
+        state = self._detail_state()
+        playlist_id = self._detail_meta.get("radioId", "")
         generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
 
         def task():
             result = {"artistId": artist_id, "mode": mode, "generation": generation, "marker": marker,
-                      "origin": origin}
+                      "origin": origin, "state": state}
             try:
                 if mode == "shuffle":
-                    tracks = self._first_watch_page(result, api, playlist_id, shuffle=False, limit=core.MIX_LIMIT)
+                    meta = dict(state["meta"], section="songs")
+                    items = self._artist_sorted_items(meta)
+                    indices = [i for i, item in enumerate(items) if item.get("videoId")]
+                    random.shuffle(indices)
+                    if not indices:
+                        raise RuntimeError("Interpret nemá načtené přehratelné skladby.")
+                    tracks = [items[i] for i in indices]
+                    result["indices"] = indices if state["meta"].get("section") == "songs" else [-1] * len(indices)
                     name = f"{artist_name} - Náhodně"
                 else:
                     queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
@@ -2652,7 +2662,8 @@ class BackendBridge(QObject):
                     tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), queue.tracks)
                     tracks = core.limit_radio_tracks_for_test(tracks)
                     name = queue.name
-                result.update(name=name, tracks=[self._playback_track(self._track(x)) for x in tracks])
+                result.update(name=name, tracks=[self._playback_track(x if mode == "shuffle" else self._track(x))
+                                                for x in tracks])
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
@@ -2666,15 +2677,20 @@ class BackendBridge(QObject):
                 or self._detail_meta.get("kind") != "artist"
                 or self._detail_meta.get("browseId") != result["artistId"]):
             return
+        if result["mode"] == "shuffle" and result["state"] != self._detail_state():
+            return
         if result.get("error"):
             self._set_status("Frontu interpreta se nepodařilo načíst")
             self.errorOccurred.emit(result["error"])
             return
+        if result["mode"] == "shuffle":
+            for song, index in zip(result["tracks"], result["indices"]):
+                song["_guiOrigin"] = dict(result["origin"], index=index)
         self._start_generated_queue(result["tracks"], result["name"],
             radio=result["mode"] == "radio", shuffle=result["mode"] == "shuffle",
             origin=result["origin"] if result["mode"] == "shuffle" else None)
         if result["mode"] == "shuffle":
-            self._attach_watch_stream(result)
+            self._queue_source_indices = result["indices"]
         self.artistPlaybackStarted.emit()
 
     def _start_generated_queue(self, tracks, name, radio=False, shuffle=False, origin=None):

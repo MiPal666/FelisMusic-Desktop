@@ -11,7 +11,7 @@ from felismusic_gui.backend import BackendBridge
 from felismusic_gui.diagnostics import configure_debug
 
 
-VERSION = "0.3.38-dev"
+VERSION = "0.3.39-dev"
 
 
 def main():
