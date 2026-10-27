@@ -2,6 +2,14 @@
 
 Aktualizováno: 2026-10-27 (Europe/Prague).
 
+## 0.3.40-dev – stejné pořadí akcí interpreta jako u kolekcí, přijato
+
+- Michal potvrdil také výsledné pořadí menu v 0.3.40: „je to ok“. Podkrok přijat, připravený k commitu.
+- Michal skutečně potvrdil funkčnost lokálního Shuffle interpreta (0.3.39), požádal jen o prohození menu. Po zavření aplikace povolil úpravu: nejprve „Přehrát náhodně“, pod ním „Spustit mix“. Stejné pořadí jako u alba/playlistu; názvy, podmínky dostupnosti a napojené akce zachovány.
+- QML kontrola v 900×600/1280×800 otevřela skutečné menu, ověřila viditelnost/dostupnost a svislé pořadí obou položek, poté Frontu, cover a Stop; bez QML varování, účet/audio mockované. Přehrávací kód se neměnil, plná sada se pro samotné prohození neopakovala (předchozí 334 testů prošlo).
+- Poslední skutečný commit je nyní **045383a** (má stejný název jako albumový commit, ale obsahuje navazující změny); aktualizovaný `tests/test_artist_playback.py` zůstal mimo něj. Při následujícím commitu uložit tento test spolu s Main.qml, verzí a dokumentací. Není potřeba znovu ukládat již commitovaný backend.
+
+
 ## 0.3.39-dev – lokální Shuffle interpreta, čeká na skutečný test
 
 - Michal uložil přijaté album jako **e408639** a povolil další podkrok. Interpret nyní míchá již načtenou sekci Skladby lokálně, nikoli stále stejné serverové shuffleId. Při otevření interpreta už existující `_load_artist_section` načítá dostupný songs browseId přes get_playlist(limit=None); toto načítání zůstává. Shuffle znovu nestahuje katalog, nevytváří watch frontu a neomezuje seznam na MIX_LIMIT.

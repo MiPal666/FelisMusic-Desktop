@@ -1342,20 +1342,20 @@ ApplicationWindow {
                 onTriggered: backend.startCollectionRadio()
             }
             MenuItem {
-                objectName: "artistRadio"
-                text: "Spustit mix"
-                visible: backend.detailMeta.kind === "artist"
-                height: visible ? implicitHeight : 0
-                enabled: backend.detailCanArtistRadio && backend.connected && !backend.busy && backend.playerCanEditQueue
-                onTriggered: backend.startArtistPlayback("radio")
-            }
-            MenuItem {
                 objectName: "artistShuffle"
                 text: "Přehrát náhodně"
                 visible: backend.detailMeta.kind === "artist"
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanArtistShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.startArtistPlayback("shuffle")
+            }
+            MenuItem {
+                objectName: "artistRadio"
+                text: "Spustit mix"
+                visible: backend.detailMeta.kind === "artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanArtistRadio && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.startArtistPlayback("radio")
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"
