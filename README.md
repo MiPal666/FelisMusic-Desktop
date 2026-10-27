@@ -4,9 +4,9 @@
 
 Příprava náhodné fronty už nekopíruje celý původní seznam pro každou skladbu zvlášť. Cover a přesné výskyty zůstávají zachované; načítání playlistových detailů po blocích je další samostatný krok.
 
-„Přehrát náhodně“ v detailu playlistu nově zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Alba, interpreti a přemíchání existující fronty zatím používají předchozí postup; Mix/Rádio se nemění.
+„Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpreti a přemíchání existující fronty zatím používají předchozí postup; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.37-dev** (oprava pomalé přípravy náhodné fronty hlavních Oblíbených ověřena uživatelem)
+- Desktop GUI: **0.3.38-dev** (lokální Shuffle alb ověřené uživatelem)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

@@ -1,5 +1,7 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
+**0.3.38-dev:** připravené lokální Shuffle alb nad celým již načteným seznamem, shodnou cestou jako playlisty. Mix/refill beze změny. Michal skutečným testem přijal; po commitu zvlášť interpret, přemíchání fronty a stránkování detailů playlistů. Předchozí celek uložen v 1bdf196.
+
 **0.3.37-dev:** opraveno kvadratické kopírování zdrojového seznamu při přípravě hlavních Oblíbených (společný deepcopy memo, zachované indexy/izolace/cover). 346 offline testů a obě QML velikosti prošly, Michal skutečným testem potvrdil funkčnost i opravu pomalé přípravy. Načítání detailů playlistů po blocích zatím neměněno.
 
 **0.3.36-dev:** lokální Shuffle nyní také v hlavních Oblíbených, až po dokončení jejich seznamu; zachovává přesné výskyty a návrat přes cover. 344 offline testů a QML v obou velikostech prošlo, čeká na skutečný test. Další samostatné kroky: alba, interpreti, přemíchání fronty. Mix/refill beze změny.

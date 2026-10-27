@@ -2855,25 +2855,19 @@ class BackendBridge(QObject):
         generation = self._playback_generation
         marker = self._radio_queue_marker()
         origin = self._make_origin("detail", -1, state["tracks"])
-        api = self._ytmusic
         playlist_id = self._detail_shuffle_id()
 
         def task():
             result = {"state": state, "generation": generation, "marker": marker,
                       "origin": origin, "playlistId": playlist_id}
             try:
-                if state["meta"].get("kind") == "playlist":
-                    # Shuffle occurrences, not video IDs: duplicates retain
-                    # their exact original index and playlist edit identity.
-                    indices = [i for i, item in enumerate(state["tracks"]) if item.get("videoId")]
-                    random.shuffle(indices)
-                    if not indices:
-                        raise RuntimeError("Playlist neobsahuje přehratelné skladby.")
-                    result["local_indices"] = indices
-                    result["items"] = [state["tracks"][i] for i in indices]
-                else:
-                    songs = self._first_watch_page(result, api, playlist_id, limit=max(25, len(state["tracks"])))
-                    result["items"] = [self._track(song) for song in songs]
+                # Shuffle exact occurrences from the complete browsing snapshot.
+                indices = [i for i, item in enumerate(state["tracks"]) if item.get("videoId")]
+                random.shuffle(indices)
+                if not indices:
+                    raise RuntimeError("Kolekce neobsahuje přehratelné skladby.")
+                result["local_indices"] = indices
+                result["items"] = [state["tracks"][i] for i in indices]
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
@@ -2890,19 +2884,12 @@ class BackendBridge(QObject):
             self._set_status("Náhodné pořadí se nepodařilo načíst")
             self.errorOccurred.emit(result["error"])
             return
-        # Local playlist shuffle has exact occurrence indices. Album watch
-        # responses still only identify video IDs until their separate step.
-        source_items = result["state"]["tracks"]
-        matches = {}
-        for index, item in enumerate(source_items):
-            matches.setdefault(item.get("videoId"), []).append(index)
+        # Both playlist and album shuffle preserve exact source occurrences.
         tracks, indices = [], []
-        for offset, item in enumerate(result["items"]):
-            positions = matches.get(item["videoId"], [])
-            index = (result["local_indices"][offset] if "local_indices" in result
-                     else positions.pop(0) if positions else -1)
+        for item, index in zip(result["items"], result["local_indices"]):
             track = self._playback_track(item)
-            if "local_indices" in result and item.get("setVideoId"):
+            if (result["state"]["meta"].get("kind") == "playlist"
+                    and item.get("setVideoId")):
                 track["_guiPlaylistBinding"] = (result["playlistId"], item["setVideoId"])
             track["_guiOrigin"] = dict(result["origin"], index=index)
             tracks.append(track)
@@ -2923,8 +2910,6 @@ class BackendBridge(QObject):
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
-        if "local_indices" not in result:
-            self._attach_watch_stream(result)
         self._set_status(f"Náhodně · {self._queue.name} · {len(tracks)} skladeb")
         self.collectionShuffleStarted.emit()
 

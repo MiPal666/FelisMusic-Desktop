@@ -39,19 +39,10 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
     def song(vid):
         return dict(videoId=vid, title=vid, duration='3:00', likeStatus='LIKE')
 
-    def start_shuffle(self, source='album'):
-        if source == 'liked':
-            self.b._liked_model.set_items([self.b._track(x) for x in self.source])
-            self.assertTrue(self.b.startLikedPlayback('shuffle'))
-        elif source == 'artist':
-            self.b.openLibraryItem('artist', 'UCartist', '', 'Artist')
-            self.until(lambda: not self.b.busy)
-            self.assertTrue(self.b.startArtistPlayback('shuffle'))
-        else:
-            if source == 'album': self.b.openLibraryItem('album', 'MPREalbum', '', 'Album')
-            else: self.b.loadPlaylistTracks('PLsource', 'Playlist')
-            self.until(lambda: not self.b.busy)
-            self.assertTrue(self.b.shuffleDetail())
+    def start_shuffle(self, source='artist'):
+        self.b.openLibraryItem('artist', 'UCartist', '', 'Artist')
+        self.until(lambda: not self.b.busy)
+        self.assertTrue(self.b.startArtistPlayback('shuffle'))
         self.until(lambda: self.entered.is_set() and not self.b.busy and self.b.playerState == 'playing')
 
     def finish(self):
@@ -61,7 +52,7 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
         return [x['videoId'] for x in self.b._queue.tracks]
 
     def test_first_block_starts_before_second_and_all_sources_keep_exact_order(self):
-        for source, pid in (('album', 'OLAKalbum'), ('artist', 'RDAartist')):
+        for source, pid in (('artist', 'RDAartist'),):
             with self.subTest(source=source):
                 self.release.clear(); self.entered.clear(); self.reads.clear(); self.api.get_watch_playlist.reset_mock()
                 self.start_shuffle(source)
@@ -81,9 +72,9 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
     def test_cover_and_duplicate_occurrence_mapping_across_pages(self):
         self.b.playbackSourceCaptured.connect(lambda: self.b.setPlaybackSourceContext({'page': 1}))
         self.start_shuffle(); self.finish()
-        self.assertEqual([x['_guiOrigin']['index'] for x in self.b._queue.tracks], [2, 0, 1, -1, -1])
+        self.assertEqual([x['_guiOrigin']['index'] for x in self.b._queue.tracks], [-1, -1, 1, 2, -1])
         self.b.clearDetail(); self.assertTrue(self.b.restorePlayingSource(1))
-        self.assertEqual(self.b.detailTitle, 'Album')
+        self.assertEqual(self.b.detailTitle, 'Artist')
         self.assertEqual([x['videoId'] for x in self.b.detailTracksModel.snapshot()], ['A', 'B', 'C'])
         self.b.playFrom('playing', 2); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.b.playerSourceContext['page'], 1)
@@ -163,14 +154,14 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
     def test_first_failure_preserves_previous_audio_and_repeat(self):
         self.start('old'); queue = self.b._queue; self.b.cycleRepeat()
         self.pages[0] = ([], False)
-        self.b.openLibraryItem('album', 'MPREalbum', '', 'Album'); self.until(lambda: not self.b.busy)
-        self.assertTrue(self.b.shuffleDetail()); self.until(lambda: not self.b.busy)
+        self.b.openLibraryItem('artist', 'UCartist', '', 'Artist'); self.until(lambda: not self.b.busy)
+        self.assertTrue(self.b.startArtistPlayback('shuffle')); self.until(lambda: not self.b.busy)
         self.assertIs(self.b._queue, queue); self.assertEqual(self.b.playerRepeatMode, 'all')
         self.assertEqual(self.b.playerVideoId, 'old')
 
     def test_new_shuffle_wins_over_buffered_old_continuation(self):
         self.start_shuffle(); old = self.b._queue
-        self.assertTrue(self.b.shuffleDetail())
+        self.assertTrue(self.b.startArtistPlayback('shuffle'))
         self.release.set()
         self.until(lambda: not self.b.busy and self.b._queue is not old and not self.b.playerQueueLoading)
         self.assertEqual(old.count(), 2)
@@ -179,7 +170,7 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
 
     def test_three_thousand_shuffled_rows_load_without_replacing_current(self):
         self.source = [self.song(str(i)) for i in range(3000)]
-        self.api.get_album.return_value = dict(title='Large', audioPlaylistId='OLAKalbum', tracks=self.source)
+        self.api.get_artist.return_value = dict(name='Large', shuffleId='RDAartist', songs={'results': self.source})
         order = list(reversed(self.source))
         self.pages = [(order[n:n+100], n < 2900) for n in range(0, 3000, 100)]
         self.start_shuffle(); queue = self.b._queue; current = queue.current()
@@ -188,4 +179,4 @@ class ShufflePagingTests(support.AudioPlaybackTestCase):
         self.assertIs(self.b._queue, queue); self.assertIs(queue.current(), current)
         self.assertEqual(self.ids(), [str(i) for i in reversed(range(3000))])
         self.assertEqual(self.api.get_watch_playlist.call_count, 1)
-        self.assertEqual(self.b.playerSourceIndex, 2999)
+        self.assertEqual(self.b.playerSourceIndex, -1)

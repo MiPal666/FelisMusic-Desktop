@@ -2,6 +2,15 @@
 
 Aktualizováno: 2026-10-27 (Europe/Prague).
 
+## 0.3.38-dev – lokální Shuffle alb přijato
+
+- Michal skutečným testem potvrdil „album funguje“. Podkrok přijat; připraven k samostatnému commitu.
+- Předchozí celek uložen Michalem jako **1bdf196**, pracovní strom byl čistý. Po souhlasu další samostatný podkrok: `shuffleDetail` používá stejné lokální míchání přesných indexů pro album i playlist. Vstupem je celý již načtený normalizovaný seznam; žádný nový get_album/get_playlist ani serverový get_watch_playlist pro náhodné pořadí. Výskyty, metadata a prohlížené pořadí se zachovají. Přesný playlistový edit binding se přidává pouze playlistům, nikoli albům.
+- Zachován cover do původního alba, přednačítání, reset Repeat při nové frontě, Repeat All/One, Stop/Next/Previous a odmítnutí opožděného výsledku po změně zdroje/fronty. Nová fronta je hned konečná bez WatchPages. Dostupnost akce pro podporovaná alba zůstává dosavadní; nahraná alba nejsou tímto podkrokem zapojena. Mix alba a jeho doplňování se nemění.
+- Albumové testy přepsány z očekávání starého serverového Shuffle na přesné lokální výskyty; testy WatchPages/parserů zůstávají a asynchronní konečné streamy se nyní integračně ověřují na dosud serverovém Shuffle interpreta. To stále nemapuje počáteční blok na přesné zdrojové pozice; očekávání testu zachovává dosavadní chování, nikoli novou opravu interpreta.
+- Kontroly: **343 offline testů prošlo**; sedm cílených albumových testů zahrnuje přesné duplicitní výskyty/cover/prefetch/Repeat, opakované míchání bez reloadu, 1635 položek a konec, zneplatnění po Stop/navigaci, selhání, Repeat One a nepodporované/prázdné zdroje. QML 900×600/1280×800: Fronta, celý počet bez doplňování, cover do alba a Stop, bez QML varování. API/audio mockované.
+- Skutečný test: otevřít album → ⋮ → Přehrát náhodně; celá kolekce ve Frontě, nové spuštění znovu míchá, cover vrátí původní pořadí alba. Ověřit Repeat a Next/Previous. Mix zůstává serverový. Další kroky až po přijetí a commitu: interpret, přemíchání fronty, stránkování detailů playlistů.
+
 ## Přijetí aktuální opravy a připravený commit
 
 - Michal po skutečném testu 0.3.37-dev potvrdil „funkční“. Pomalá příprava hlavních Oblíbených je tímto přijatá. Ověření celé sady nových funkcí nadále rozlišovat podle historických záznamů níže.
