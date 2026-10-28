@@ -158,3 +158,43 @@ class WatchPages:
         self.count = count
         self.body, self.continuation, self.started = body, continuation, True
         return tracks, bool(continuation)
+
+
+class UploadSongPages:
+    """One uploaded-song shelf at a time, in the requested server order."""
+    def __init__(self, api, order=None):
+        self.api, self.order = api, order
+        self.started, self.continuation, self.body = False, None, None
+        self._seen = set()
+
+    def next_page(self):
+        from ytmusicapi.mixins.uploads import get_library_contents, MUSIC_SHELF
+        from ytmusicapi.parsers.uploads import parse_uploaded_items
+        from ytmusicapi.continuations import get_continuation_params, get_continuation_contents
+        if not self.started:
+            client = copy(self.api)
+            requests = []
+            def capture(endpoint, body, *args, **kwargs):
+                response = self.api._send_request(endpoint, body, *args, **kwargs)
+                requests.append((dict(body), response))
+                return response
+            client._send_request = capture
+            tracks = client.get_library_upload_songs(limit=0, order=self.order)
+            if len(requests) != 1:
+                raise RuntimeError('unexpected_upload_requests')
+            body, response = requests[0]
+            shelf = get_library_contents(response, MUSIC_SHELF)
+        else:
+            if not self.continuation:
+                return [], False
+            body = self.body
+            response = self.api._send_request('browse', dict(body), self.continuation)
+            shelf = nav(response, ['continuationContents', 'musicShelfContinuation'])
+            tracks = get_continuation_contents(shelf, parse_uploaded_items)
+        continuation = get_continuation_params(shelf) if shelf and 'continuations' in shelf else None
+        if continuation and continuation in self._seen:
+            raise RuntimeError('repeated_upload_continuation')
+        if continuation:
+            self._seen.add(continuation)
+        self.started, self.body, self.continuation = True, body, continuation
+        return tracks or [], bool(continuation)

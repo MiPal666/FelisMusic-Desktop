@@ -39,6 +39,14 @@ class FakePlaylistPages:
         return data.get('tracks', []), False
 
 
+class FakeUploadSongPages:
+    def __init__(self, api, order=None):
+        self.api, self.order = api, order
+
+    def next_page(self):
+        return self.api.get_library_upload_songs(limit=0, order=self.order) or [], False
+
+
 class AudioPlaybackTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -105,6 +113,7 @@ class AudioPlaybackTestCase(unittest.TestCase):
         self.patches = [
             patch.object(backend, 'WatchPages', FakeWatchPages),
             patch.object(backend, 'PlaylistPages', FakePlaylistPages),
+            patch.object(backend, 'UploadSongPages', FakeUploadSongPages),
             patch.object(core, 'LOCAL_CACHE_DIR', self.temp.name),
             patch.object(core, 'LOCAL_AUDIO_CACHE', {}),
             patch.object(core, 'LOCAL_CACHE_ORDER', []),

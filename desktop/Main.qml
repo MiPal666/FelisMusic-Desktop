@@ -18,6 +18,7 @@ ApplicationWindow {
     property string currentLibrarySection: "playlists"
     property string currentLibraryLabel: "Playlisty"
     property string currentLibraryOrder: ""
+    property string lastUploadSection: "upload_albums"
     property string currentLikedOrder: ""
     property string currentSearchScope: "catalog"
     property string currentSearchMode: "all"
@@ -27,6 +28,10 @@ ApplicationWindow {
     signal playingSourceRequested()
 
     onCurrentPageChanged: backend.clearTrackSelection()
+    onCurrentLibrarySectionChanged: {
+        if (["upload_albums", "upload_artists", "upload_songs"].indexOf(currentLibrarySection) >= 0)
+            lastUploadSection = currentLibrarySection
+    }
 
     function trackKeys(event, source) {
         if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter)
@@ -105,6 +110,12 @@ ApplicationWindow {
 
         backend.clearDetail()
         backend.loadLibrarySection(section, currentLibraryOrder)
+    }
+
+    function openUploads() {
+        var labels = {upload_albums: "Nahraná alba", upload_artists: "Nahraní interpreti",
+                      upload_songs: "Nahrané skladby"}
+        selectLibrarySection(lastUploadSection, labels[lastUploadSection])
     }
 
     function libraryOrderLabels() {
@@ -1005,6 +1016,7 @@ ApplicationWindow {
         property string sourceKey: ""
         property bool partialLiked: (sourceKey === "liked" && !backend.likedComplete)
                                     || (sourceKey === "detail" && !backend.detailComplete)
+                                    || (sourceKey === "library" && root.currentLibrarySection === "upload_songs" && !backend.uploadSongsComplete)
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
@@ -1655,10 +1667,11 @@ ApplicationWindow {
                 onClicked: root.selectLibrarySection("podcasts", "Podcasty")
             }
             Button {
+                objectName: "uploadsNavigationButton"
                 text: "Nahrané"
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection.indexOf("upload_") === 0
-                onClicked: root.selectLibrarySection("upload_songs", "Nahrané skladby")
+                onClicked: root.openUploads()
             }
 
             ComboBox {
@@ -1690,22 +1703,25 @@ ApplicationWindow {
                 color: "#999999"
             }
             Button {
-                text: "Skladby"
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "upload_songs"
-                onClicked: root.selectLibrarySection("upload_songs", "Nahrané skladby")
-            }
-            Button {
+                objectName: "uploadAlbumsTab"
                 text: "Alba"
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection === "upload_albums"
                 onClicked: root.selectLibrarySection("upload_albums", "Nahraná alba")
             }
             Button {
+                objectName: "uploadArtistsTab"
                 text: "Interpreti"
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection === "upload_artists"
                 onClicked: root.selectLibrarySection("upload_artists", "Nahraní interpreti")
+            }
+            Button {
+                objectName: "uploadSongsTab"
+                text: "Skladby"
+                checkable: true
+                checked: root.currentPage === 1 && root.currentLibrarySection === "upload_songs"
+                onClicked: root.selectLibrarySection("upload_songs", "Nahrané skladby")
             }
             Item { Layout.fillWidth: true }
         }
@@ -1768,25 +1784,25 @@ ApplicationWindow {
                         MenuItem {
                             objectName: "uploadSongsShuffle"
                             text: "Přehrát náhodně"
-                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.shuffleUploadSongs()
                         }
                         MenuItem {
                             objectName: "uploadSongsNext"
                             text: "Přehrát jako další"
-                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.enqueueUploadCollection("library", true, root.navigationContext())
                         }
                         MenuItem {
                             objectName: "uploadSongsAppend"
                             text: "Přidat na konec fronty"
-                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.enqueueUploadCollection("library", false, root.navigationContext())
                         }
                         MenuItem {
                             objectName: "uploadSongsPlaylistSave"
                             text: "Přidat seznam do playlistu…"
-                            enabled: backend.connected && !backend.busy && trackPage.tracks.count > 0
+                            enabled: backend.connected && !backend.busy && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.openUploadSongsPlaylistSave()
                         }
                     }
@@ -1797,13 +1813,57 @@ ApplicationWindow {
                 color: "#999999"
                 font.pixelSize: 13
             }
+            Rectangle {
+                objectName: "uploadSongsLoadBanner"
+                Layout.fillWidth: true
+                implicitHeight: uploadLoadRow.implicitHeight + 20
+                visible: trackPage.sourceKey === "library" && root.currentLibrarySection === "upload_songs"
+                         && (!backend.uploadSongsComplete || uploadDoneTimer.running)
+                radius: 6
+                color: backend.uploadSongsLoading ? "#23243b" : backend.uploadSongsComplete ? "#173328" : "#3b2920"
+                Timer { id: uploadDoneTimer; interval: 4000 }
+                Connections {
+                    target: backend
+                    function onUploadSongsLoadChanged() {
+                        if (backend.uploadSongsComplete) uploadDoneTimer.restart()
+                        else uploadDoneTimer.stop()
+                    }
+                }
+                RowLayout {
+                    id: uploadLoadRow
+                    anchors.fill: parent
+                    anchors.margins: 10
+                    spacing: 12
+                    BusyIndicator {
+                        objectName: "uploadSongsLoadSpinner"
+                        Layout.preferredWidth: 28
+                        Layout.preferredHeight: 28
+                        visible: running
+                        running: backend.uploadSongsLoading
+                    }
+                    Label {
+                        objectName: "uploadSongsLoadTitle"
+                        Layout.fillWidth: true
+                        wrapMode: Text.Wrap
+                        color: "#eeeeee"
+                        text: backend.uploadSongsLoading
+                            ? "Načítám další skladby… · " + trackPage.tracks.count + " načteno\nSkladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; akce nad celým seznamem až po dokončení."
+                            : backend.uploadSongsComplete ? "Vše načteno · " + trackPage.tracks.count + " skladeb"
+                            : "Načítání se nepodařilo dokončit. Seznam není úplný; otevři Nahrané skladby znovu."
+                    }
+                }
+            }
             ListView {
                 id: trackList
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
                 model: tracks
-                delegate: TrackDelegate { sourceKey: trackPage.sourceKey }
+                delegate: TrackDelegate {
+                    sourceKey: trackPage.sourceKey
+                    enabled: trackPage.sourceKey !== "library" || root.currentLibrarySection !== "upload_songs"
+                             || backend.uploadSongsComplete || backend.uploadSongsLoading
+                }
                 Keys.onPressed: function(event) { root.trackKeys(event, trackPage.sourceKey) }
                 ScrollBar.vertical: ScrollBar { }
  Connections {

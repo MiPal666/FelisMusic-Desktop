@@ -22,7 +22,7 @@ from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
 from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
-from .paging import PlaylistPages, WatchPages
+from .paging import PlaylistPages, WatchPages, UploadSongPages
 from .uploads import load_upload_album
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
@@ -176,6 +176,8 @@ class BackendBridge(QObject):
     playerChanged = Signal()
     playerTrackChanged = Signal()
     playingSourceViewChanged = Signal()
+    uploadSongsLoadChanged = Signal()
+    _uploadSongsPageReady = Signal(object)
     playbackSourceCaptured = Signal()
     uploadNavigationOpened = Signal("QVariantMap")
     sourceNavigationRestored = Signal("QVariantMap")
@@ -228,6 +230,9 @@ class BackendBridge(QObject):
         self._radio_refill_revision = 0
         self._radio_waiting_for_tracks = None
         self._liked_stream = None
+        self._upload_stream = None
+        self._upload_load = self._upload_view_load = None
+        self._upload_load_revision = 0
         self._watch_stream = None
         self._playlist_stream = None
         self._playlist_load = None
@@ -343,6 +348,7 @@ class BackendBridge(QObject):
 
         self._watchPageReady.connect(self._apply_watch_page, Qt.ConnectionType.QueuedConnection)
         self._likedPageReady.connect(self._apply_liked_page, Qt.ConnectionType.QueuedConnection)
+        self._uploadSongsPageReady.connect(self._apply_upload_songs_page, Qt.ConnectionType.QueuedConnection)
         self._songLibraryProbeReady.connect(self._apply_song_library_probe, Qt.ConnectionType.QueuedConnection)
         self._radioRefillReady.connect(self._apply_radio_refill, Qt.ConnectionType.QueuedConnection)
         self._resultReady.connect(
@@ -515,7 +521,7 @@ class BackendBridge(QObject):
         return self._queue is not None and self._radio_waiting_for_tracks is self._queue
 
     def _active_queue_stream(self):
-        for stream in (self._playlist_stream, self._watch_stream, self._liked_stream):
+        for stream in (self._playlist_stream, self._watch_stream, self._liked_stream, self._upload_stream):
             if stream and stream["queue"] is self._queue:
                 return stream
         return None
@@ -710,7 +716,16 @@ class BackendBridge(QObject):
             self._restore_detail_state(parent)
             source = parent.get("returnSource")
             if source in ("library", "search"):
-                self._source_model(source).set_items(parent["returnItems"])
+                items = parent["returnItems"]
+                revision = parent.get("returnUploadRevision")
+                if revision:
+                    self._upload_view_load = self._upload_load_for_revision(revision) or {
+                        "revision": revision, "state": "complete" if parent.get("returnUploadComplete") else "error", "items": items}
+                    items = self._upload_view_load["items"]
+                self._source_model(source).set_items(items)
+                if revision:
+                    self.uploadSongsLoadChanged.emit()
+                    self._schedule_upload_songs_page(self._upload_view_load)
             if parent.get("returnContext"):
                 self.sourceNavigationRestored.emit(parent["returnContext"])
         else:
@@ -746,6 +761,9 @@ class BackendBridge(QObject):
         parent["returnContext"] = dict(context)
         if source in ("library", "search"):
             parent.update(returnSource=source, returnItems=items)
+            if source == "library" and self._library_section == "upload_songs" and self._upload_view_load:
+                parent["returnUploadRevision"] = self._upload_view_load["revision"]
+                parent["returnUploadComplete"] = self.uploadSongsComplete
         parent["uploadNavigationContext"] = dict(context, page=1,
             librarySection="upload_albums" if target == "album" else "upload_artists",
             libraryLabel="Nahraná alba" if target == "album" else "Nahraní interpreti")
@@ -858,6 +876,8 @@ class BackendBridge(QObject):
         """Expose the real playback order, independently of browsing models."""
         if self._liked_stream and self._liked_stream["queue"] is not self._queue:
             self._liked_stream = None
+        if self._upload_stream and self._upload_stream["queue"] is not self._queue:
+            self._upload_stream = None
         if self._watch_stream and self._watch_stream["queue"] is not self._queue:
             self._watch_stream = None
         if self._playlist_stream and self._playlist_stream["queue"] is not self._queue:
@@ -911,7 +931,8 @@ class BackendBridge(QObject):
     @Slot(str, int, bool, bool)
     def selectTrack(self, source, index, control, shift):
         if not self._source_complete(source) and (
-                not (self.likedLoading if source == "liked" else self.detailLoading) or control or shift or self._busy):
+                not (self.likedLoading if source == "liked" else self.uploadSongsLoading if source == "library" else self.detailLoading)
+                or control or shift or self._busy):
             return
         items = self._source_items(source)
         if not 0 <= index < len(items) or not items[index].get("videoId"):
@@ -996,6 +1017,9 @@ class BackendBridge(QObject):
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._liked_order, "context": dict(context or {}),
             "library_section": self._library_section if source == "library" else "",
+            "upload_revision": (self._upload_view_load["revision"] if source == "library"
+                                and self._library_section == "upload_songs" and self._upload_view_load else None),
+            "upload_state": {"complete": self.uploadSongsComplete},
         }
 
     @Slot("QVariantMap")
@@ -1028,12 +1052,21 @@ class BackendBridge(QObject):
         for source in sources:
             model = self._source_model(source)
             if model is not None:
-                model.set_items(snapshots.get(source, []))
+                items = snapshots.get(source, [])
+                revision = origin.get("upload_revision") if source == "library" else None
+                if revision:
+                    self._upload_view_load = self._upload_load_for_revision(revision) or {
+                        "revision": revision, "state": "complete" if origin.get("upload_state", {}).get("complete") else "error", "items": items}
+                    items = self._upload_view_load["items"]
+                model.set_items(items)
         title = origin.get("detail_title", self._playing_detail_title) if source_key == "detail" else ""
         state = {}
         if source_key == "detail":
             state = origin.get("detail_state") or {"title": title, "tracks": snapshots.get("detail", [])}
         self._restore_detail_state(state)
+        if origin.get("upload_revision"):
+            self.uploadSongsLoadChanged.emit()
+            self._schedule_upload_songs_page(self._upload_view_load)
         if source_key == "liked":
             self._liked_order = origin.get("liked_order", self._playing_liked_order)
         return True
@@ -1625,6 +1658,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
+        if source == "library" and self._library_section == "upload_songs" and not self.uploadSongsComplete and (not self.uploadSongsLoading or self._busy):
+            return
         if source == "detail" and not self.detailComplete and (not self.detailLoading or self._busy):
             return
         if source == "liked" and not self.likedComplete and (not self.likedLoading or self._busy):
@@ -1688,10 +1723,16 @@ class BackendBridge(QObject):
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._playing_liked_order, "context": {},
             "library_section": self._library_section if source == "library" else "",
+            "upload_revision": (self._upload_view_load["revision"] if source == "library"
+                                and self._library_section == "upload_songs" and self._upload_view_load else None),
+            "upload_state": {"complete": self.uploadSongsComplete},
         }
         for song, original_index in zip(self._queue.tracks, source_indices):
             song["_guiOrigin"] = dict(origin, index=original_index)
         self.playbackSourceCaptured.emit()
+        if source == "library" and self._library_section == "upload_songs" and self.uploadSongsLoading:
+            self._upload_stream = {"queue": self._queue, "load": self._upload_view_load,
+                "origin": self._queue.current()["_guiOrigin"], "state": "loading", "waiting": False}
         if source == "liked" and self.likedLoading:
             self._liked_stream = {
                 "queue": self._queue, "revision": self._liked_load_revision,
@@ -2244,7 +2285,7 @@ class BackendBridge(QObject):
 
     def _upload_collection_items(self, source):
         if source == "library":
-            valid = self._library_section == "upload_songs" and not self._detail_title
+            valid = self._library_section == "upload_songs" and not self._detail_title and self.uploadSongsComplete
         else:
             valid = (source == "detail" and self.detailComplete
                      and self._detail_meta.get("kind") in ("upload_album", "upload_artist"))
@@ -3077,7 +3118,7 @@ class BackendBridge(QObject):
     @Slot(result=bool)
     def shuffleUploadSongs(self):
         if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
-                or self._library_section != "upload_songs" or self._detail_title):
+                or self._library_section != "upload_songs" or self._detail_title or not self.uploadSongsComplete):
             return False
         items = self._source_items("library")
         if not any(item.get("videoId") for item in items):
@@ -3531,6 +3572,9 @@ class BackendBridge(QObject):
         try:
             if name == "liked_first_page":
                 self._apply_liked_page(result)
+
+            elif name == "upload_songs_first_page":
+                self._apply_upload_songs_page(result)
 
             elif name == "liked_playback":
                 self._apply_liked_playback(result)
@@ -4241,6 +4285,114 @@ class BackendBridge(QObject):
     def likedLoading(self):
         return self._liked_load_state == "loading"
 
+    @Property(bool, notify=uploadSongsLoadChanged)
+    def uploadSongsLoading(self):
+        return bool(self._upload_view_load and self._upload_view_load["state"] == "loading")
+
+    @Property(bool, notify=uploadSongsLoadChanged)
+    def uploadSongsComplete(self):
+        return self._upload_view_load is None or self._upload_view_load["state"] == "complete"
+
+    def _upload_load_for_revision(self, revision):
+        for load in (self._upload_load, self._upload_stream.get("load") if self._upload_stream else None):
+            if load and load["revision"] == revision:
+                return load
+        return None
+
+    def _upload_load_needed(self, load):
+        return ((self._upload_view_load is load and self._library_section == "upload_songs" and not self._detail_title)
+                or (self._upload_stream and self._upload_stream["queue"] is self._queue
+                    and self._upload_stream["load"] is load and self._upload_stream["state"] == "loading"))
+
+    def _load_upload_songs(self, order):
+        if self._closing.is_set() or self._ytmusic is None:
+            return
+        if self._upload_stream and self._upload_stream["state"] == "loading":
+            self._upload_stream.update(state="error", waiting=False)
+            self._upload_stream["load"]["state"] = "error"
+            self.playerChanged.emit()
+        self._upload_load_revision += 1
+        load = {"revision": self._upload_load_revision, "items": [], "state": "loading",
+                "fetching": False, "pager": UploadSongPages(self._ytmusic, order=order)}
+        self._upload_load = self._upload_view_load = load
+        self._library_section, self._library_order = "upload_songs", order
+        self._library_items_model.clear()
+        self.clearDetail()
+        self.uploadSongsLoadChanged.emit()
+        self._submit("upload_songs_first_page", "Načítám nahrané skladby…",
+                     lambda: self._read_upload_songs_page(load, first=True))
+
+    def _read_upload_songs_page(self, load, first=False):
+        result = {"load": load, "first": first}
+        try:
+            tracks, more = load["pager"].next_page()
+            result.update(items=[self._track(x, upload=True) for x in core.usable_tracks(tracks)], more=more)
+        except Exception as exc:
+            result["error"] = type(exc).__name__
+            trace = current_trace()
+            if trace:
+                trace.event("api.error", error=type(exc).__name__)
+        return result
+
+    def _schedule_upload_songs_page(self, load):
+        if (not load or self._closing.is_set() or load["state"] != "loading"
+                or load.get("fetching") or not self._upload_load_needed(load)):
+            return
+        load["fetching"] = True
+        def submit():
+            if self._closing.is_set() or not self._upload_load_needed(load):
+                load["fetching"] = False
+                return
+            self._executor.submit(lambda: self._uploadSongsPageReady.emit(self._read_upload_songs_page(load)),
+                                  _diagnostic_label="api.upload_songs_page")
+        QTimer.singleShot(0, submit)
+
+    @Slot(object)
+    def _apply_upload_songs_page(self, result):
+        load = result["load"]
+        if self._closing.is_set() or load["state"] != "loading":
+            return
+        if self._busy and not result["first"]:
+            QTimer.singleShot(50, lambda: self._apply_upload_songs_page(result))
+            return
+        load["fetching"] = False
+        stream = self._upload_stream
+        bound = (stream and stream["queue"] is self._queue and stream["load"] is load
+                 and stream["state"] == "loading")
+        visible = (self._upload_view_load is load and self._library_section == "upload_songs" and not self._detail_title)
+        if result.get("error"):
+            load["state"] = "error"
+            if bound:
+                stream.update(state="error", waiting=False)
+                self.playerChanged.emit()
+            self.uploadSongsLoadChanged.emit()
+            if visible:
+                self._set_status("Nahrané skladby se nepodařilo načíst celé")
+            return
+        start = len(load["items"])
+        load["items"].extend(result["items"])
+        if not result["more"]:
+            load["state"] = "complete"
+        if visible:
+            if result["first"]:
+                self._library_items_model.set_items(load["items"])
+                self._set_status(f"Nahrané skladby · {len(load['items'])} položek načteno")
+            else:
+                self._library_items_model.append_items(result["items"])
+        if bound:
+            previous_next = self._next_prefetch_id()
+            for index, item in enumerate(result["items"], start):
+                track = self._playback_track(item)
+                track["_guiOrigin"] = dict(stream["origin"], index=index)
+                self._queue.tracks.append(track)
+                self._queue_source_indices.append(index)
+            stream["origin"]["snapshots"]["library"] = list(load["items"])
+            stream["origin"]["upload_state"]["complete"] = not result["more"]
+            self._playing_tracks_model.append_items(result["items"])
+            self._after_stream_append(stream, previous_next, result["more"])
+        self.uploadSongsLoadChanged.emit()
+        self._schedule_upload_songs_page(load)
+
     @Property(bool, notify=likedLoadChanged)
     def likedComplete(self):
         return self._liked_load_state == "complete"
@@ -4428,6 +4580,13 @@ class BackendBridge(QObject):
         }
         if section not in labels:
             return
+        if self._busy:
+            return
+        if section == "upload_songs":
+            self._load_upload_songs(order)
+            return
+        self._upload_view_load = None
+        self.uploadSongsLoadChanged.emit()
 
         def task():
             ytmusic = self._require_ytmusic()
@@ -4472,14 +4631,6 @@ class BackendBridge(QObject):
                     order=order,
                 ) or []
                 return [self._podcast_item(x) for x in items]
-
-            if section == "upload_songs":
-                items = ytmusic.get_library_upload_songs(
-                    limit=None,
-                    order=order,
-                ) or []
-                items = core.usable_tracks(items)
-                return [self._track(x, upload=True) for x in items]
 
             if section == "upload_albums":
                 items = ytmusic.get_library_upload_albums(
@@ -4905,7 +5056,8 @@ class BackendBridge(QObject):
         return True
 
     def _source_complete(self, source):
-        return self.likedComplete if source == "liked" else self.detailComplete if source == "detail" else True
+        return (self.likedComplete if source == "liked" else self.detailComplete if source == "detail"
+                else self.uploadSongsComplete if source == "library" and self._library_section == "upload_songs" else True)
 
     def _playlist_load_for_revision(self, revision):
         for load in (self._playlist_load,
