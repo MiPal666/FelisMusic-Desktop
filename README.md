@@ -2,6 +2,10 @@
 
 ## Stav
 
+U interpreta otevřeného z Knihovna → Interpreti nabídne rozbalovací volba **Skladby** (výchozí knihovní obsah podle YTM) a **Všechny skladby** (celý dostupný katalog). Oba seznamy lze řadit; přepnutí nemění rozehranou frontu. Alba a Singly/EP i dosavadní akce interpreta zůstávají stejné.
+
+Online skladby nyní v menu ⋮ nabízejí Otevřít album / interpreta podle skutečných ID; u více interpretů lze vybrat konkrétního. V detailu alba je pouze přechod na interpreta, u interpreta na album. Přechod přepne i sekci Knihovna → Alba/Interpreti a Zpět obnoví původní seznam, hledání, Oblíbené, historii nebo Frontu. Přehrávání zůstává beze změny.
+
 Online Knihovna → Skladby se nyní také načítá po blocích s použitelným prvním seznamem, lokálním stavem a postupným doplňováním rozehrané fronty. Po úplném načtení nabídne ⋮ pouze „Přehrát náhodně“, které míchá všechny načtené výskyty lokálně; pro celý tento seznam se nepřidává Mix ani enqueue/save kolekce. Jednotlivé a vybrané skladby si své akce zachovávají.
 
 Ve vlastním playlistu lze označit více skladeb a přes Akce ⋮ → Odebrat z playlistu potvrdit odebrání přesných výskytů. Duplicitní skladby se rozlišují pomocí setVideoId. Navázaná přehrávací fronta se synchronizuje; aktuální odebraný výskyt může dohrát, ručně vložené kopie se zachovají. Po úspěchu se výběr zruší.
@@ -24,7 +28,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.56-dev** (hromadné odebrání a online Skladby po blocích/Shuffle; otestováno a přijato)
+- Desktop GUI: **0.3.58-dev** (knihovní / všechny skladby interpreta; skutečně otestováno a přijato)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

@@ -76,6 +76,7 @@ ApplicationWindow {
             currentSearchMode = context.searchMode || currentSearchMode
             searchField.text = context.searchText || ""
         }
+        if (context.page === 2) currentLikedOrder = context.likedOrder || ""
         if (context.page !== undefined) currentPage = context.page
     }
 
@@ -1177,7 +1178,7 @@ ApplicationWindow {
                 if (sourceKey === "search" && actionable)
                     backend.openSearchResult(index)
                 else if (sourceKey === "detail" && kind === "album")
-                    backend.openDetailItem(index)
+                    backend.openDetailItem(index, root.navigationContext())
             }
             onDoubleClicked: function(event) {
                 if (event.button === Qt.LeftButton && videoId.length > 0
@@ -1285,6 +1286,30 @@ ApplicationWindow {
                 onTriggered: backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "album", "", root.navigationContext())
             }
             MenuItem {
+                objectName: "onlineTrackAlbum"
+                text: "Otevřít album"
+                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video")
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "album")
+                         && albumId.indexOf("MPRE") === 0
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.openTrackTarget(sourceKey, trackDelegate.index, "album", "", root.navigationContext())
+            }
+            MenuItem {
+                objectName: "onlineTrackArtist"
+                text: "Otevřít interpreta" + (artistLinks.length > 1 ? "…" : "")
+                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video") && artistLinks.length > 0
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "artist")
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: {
+                    if (artistLinks.length === 1)
+                        backend.openTrackTarget(sourceKey, trackDelegate.index, "artist", artistLinks[0].id, root.navigationContext())
+                    else
+                        uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
+                }
+            }
+            MenuItem {
                 objectName: "uploadTrackArtist"
                 text: "Otevřít nahraného interpreta" + (artistLinks.length > 1 ? "…" : "")
                 visible: !trackDelegate.multipleSelection && kind === "upload_song" && artistLinks.length > 0
@@ -1354,8 +1379,11 @@ ApplicationWindow {
                     required property var modelData
                     text: modelData.name
                     enabled: backend.connected && !backend.busy
-                    onTriggered: backend.openUploadTrackTarget(trackDelegate.sourceKey, trackDelegate.index,
-                        "artist", modelData.id, root.navigationContext())
+                    onTriggered: trackDelegate.kind === "upload_song"
+                        ? backend.openUploadTrackTarget(trackDelegate.sourceKey, trackDelegate.index,
+                            "artist", modelData.id, root.navigationContext())
+                        : backend.openTrackTarget(trackDelegate.sourceKey, trackDelegate.index,
+                            "artist", modelData.id, root.navigationContext())
                 }
                 onObjectAdded: function(index, object) { uploadArtistMenu.insertItem(index, object) }
                 onObjectRemoved: function(index, object) { uploadArtistMenu.removeItem(object) }
@@ -1593,12 +1621,25 @@ ApplicationWindow {
                 visible: backend.detailMeta.kind === "artist"
                 spacing: 6
                 height: artistOrder.implicitHeight
+                ComboBox {
+                    objectName: "artistSongScope"
+                    visible: !!backend.detailMeta.songScopes
+                    enabled: !backend.busy
+                    width: 200
+                    textRole: "label"
+                    valueRole: "key"
+                    model: [{key: "library", label: "Skladby"},
+                            {key: "all", label: "Všechny skladby"}]
+                    currentIndex: backend.detailMeta.songScope === "all" ? 1 : 0
+                    onActivated: backend.selectArtistSongScope(currentValue)
+                }
                 Repeater {
                     model: [{key: "songs", label: "Skladby"},
                             {key: "albums", label: "Alba"},
                             {key: "singles", label: "Singly a EP"}]
                     Button {
                         required property var modelData
+                        visible: modelData.key !== "songs" || !backend.detailMeta.songScopes
                         text: modelData.label
                         objectName: "artistSection-" + modelData.key
                         checkable: true

@@ -206,3 +206,37 @@ class UploadSongPages:
 class LibrarySongPages(UploadSongPages):
     """The separate online library source, using its playlist-item parser."""
     upload = False
+
+
+class LibraryArtistSongPages:
+    """Read the exact library artist shelf; never strip its MPLA prefix."""
+    def __init__(self, api, browse_id):
+        if not browse_id.startswith("MPLAUC"):
+            raise ValueError("invalid_library_artist")
+        self.api, self.browse_id = api, browse_id
+        self.started, self.continuation = False, None
+        self._seen = set()
+
+    def next_page(self):
+        from ytmusicapi.parsers.library import get_library_contents
+        from ytmusicapi.navigation import nav
+        from ytmusicapi.continuations import get_continuation_params
+        body = {"browseId": self.browse_id}
+        if self.started:
+            if not self.continuation:
+                return [], False
+            response = self.api._send_request("browse", body, self.continuation)
+            shelf = nav(response, ["continuationContents", "musicShelfContinuation"])
+        else:
+            response = self.api._send_request("browse", body)
+            shelf = get_library_contents(response, ["musicShelfRenderer"])
+        if not isinstance(shelf, dict) or not isinstance(shelf.get("contents"), list):
+            raise RuntimeError("missing_library_artist_shelf")
+        tracks = parse_playlist_items(shelf["contents"])
+        continuation = get_continuation_params(shelf) if "continuations" in shelf else None
+        if continuation and continuation in self._seen:
+            raise RuntimeError("repeated_library_artist_continuation")
+        if continuation:
+            self._seen.add(continuation)
+        self.started, self.continuation = True, continuation
+        return tracks, bool(continuation)

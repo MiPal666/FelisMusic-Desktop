@@ -22,7 +22,7 @@ from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
 from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
-from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages
+from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages, LibraryArtistSongPages
 from .uploads import load_upload_album
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
@@ -717,8 +717,12 @@ class BackendBridge(QObject):
             self._library_order = context.get("libraryOrder", self._library_order)
             self._restore_detail_state(parent)
             source = parent.get("returnSource")
-            if source in ("library", "search"):
+            if source in ("library", "search", "liked", "history"):
                 items = parent["returnItems"]
+                if source == "liked":
+                    self._liked_order = parent.get("returnLikedOrder", self._liked_order)
+                    if self._liked_load_revision > 0 and parent.get("returnLikedRevision") == self._liked_load_revision:
+                        items = self._sort_normalized(self._liked_default_items, self._liked_order)
                 revision = parent.get("returnUploadRevision")
                 if revision:
                     self._upload_view_load = self._upload_load_for_revision(revision) or {
@@ -735,46 +739,60 @@ class BackendBridge(QObject):
 
     @Slot(str, int, str, str, "QVariantMap", result=bool)
     def openUploadTrackTarget(self, source, index, target, artist_id, context):
+        return self._open_track_target(source, index, target, artist_id, context, upload=True)
+
+    @Slot(str, int, str, str, "QVariantMap", result=bool)
+    def openTrackTarget(self, source, index, target, artist_id, context):
+        return self._open_track_target(source, index, target, artist_id, context, upload=False)
+
+    def _open_track_target(self, source, index, target, artist_id, context, upload):
         if self._busy or self._closing.is_set() or self._ytmusic is None:
             return False
         items = self._source_items(source)
         if not 0 <= index < len(items):
             return False
         item = items[index]
-        if item.get("kind") != "upload_song":
+        allowed = ("upload_song",) if upload else ("song", "video", "")
+        if item.get("kind", "song") not in allowed or not item.get("videoId"):
             return False
-        if source == "detail" and ((self._detail_meta.get("kind") == "upload_artist" and target == "artist")
-                or (self._detail_meta.get("kind") == "upload_album" and target == "album")):
+        prefix = "upload_" if upload else ""
+        if source == "detail" and ((self._detail_meta.get("kind") == prefix + "artist" and target == "artist")
+                or (self._detail_meta.get("kind") == prefix + "album" and target == "album")):
             return False
         if target == "album":
             browse_id, title = item.get("albumId", ""), item.get("album", "")
-            if not browse_id.startswith("FEmusic_library_privately_owned_release"):
+            if not browse_id.startswith("FEmusic_library_privately_owned_release" if upload else "MPRE"):
                 return False
         elif target == "artist":
             artist = next((x for x in item.get("artistLinks", []) if x["id"] == artist_id), None)
             if not artist:
                 return False
             browse_id, title = artist["id"], artist["name"]
-            if not browse_id.startswith("FEmusic_library_privately_owned_artist"):
+            if not browse_id.startswith("FEmusic_library_privately_owned_artist" if upload else ("UC", "MPLAUC")):
                 return False
         else:
             return False
         parent = self._detail_state()
         parent["returnContext"] = dict(context)
-        if source in ("library", "search"):
+        if source in ("library", "search", "liked", "history"):
             parent.update(returnSource=source, returnItems=items)
+            if source == "liked":
+                parent["returnLikedRevision"] = self._liked_load_revision
+                parent["returnLikedOrder"] = self._liked_order
             if source == "library" and self._library_section in ("songs", "upload_songs") and self._upload_view_load:
                 parent["returnUploadRevision"] = self._upload_view_load["revision"]
                 parent["returnUploadComplete"] = self.uploadSongsComplete
         parent["uploadNavigationContext"] = dict(context, page=1,
-            librarySection="upload_albums" if target == "album" else "upload_artists",
-            libraryLabel="Nahraná alba" if target == "album" else "Nahraní interpreti")
+            librarySection=prefix + ("albums" if target == "album" else "artists"),
+            libraryLabel=(("Nahraná alba" if target == "album" else "Nahraní interpreti") if upload
+                          else ("Alba" if target == "album" else "Interpreti")))
         self._pending_detail_parent = parent
-        self.openLibraryItem("upload_" + target, browse_id, "", title or "Nahrané")
+        self.openLibraryItem(prefix + target, browse_id, "", title or ("Nahrané" if upload else "Knihovna"))
         return True
 
     @Slot(int)
-    def openDetailItem(self, index):
+    @Slot(int, "QVariantMap")
+    def openDetailItem(self, index, context=None):
         items = self._detail_tracks_model.snapshot()
         if self._busy or not 0 <= index < len(items):
             return
@@ -782,6 +800,10 @@ class BackendBridge(QObject):
         if item.get("kind") != "album" or not item.get("browseId"):
             return
         self._pending_detail_parent = self._detail_state()
+        if context is not None:
+            self._pending_detail_parent["returnContext"] = dict(context)
+            self._pending_detail_parent["uploadNavigationContext"] = dict(
+                context, page=1, librarySection="albums", libraryLabel="Alba")
         self.openLibraryItem("album", item["browseId"], "", item["title"])
 
     @classmethod
@@ -804,7 +826,9 @@ class BackendBridge(QObject):
         if pointer.get("browseId"):
             if section == "songs":
                 data = api.get_playlist(pointer["browseId"], limit=None)
-                items = [self._track(x) for x in core.usable_tracks(data.get("tracks") or [])]
+                items = [self._track(x, artist_links=[{"id": meta["browseId"].removeprefix("MPLA"),
+                    "name": meta.get("artistName") or "Interpret"}])
+                    for x in core.usable_tracks(data.get("tracks") or [])]
             else:
                 data = api.get_artist_albums(pointer["browseId"], pointer["params"], limit=None)
                 items = [self._album_item(x) for x in data if x.get("browseId")]
@@ -831,6 +855,18 @@ class BackendBridge(QObject):
             self._detail_meta = meta
             self._detail_tracks_model.set_items(self._artist_sorted_items(meta))
             self.detailTitleChanged.emit()
+
+    @Slot(str)
+    def selectArtistSongScope(self, scope):
+        if (self._busy or self._detail_meta.get("kind") != "artist"
+                or scope not in self._detail_meta.get("songScopes", {})):
+            return
+        meta = self._detail_meta
+        meta["songScope"] = scope
+        meta["section"] = "songs"
+        meta["sections"]["songs"] = meta["songScopes"][scope]
+        self._detail_tracks_model.set_items(self._artist_sorted_items(meta))
+        self.detailTitleChanged.emit()
 
     @Slot(str)
     def setArtistOrder(self, order):
@@ -2944,7 +2980,8 @@ class BackendBridge(QObject):
     def detailCanArtistShuffle(self):
         return (self._detail_meta.get("kind") == "artist"
                 and any(item.get("videoId") for item in
-                        self._detail_meta.get("sections", {}).get("songs", [])))
+                        self._detail_meta.get("songScopes", {}).get("all",
+                            self._detail_meta.get("sections", {}).get("songs", []))))
 
     @Slot(str, result=bool)
     def startArtistPlayback(self, mode):
@@ -2966,13 +3003,17 @@ class BackendBridge(QObject):
             try:
                 if mode == "shuffle":
                     meta = dict(state["meta"], section="songs")
+                    if meta.get("songScopes"):
+                        meta = deepcopy(meta)
+                        meta["sections"]["songs"] = meta["songScopes"]["all"]
                     items = self._artist_sorted_items(meta)
                     indices = [i for i, item in enumerate(items) if item.get("videoId")]
                     random.shuffle(indices)
                     if not indices:
                         raise RuntimeError("Interpret nemá načtené přehratelné skladby.")
                     tracks = [items[i] for i in indices]
-                    result["indices"] = indices if state["meta"].get("section") == "songs" else [-1] * len(indices)
+                    result["indices"] = indices if (state["meta"].get("section") == "songs"
+                        and state["meta"].get("songScope", "all") == "all") else [-1] * len(indices)
                     name = f"{artist_name} - Náhodně"
                 else:
                     queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
@@ -4089,7 +4130,7 @@ class BackendBridge(QObject):
             links = item["artists"]
         links = [{"id": x["id"], "name": str(x.get("name") or "Interpret")}
                  for x in links if isinstance(x, dict) and isinstance(x.get("id"), str)
-                 and x["id"].startswith("FEmusic_library_privately_owned_artist")]
+                 and x["id"].startswith("FEmusic_library_privately_owned_artist" if upload else ("UC", "MPLAUC"))]
         if not links:
             links = artist_links or []
         return {
@@ -4777,6 +4818,7 @@ class BackendBridge(QObject):
                 if not browse_id:
                     raise RuntimeError("Album nemá browseId.")
                 data = ytmusic.get_album(browse_id)
+                album_artist_links = self._track(data)["artistLinks"]
                 detail_title = data.get("title") or title
                 tracks = core.usable_tracks(data.get("tracks") or [])
                 meta = {"kind": "album", "browseId": browse_id,
@@ -4790,7 +4832,8 @@ class BackendBridge(QObject):
                 tracks = core.usable_tracks(
                     (data.get("songs") or {}).get("results") or []
                 )
-                sections = {"songs": [self._track(x) for x in tracks]}
+                sections = {"songs": [self._track(x, artist_links=[{
+                    "id": browse_id.removeprefix("MPLA"), "name": detail_title}]) for x in tracks]}
                 pointers = {}
                 for section in ("songs", "albums", "singles"):
                     block = data.get(section) or {}
@@ -4800,10 +4843,22 @@ class BackendBridge(QObject):
                         pointers[section] = {key: block[key] for key in ("browseId", "params") if key in block}
                 meta = {"kind": "artist", "section": "songs", "sections": sections,
                         "pointers": pointers, "orders": {}, "thumbnail": self._thumbnail(data),
-                        "browseId": browse_id,
+                        "browseId": browse_id, "artistName": detail_title,
                         "radioId": data["radioId"].strip() if isinstance(data.get("radioId"), str) else "",
                         "shuffleId": data["shuffleId"].strip() if isinstance(data.get("shuffleId"), str) else ""}
                 self._load_artist_section(ytmusic, meta, "songs")
+                if browse_id.startswith("MPLAUC"):
+                    catalog = meta["sections"]["songs"]
+                    pager = LibraryArtistSongPages(ytmusic, browse_id)
+                    library = []
+                    more = True
+                    while more:
+                        rows, more = pager.next_page()
+                        library.extend(self._track(x, artist_links=[{
+                            "id": browse_id.removeprefix("MPLA"), "name": detail_title}])
+                            for x in core.usable_tracks(rows))
+                    meta.update(songScopes={"library": library, "all": catalog}, songScope="library")
+                    meta["sections"]["songs"] = library
 
 
             elif kind == "channel":

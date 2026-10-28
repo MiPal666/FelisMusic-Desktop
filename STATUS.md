@@ -1,6 +1,28 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.58-dev – knihovní / všechny skladby interpreta, Michalem přijato
+
+- Michal skutečně potvrdil body 3 i 4 jako funkční. Všechny čtyři nadiktované poznámky jsou tím hotové a přijaté. Body 1–2 uložené v c0c5ccf; body 3–4 připravené ke společnému commitu.
+- U skutečného knihovního ID MPLAUC oddělené songScopes: library z přesného browse endpointu, all z dosavadního katalogového get_artist + plného songs pointeru. Výchozí library; nic se neodvozuje podle názvu, Like nebo členství v playlistech. LibraryArtistSongPages používá instalovaný parser, respektuje přesná pokračování i prázdnou mezistránku, chrání opakovaný cursor a chybnou odpověď. Duplicity zachovány; pouze core.usable_tracks odfiltruje nepřehratelné pomocné řádky.
+- QML místo tlačítka Skladby u knihovního interpreta ukazuje rozbalovací Skladby / Všechny skladby. Přepnutí vrátí i z Alb/Singlů na skladby, používá dosavadní řazení a nevyvolává síťový požadavek. Oba seznamy načtené při otevření detailu; nejde o novou trvalou cache ani nové progresivní načítání katalogu interpreta.
+- Navigační a přehrávací snapshoty uchovají scope i oba seznamy. Řazení/přepnutí nemění audio/frontu. Dosavadní Náhodně stále používá celý katalog, i když je zobrazen knihovní výběr (pak nevydává katalogové indexy za knihovní); Mix zůstává serverový. Alba, Singly/EP a běžný katalogový interpret bez MPLAUC beze změny.
+- **482 offline testů prošlo**, sedm nových: parser přesné ID/duplicitní výskyty/pokračování/prázdná mezistránka/opakovaný cursor/neplatné odpovědi; výchozí knihovní obsah/přepínání/řazení bez sítě; album→Zpět a audio; běžný katalog; chyba bez ztráty původního detailu; prázdná knihovna s funkčními původními akcemi interpreta.
+- **Tři QML scénáře prošly bez varování:** knihovní scope a návrat z Alb při 900×600 a 1280×800, regrese online album karta→Zpět při 1280×800. Screenshot menšího okna vizuálně zkontrolován. API/audio mockované, žádné zápisy do účtu.
+- Skutečný test přijat Michalem: Knihovna → Interpreti → Olympic (dříve karta 2 songs): výchozí Skladby mají odpovídající knihovní obsah; Všechny skladby celý katalog. Kontrolní rozsah: řazení, Alba/Singly→návrat přes nabídku Skladby, skladba→album→Zpět, běžící audio/fronta a cover.
+
+
 Aktualizováno: 2026-10-28 (Europe/Prague).
+
+## 0.3.57-dev – online skladba → album/interpret → zpět, Michalem přijato
+
+- Michal uložil přijaté body 1–2 jako **c0c5ccf**, pracovní strom byl čistý. Po uzavření aplikace povolil bod 3. Bod 4 knihovní/všechny skladby interpreta zůstává mimo tento podkrok.
+- `_track` uchovává katalogové artistLinks (UC/MPLAUC) a albumId (MPRE), zatímco upload normalizace zachová vlastní privátní ID odděleně. `_guiArtistLinks` je již přenáší do Fronty. Albumové řádky bez vlastního artist ID dostanou odkaz z dostupné hlavičky; přímé údaje skladby mají přednost. Songs pointer katalogového interpreta může doplnit jeho přesné známé ID a jméno z kontextu, pokud u řádků chybí. Žádné name search, domýšlení ID nebo přesměrování do Nahraných.
+- Nový `openTrackTarget` sdílí s přijatým upload slotem validaci/historii při explicitním rozlišení druhu zdroje/ID/sekce. V seznamu online skladeb/playlistu/Frontě/hledání/Oblíbených/historii obě akce podle ID, v albu jen interpret, v interpretovi jen album. Více interpretů má výběr. Multivýběr tyto jednotlivé navigační akce nemá. Přechod vždy Knihovna → Alba/Interpreti; Zpět obnoví původní kontext včetně pořadí, přesných playlistových řádků a případného živého song loadu. Návrat do Oblíbených při stejné revizi zohlední jejich dokončené načítání a původní řazení. Fronta se při návratu nepřestavuje.
+- Klik na kartu alba v diskografii interpreta nyní také předává navigační kontext, přepne horní menu na Alba a Zpět obnoví původní artist záložku. Ostatní katalogové sekce, Shuffle/Mix a načítání celého seznamu interpreta se nemění.
+- **475 offline testů prošlo**, dvanáct nových: knihovna→album→interpret→zpět s audiem, artist řazení a návrat, vlastní playlist/duplicitní bindingy, queue a zachování ID, search/history, rostoucí Oblíbené, více interpretů a přesné ID bez search, album header a přednost řádku/queue, úplný artist songs pointer bez ID, guardy/chybějící ID/oddělení uploadů, endpoint error bez navigace a album karta→správná sekce→původní artist tab. API/audio mockované.
+- Dvanáct online QML scénářů: šest vstupů (knihovní skladby/Fronta/hledání/Oblíbené/více interpretů/karta alba) × 900×600 a 1280×800. Skutečné nabídky, dostupnost jen příslušných akcí, výběr druhého interpreta, sekce Alba/Interpreti, Back řetězec včetně původní diskografické záložky a nezměněná fronta/audio. Navíc dvě QML regrese Nahraných (900×600 běžná navigace, 1280×800 výběr více interpretů). Bez QML varování, API/audio/obrázky/library probe mockované. `git diff --check` prošel.
+- Omezená read-only kontrola skutečné online skladby a jejího alba: skladba má 1 katalogový artist link, hlavička alba také 1; album vrací 12 skladeb. Pouze první knihovní blok a jedno album, bez přehrávání/zápisů/dumpování odpovědí či auth.
+- Reálný test: online skladba → ⋮ → album/interpret, ověřit horní menu a Zpět; v albu jen interpret a u interpreta jen album. Vyzkoušet z playlistu a Fronty během hraní, případně hledání/Oblíbených a albumovou kartu v diskografii. Po přijetí commit, potom bod 4. Zatím necommitováno.
 
 ## 0.3.56-dev – online knihovní Skladby po blocích a Shuffle, přijato
 
