@@ -162,6 +162,7 @@ class WatchPages:
 
 class UploadSongPages:
     """One uploaded-song shelf at a time, in the requested server order."""
+    upload = True
     def __init__(self, api, order=None):
         self.api, self.order = api, order
         self.started, self.continuation, self.body = False, None, None
@@ -171,6 +172,7 @@ class UploadSongPages:
         from ytmusicapi.mixins.uploads import get_library_contents, MUSIC_SHELF
         from ytmusicapi.parsers.uploads import parse_uploaded_items
         from ytmusicapi.continuations import get_continuation_params, get_continuation_contents
+        parse_items = parse_uploaded_items if self.upload else parse_playlist_items
         if not self.started:
             client = copy(self.api)
             requests = []
@@ -179,7 +181,8 @@ class UploadSongPages:
                 requests.append((dict(body), response))
                 return response
             client._send_request = capture
-            tracks = client.get_library_upload_songs(limit=0, order=self.order)
+            method = client.get_library_upload_songs if self.upload else client.get_library_songs
+            tracks = method(limit=0, order=self.order)
             if len(requests) != 1:
                 raise RuntimeError('unexpected_upload_requests')
             body, response = requests[0]
@@ -190,7 +193,7 @@ class UploadSongPages:
             body = self.body
             response = self.api._send_request('browse', dict(body), self.continuation)
             shelf = nav(response, ['continuationContents', 'musicShelfContinuation'])
-            tracks = get_continuation_contents(shelf, parse_uploaded_items)
+            tracks = get_continuation_contents(shelf, parse_items)
         continuation = get_continuation_params(shelf) if shelf and 'continuations' in shelf else None
         if continuation and continuation in self._seen:
             raise RuntimeError('repeated_upload_continuation')
@@ -198,3 +201,8 @@ class UploadSongPages:
             self._seen.add(continuation)
         self.started, self.body, self.continuation = True, body, continuation
         return tracks or [], bool(continuation)
+
+
+class LibrarySongPages(UploadSongPages):
+    """The separate online library source, using its playlist-item parser."""
+    upload = False

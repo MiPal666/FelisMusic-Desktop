@@ -22,7 +22,7 @@ from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
 from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
-from .paging import PlaylistPages, WatchPages, UploadSongPages
+from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages
 from .uploads import load_upload_album
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
@@ -189,6 +189,7 @@ class BackendBridge(QObject):
     songLibraryChanged = Signal()
     playlistSaveChanged = Signal()
     playlistSaveRequested = Signal()
+    playlistBatchRemoveRequested = Signal(int, str)
     emptyPlaylistChanged = Signal()
     emptyPlaylistRequested = Signal()
     playlistEditChanged = Signal()
@@ -257,6 +258,7 @@ class BackendBridge(QObject):
         self._playlist_delete_verification = None
         self._deleted_playlists = set()
         self._pending_removed_playlist_items = {}
+        self._playlist_remove_selection = None
         self._pending_playlist_moves = {}
         # Confirmed creations may precede their appearance in YTM's library.
         # Keep their cards until a library response contains the actual IDs.
@@ -761,7 +763,7 @@ class BackendBridge(QObject):
         parent["returnContext"] = dict(context)
         if source in ("library", "search"):
             parent.update(returnSource=source, returnItems=items)
-            if source == "library" and self._library_section == "upload_songs" and self._upload_view_load:
+            if source == "library" and self._library_section in ("songs", "upload_songs") and self._upload_view_load:
                 parent["returnUploadRevision"] = self._upload_view_load["revision"]
                 parent["returnUploadComplete"] = self.uploadSongsComplete
         parent["uploadNavigationContext"] = dict(context, page=1,
@@ -1018,7 +1020,7 @@ class BackendBridge(QObject):
             "liked_order": self._liked_order, "context": dict(context or {}),
             "library_section": self._library_section if source == "library" else "",
             "upload_revision": (self._upload_view_load["revision"] if source == "library"
-                                and self._library_section == "upload_songs" and self._upload_view_load else None),
+                                and self._library_section in ("songs", "upload_songs") and self._upload_view_load else None),
             "upload_state": {"complete": self.uploadSongsComplete},
         }
 
@@ -1124,13 +1126,17 @@ class BackendBridge(QObject):
         return moved
 
     def _sync_removed_playlist_queue_item(self, playlist_id, set_video_id):
+        self._sync_removed_playlist_queue_items(playlist_id, {set_video_id})
+
+    def _sync_removed_playlist_queue_items(self, playlist_id, set_video_ids):
         if self._queue is None:
             return
         changed = False
         current = self._queue.current()
         keep_current = self._player_state in ("playing", "paused", "loading")
+        bindings = {(playlist_id, sid) for sid in set_video_ids}
         for song in self._queue.tracks:
-            if song.get("_guiPlaylistBinding") == (playlist_id, set_video_id):
+            if song.get("_guiPlaylistBinding") in bindings:
                 song["_guiRemoveAfterPlayback"] = True
                 changed = True
         if not changed:
@@ -1658,7 +1664,7 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
-        if source == "library" and self._library_section == "upload_songs" and not self.uploadSongsComplete and (not self.uploadSongsLoading or self._busy):
+        if source == "library" and self._library_section in ("songs", "upload_songs") and not self.uploadSongsComplete and (not self.uploadSongsLoading or self._busy):
             return
         if source == "detail" and not self.detailComplete and (not self.detailLoading or self._busy):
             return
@@ -1724,13 +1730,13 @@ class BackendBridge(QObject):
             "liked_order": self._playing_liked_order, "context": {},
             "library_section": self._library_section if source == "library" else "",
             "upload_revision": (self._upload_view_load["revision"] if source == "library"
-                                and self._library_section == "upload_songs" and self._upload_view_load else None),
+                                and self._library_section in ("songs", "upload_songs") and self._upload_view_load else None),
             "upload_state": {"complete": self.uploadSongsComplete},
         }
         for song, original_index in zip(self._queue.tracks, source_indices):
             song["_guiOrigin"] = dict(origin, index=original_index)
         self.playbackSourceCaptured.emit()
-        if source == "library" and self._library_section == "upload_songs" and self.uploadSongsLoading:
+        if source == "library" and self._library_section in ("songs", "upload_songs") and self.uploadSongsLoading:
             self._upload_stream = {"queue": self._queue, "load": self._upload_view_load,
                 "origin": self._queue.current()["_guiOrigin"], "state": "loading", "waiting": False}
         if source == "liked" and self.likedLoading:
@@ -1909,16 +1915,61 @@ class BackendBridge(QObject):
         if not self._playback_transitioning and self._player_state in ("playing", "paused"):
             self._prefetch_next_track()
 
+    @Property(bool, notify=trackSelectionChanged)
+    def selectionCanRemovePlaylist(self):
+        if (self._selection_source != "detail" or len(self._selection_indices) < 2
+                or not self.detailCanEditPlaylist):
+            return False
+        rows = self._source_items("detail")
+        selected = [rows[i] for i in self._selection_indices if 0 <= i < len(rows)]
+        return (len(selected) == len(self._selection_indices)
+                and all(x.get("videoId") and x.get("setVideoId") for x in selected)
+                and len({x["setVideoId"] for x in selected}) == len(selected))
+
+    @Slot(result=bool)
+    def openSelectedPlaylistRemove(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None or not self.selectionCanRemovePlaylist:
+            return False
+        rows = self._source_items("detail")
+        items = [{"videoId": rows[i]["videoId"], "setVideoId": rows[i]["setVideoId"]}
+                 for i in self._selection_indices]
+        self._playlist_remove_selection = {"playlistId": self._detail_meta["playlistId"],
+            "items": items, "revision": self._selection_revision}
+        self.playlistBatchRemoveRequested.emit(len(items), self._detail_title)
+        return True
+
+    @Slot()
+    def cancelSelectedPlaylistRemove(self):
+        self._playlist_remove_selection = None
+
+    @Slot(result=bool)
+    def removeSelectedPlaylistItems(self):
+        selection = self._playlist_remove_selection
+        if not selection or self._busy or self._closing.is_set() or self._ytmusic is None:
+            return False
+        self._playlist_remove_selection = None
+        if (not self.selectionCanRemovePlaylist or selection["revision"] != self._selection_revision
+                or selection["playlistId"] != self._detail_meta.get("playlistId")):
+            self._set_status("Výběr se změnil. Otevři odebrání z playlistu znovu.")
+            return False
+        return self._remove_detail_playlist_items(selection["items"], selection["revision"])
+
     @Slot(str, str, result=bool)
     def removeDetailPlaylistItem(self, video_id, set_video_id):
-        if (self._busy or self._closing.is_set() or self._ytmusic is None
-                or not self.detailCanEditPlaylist or not video_id or not set_video_id):
+        return self._remove_detail_playlist_items([{"videoId": video_id, "setVideoId": set_video_id}])
+
+    def _remove_detail_playlist_items(self, items, selection_revision=None):
+        if (self._busy or self._closing.is_set() or self._ytmusic is None or not self.detailCanEditPlaylist
+                or not items or any(not x.get("videoId") or not x.get("setVideoId") for x in items)
+                or len({x["setVideoId"] for x in items}) != len(items)):
             return False
-        if not any(x.get("videoId") == video_id and x.get("setVideoId") == set_video_id
-                   for x in self._detail_tracks_model.snapshot()):
+        visible = {(row.get("videoId"), row.get("setVideoId")) for row in self._source_items("detail")}
+        if any((x["videoId"], x["setVideoId"]) not in visible for x in items):
             return False
         playlist_id = self._detail_meta["playlistId"]
         api = self._ytmusic
+        items = [dict(x) for x in items]
+        removed_ids = {x["setVideoId"] for x in items}
         pending_moves = list(self._pending_playlist_moves.get(playlist_id, []))
         def task():
             attempted = False
@@ -1927,29 +1978,42 @@ class BackendBridge(QObject):
                 if data.get("owned") is not True:
                     raise ValueError("Not owned")
                 tracks = self._project_playlist_moves(data.get("tracks") or [], pending_moves)
-                matches = [x for x in tracks if x.get("setVideoId") == set_video_id]
-                if matches:
-                    if len(matches) != 1 or matches[0].get("videoId") != video_id:
-                        raise ValueError("Occurrence mismatch")
+                by_id = {}
+                for row in tracks:
+                    by_id.setdefault(row.get("setVideoId"), []).append(row)
+                present = []
+                # Validate the entire batch before making the single write.
+                for item in items:
+                    matches = by_id.get(item["setVideoId"], [])
+                    if matches:
+                        if len(matches) != 1 or matches[0].get("videoId") != item["videoId"]:
+                            raise ValueError("Occurrence mismatch")
+                        present.append(item)
+                if present:
                     attempted = True
-                    response = api.remove_playlist_items(playlist_id, [
-                        {"videoId": video_id, "setVideoId": set_video_id}])
+                    response = api.remove_playlist_items(playlist_id, present)
                     status = response.get("status") if isinstance(response, dict) else response
                     if status != "STATUS_SUCCEEDED":
                         raise RuntimeError("Removal not confirmed")
-                remaining = [x for x in tracks if x.get("setVideoId") != set_video_id]
-                return {"ok": True, "playlistId": playlist_id, "setVideoId": set_video_id,
+                remaining = [x for x in tracks if x.get("setVideoId") not in removed_ids]
+                message = ("Skladba odebrána z playlistu." if present else "Položka už v playlistu není. Seznam obnoven.")
+                if len(items) > 1:
+                    message = f"Odebráno skladeb z playlistu: {len(present)}."
+                    if len(present) < len(items):
+                        message += f" Již chybějící položky: {len(items) - len(present)}."
+                return {"ok": True, "playlistId": playlist_id, "setVideoIds": list(removed_ids),
+                        "selectionRevision": selection_revision,
                         "card": self._playlist(dict(data, playlistId=playlist_id, count=len(remaining))),
                         "detail": {"title": data.get("title") or "Playlist",
                                    "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True},
                                    "tracks": [self._track(x) for x in core.usable_tracks(remaining)]},
-                        "message": "Skladba odebrána z playlistu." if matches else "Položka už v playlistu není. Seznam obnoven."}
+                        "message": message}
             except Exception as exc:
                 print(f"FelisMusic odebrání z playlistu: {type(exc).__name__}")
                 return {"ok": False, "message": (
                     "Odebrání se nepodařilo potvrdit. Obnov playlist a zkontroluj jeho obsah."
-                    if attempted else "Nelze ověřit položku nebo vlastnictví playlistu. Nic nebylo změněno.")}
-        self._submit("playlist_remove_item", "Odebírám skladbu z playlistu…", task)
+                    if attempted else "Nelze ověřit položky nebo vlastnictví playlistu. Nic nebylo změněno.")}
+        self._submit("playlist_remove_item", "Odebírám skladby z playlistu…", task)
         return True
 
     def _update_playlist_browse_snapshots(self, detail):
@@ -2576,6 +2640,16 @@ class BackendBridge(QObject):
             if in_library:
                 items.insert(0, dict(item))
             self._library_items_model.set_items(self._sort_normalized(items, self._library_order))
+        seen_loads = set()
+        for load in (self._upload_load, self._upload_view_load,
+                     self._upload_stream.get("load") if self._upload_stream else None):
+            if not load or id(load) in seen_loads or load.get("section") != "songs" or load["state"] != "complete":
+                continue
+            seen_loads.add(id(load))
+            items = [x for x in load["items"] if x.get("videoId") != item["videoId"]]
+            if in_library:
+                items.insert(0, dict(item))
+            load["items"] = self._sort_normalized(items, load.get("order"))
         if self._queue is None:
             return
         updated = {}
@@ -3116,9 +3190,16 @@ class BackendBridge(QObject):
             self._schedule_watch_page(stream)
 
     @Slot(result=bool)
+    def shuffleLibrarySongs(self):
+        return self._shuffle_library_songs("songs")
+
+    @Slot(result=bool)
     def shuffleUploadSongs(self):
+        return self._shuffle_library_songs("upload_songs")
+
+    def _shuffle_library_songs(self, source_section):
         if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
-                or self._library_section != "upload_songs" or self._detail_title or not self.uploadSongsComplete):
+                or self._library_section != source_section or self._detail_title or not self.uploadSongsComplete):
             return False
         items = self._source_items("library")
         if not any(item.get("videoId") for item in items):
@@ -3139,7 +3220,8 @@ class BackendBridge(QObject):
                 result["error"] = type(exc).__name__
             return result
 
-        self._submit("upload_shuffle", "Připravuji náhodné pořadí · Nahrané skladby…", task)
+        title = "Nahrané skladby" if source_section == "upload_songs" else "Skladby"
+        self._submit("upload_shuffle", f"Připravuji náhodné pořadí · {title}…", task)
         return True
 
     def _apply_upload_shuffle(self, result):
@@ -3159,7 +3241,8 @@ class BackendBridge(QObject):
             track = self._playback_track(origin["snapshots"]["library"][index])
             track["_guiOrigin"] = dict(origin, index=index)
             tracks.append(track)
-        self._start_generated_queue(tracks, "Nahrané skladby – Náhodně", shuffle=True, origin=origin)
+        title = "Nahrané skladby" if result["section"] == "upload_songs" else "Skladby"
+        self._start_generated_queue(tracks, title + " – Náhodně", shuffle=True, origin=origin)
         self._queue_source_indices = result["indices"]
         self.collectionShuffleStarted.emit()
 
@@ -3655,8 +3738,10 @@ class BackendBridge(QObject):
 
             elif name == "playlist_remove_item":
                 if result["ok"]:
+                    if result.get("selectionRevision") == self._selection_revision:
+                        self.clearTrackSelection()
                     playlist_id = result["playlistId"]
-                    self._pending_removed_playlist_items.setdefault(playlist_id, set()).add(result["setVideoId"])
+                    self._pending_removed_playlist_items.setdefault(playlist_id, set()).update(result["setVideoIds"])
                     detail = result["detail"]
                     removed = self._pending_removed_playlist_items[playlist_id]
                     detail["tracks"] = [x for x in detail["tracks"] if x.get("setVideoId") not in removed]
@@ -3680,7 +3765,7 @@ class BackendBridge(QObject):
                     if playlist_id in self._pending_created_playlists:
                         self._pending_created_playlists[playlist_id] = card
                     self._update_playlist_browse_snapshots(detail)
-                    self._sync_removed_playlist_queue_item(playlist_id, result["setVideoId"])
+                    self._sync_removed_playlist_queue_items(playlist_id, set(result["setVideoIds"]))
                 else:
                     self.errorOccurred.emit(result["message"])
                 self._set_status(result["message"])
@@ -4293,6 +4378,14 @@ class BackendBridge(QObject):
     def uploadSongsComplete(self):
         return self._upload_view_load is None or self._upload_view_load["state"] == "complete"
 
+    @Property(bool, notify=uploadSongsLoadChanged)
+    def librarySongsLoading(self):
+        return self.uploadSongsLoading
+
+    @Property(bool, notify=uploadSongsLoadChanged)
+    def librarySongsComplete(self):
+        return self.uploadSongsComplete
+
     def _upload_load_for_revision(self, revision):
         for load in (self._upload_load, self._upload_stream.get("load") if self._upload_stream else None):
             if load and load["revision"] == revision:
@@ -4300,33 +4393,38 @@ class BackendBridge(QObject):
         return None
 
     def _upload_load_needed(self, load):
-        return ((self._upload_view_load is load and self._library_section == "upload_songs" and not self._detail_title)
+        return ((self._upload_view_load is load and self._library_section == load.get("section", "upload_songs") and not self._detail_title)
                 or (self._upload_stream and self._upload_stream["queue"] is self._queue
                     and self._upload_stream["load"] is load and self._upload_stream["state"] == "loading"))
 
-    def _load_upload_songs(self, order):
+    def _load_upload_songs(self, order, section="upload_songs"):
         if self._closing.is_set() or self._ytmusic is None:
             return
-        if self._upload_stream and self._upload_stream["state"] == "loading":
+        if (self._upload_stream and self._upload_stream["state"] == "loading"
+                and self._upload_stream["load"].get("section", "upload_songs") == section):
             self._upload_stream.update(state="error", waiting=False)
             self._upload_stream["load"]["state"] = "error"
             self.playerChanged.emit()
         self._upload_load_revision += 1
+        title = "Nahrané skladby" if section == "upload_songs" else "Skladby"
+        pager_type = UploadSongPages if section == "upload_songs" else LibrarySongPages
         load = {"revision": self._upload_load_revision, "items": [], "state": "loading",
-                "fetching": False, "pager": UploadSongPages(self._ytmusic, order=order)}
+                "section": section, "title": title, "order": order,
+                "fetching": False, "pager": pager_type(self._ytmusic, order=order)}
         self._upload_load = self._upload_view_load = load
-        self._library_section, self._library_order = "upload_songs", order
+        self._library_section, self._library_order = section, order
         self._library_items_model.clear()
         self.clearDetail()
         self.uploadSongsLoadChanged.emit()
-        self._submit("upload_songs_first_page", "Načítám nahrané skladby…",
+        self._submit("upload_songs_first_page", f"Načítám: {title}…",
                      lambda: self._read_upload_songs_page(load, first=True))
 
     def _read_upload_songs_page(self, load, first=False):
         result = {"load": load, "first": first}
         try:
             tracks, more = load["pager"].next_page()
-            result.update(items=[self._track(x, upload=True) for x in core.usable_tracks(tracks)], more=more)
+            result.update(items=[self._track(x, upload=load.get("section", "upload_songs") == "upload_songs")
+                                 for x in core.usable_tracks(tracks)], more=more)
         except Exception as exc:
             result["error"] = type(exc).__name__
             trace = current_trace()
@@ -4359,7 +4457,7 @@ class BackendBridge(QObject):
         stream = self._upload_stream
         bound = (stream and stream["queue"] is self._queue and stream["load"] is load
                  and stream["state"] == "loading")
-        visible = (self._upload_view_load is load and self._library_section == "upload_songs" and not self._detail_title)
+        visible = (self._upload_view_load is load and self._library_section == load.get("section", "upload_songs") and not self._detail_title)
         if result.get("error"):
             load["state"] = "error"
             if bound:
@@ -4367,7 +4465,7 @@ class BackendBridge(QObject):
                 self.playerChanged.emit()
             self.uploadSongsLoadChanged.emit()
             if visible:
-                self._set_status("Nahrané skladby se nepodařilo načíst celé")
+                self._set_status(f"{load.get('title', 'Nahrané skladby')} se nepodařilo načíst celé")
             return
         start = len(load["items"])
         load["items"].extend(result["items"])
@@ -4376,7 +4474,7 @@ class BackendBridge(QObject):
         if visible:
             if result["first"]:
                 self._library_items_model.set_items(load["items"])
-                self._set_status(f"Nahrané skladby · {len(load['items'])} položek načteno")
+                self._set_status(f"{load.get('title', 'Nahrané skladby')} · {len(load['items'])} položek načteno")
             else:
                 self._library_items_model.append_items(result["items"])
         if bound:
@@ -4582,8 +4680,8 @@ class BackendBridge(QObject):
             return
         if self._busy:
             return
-        if section == "upload_songs":
-            self._load_upload_songs(order)
+        if section in ("songs", "upload_songs"):
+            self._load_upload_songs(order, section)
             return
         self._upload_view_load = None
         self.uploadSongsLoadChanged.emit()
@@ -4596,13 +4694,6 @@ class BackendBridge(QObject):
                 normalized = [self._playlist(x) for x in items]
                 return self._sort_normalized(normalized, order)
 
-            if section == "songs":
-                items = ytmusic.get_library_songs(
-                    limit=core.LIBRARY_LIMIT,
-                    order=order,
-                ) or []
-                items = core.usable_tracks(items)
-                return [self._track(x) for x in items]
 
             if section == "albums":
                 items = ytmusic.get_library_albums(
@@ -5057,7 +5148,7 @@ class BackendBridge(QObject):
 
     def _source_complete(self, source):
         return (self.likedComplete if source == "liked" else self.detailComplete if source == "detail"
-                else self.uploadSongsComplete if source == "library" and self._library_section == "upload_songs" else True)
+                else self.uploadSongsComplete if source == "library" and self._library_section in ("songs", "upload_songs") else True)
 
     def _playlist_load_for_revision(self, revision):
         for load in (self._playlist_load,

@@ -173,6 +173,11 @@ ApplicationWindow {
         target: backend
         function onDetailTitleChanged() { backend.clearTrackSelection() }
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onPlaylistBatchRemoveRequested(count, title) {
+            playlistBatchRemove.itemCount = count
+            playlistBatchRemove.playlistTitle = title
+            playlistBatchRemove.open()
+        }
         function onUploadNavigationOpened(context) { root.restoreTrackNavigation(context) }
         function onSourceNavigationRestored(context) { root.restoreTrackNavigation(context) }
         function onQueueShuffled() {
@@ -653,6 +658,28 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: playlistBatchRemove
+        objectName: "playlistBatchRemoveDialog"
+        property int itemCount: 0
+        property string playlistTitle: ""
+        title: "Odebrat vybrané skladby?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 540)
+        standardButtons: Dialog.Ok | Dialog.Cancel
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label { text: playlistBatchRemove.title; color: "white"; font.pixelSize: 19; padding: 18 }
+        contentItem: Label {
+            text: "Odebrat " + playlistBatchRemove.itemCount + " vybraných skladeb z playlistu „"
+                  + playlistBatchRemove.playlistTitle + "“?"
+            color: "#eeeeee"
+            wrapMode: Text.Wrap
+        }
+        onAccepted: backend.removeSelectedPlaylistItems()
+        onRejected: backend.cancelSelectedPlaylistRemove()
+    }
+
+    Dialog {
         id: trackInfo
         objectName: "trackInfoDialog"
         title: "Informace o skladbě"
@@ -1016,7 +1043,7 @@ ApplicationWindow {
         property string sourceKey: ""
         property bool partialLiked: (sourceKey === "liked" && !backend.likedComplete)
                                     || (sourceKey === "detail" && !backend.detailComplete)
-                                    || (sourceKey === "library" && root.currentLibrarySection === "upload_songs" && !backend.uploadSongsComplete)
+                                    || (sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs") && !backend.librarySongsComplete)
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
@@ -1291,12 +1318,14 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "playlistRemoveItemAction"
-                text: "Odebrat z tohoto playlistu"
-                visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
-                         && videoId.length > 0 && setVideoId.length > 0
+                text: trackDelegate.multipleSelection ? "Odebrat vybrané z playlistu…" : "Odebrat z tohoto playlistu"
+                visible: trackDelegate.multipleSelection ? backend.selectionCanRemovePlaylist
+                         : (trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
+                            && videoId.length > 0 && setVideoId.length > 0)
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
-                onTriggered: backend.removeDetailPlaylistItem(videoId, setVideoId)
+                onTriggered: trackDelegate.multipleSelection ? backend.openSelectedPlaylistRemove()
+                           : backend.removeDetailPlaylistItem(videoId, setVideoId)
             }
             // Append the delayed action so existing menu rows do not move.
             MenuItem {
@@ -1751,14 +1780,14 @@ ApplicationWindow {
                 }
                 Button {
                     id: uploadMenuButton
-                    objectName: "uploadSongsMenuButton"
-                    visible: trackPage.sourceKey === "library" && root.currentLibrarySection === "upload_songs"
+                    objectName: root.currentLibrarySection === "songs" ? "librarySongsMenuButton" : "uploadSongsMenuButton"
+                    visible: trackPage.sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs")
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
                     enabled: backend.connected && !backend.busy
                     hoverEnabled: true
                     ToolTip.visible: hovered
-                    ToolTip.text: "Možnosti nahraných skladeb"
+                    ToolTip.text: root.currentLibrarySection === "songs" ? "Možnosti skladeb" : "Možnosti nahraných skladeb"
                     onClicked: uploadMenu.popup(uploadMenuButton, width - uploadMenu.width, height)
                     background: Rectangle { color: uploadMenuButton.hovered ? "#3b3b3b" : "#222222"; radius: 4 }
                     contentItem: Canvas {
@@ -1782,25 +1811,31 @@ ApplicationWindow {
                         palette.highlight: "#6757b8"
                         background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
                         MenuItem {
-                            objectName: "uploadSongsShuffle"
+                            objectName: root.currentLibrarySection === "songs" ? "librarySongsShuffle" : "uploadSongsShuffle"
                             text: "Přehrát náhodně"
                             enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
-                            onTriggered: backend.shuffleUploadSongs()
+                            onTriggered: root.currentLibrarySection === "songs" ? backend.shuffleLibrarySongs() : backend.shuffleUploadSongs()
                         }
                         MenuItem {
                             objectName: "uploadSongsNext"
+                            visible: root.currentLibrarySection === "upload_songs"
+                            height: visible ? implicitHeight : 0
                             text: "Přehrát jako další"
                             enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.enqueueUploadCollection("library", true, root.navigationContext())
                         }
                         MenuItem {
                             objectName: "uploadSongsAppend"
+                            visible: root.currentLibrarySection === "upload_songs"
+                            height: visible ? implicitHeight : 0
                             text: "Přidat na konec fronty"
                             enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.enqueueUploadCollection("library", false, root.navigationContext())
                         }
                         MenuItem {
                             objectName: "uploadSongsPlaylistSave"
+                            visible: root.currentLibrarySection === "upload_songs"
+                            height: visible ? implicitHeight : 0
                             text: "Přidat seznam do playlistu…"
                             enabled: backend.connected && !backend.busy && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.openUploadSongsPlaylistSave()
@@ -1817,15 +1852,15 @@ ApplicationWindow {
                 objectName: "uploadSongsLoadBanner"
                 Layout.fillWidth: true
                 implicitHeight: uploadLoadRow.implicitHeight + 20
-                visible: trackPage.sourceKey === "library" && root.currentLibrarySection === "upload_songs"
-                         && (!backend.uploadSongsComplete || uploadDoneTimer.running)
+                visible: trackPage.sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs")
+                         && (!backend.librarySongsComplete || uploadDoneTimer.running)
                 radius: 6
-                color: backend.uploadSongsLoading ? "#23243b" : backend.uploadSongsComplete ? "#173328" : "#3b2920"
+                color: backend.librarySongsLoading ? "#23243b" : backend.librarySongsComplete ? "#173328" : "#3b2920"
                 Timer { id: uploadDoneTimer; interval: 4000 }
                 Connections {
                     target: backend
                     function onUploadSongsLoadChanged() {
-                        if (backend.uploadSongsComplete) uploadDoneTimer.restart()
+                        if (backend.librarySongsComplete) uploadDoneTimer.restart()
                         else uploadDoneTimer.stop()
                     }
                 }
@@ -1839,17 +1874,18 @@ ApplicationWindow {
                         Layout.preferredWidth: 28
                         Layout.preferredHeight: 28
                         visible: running
-                        running: backend.uploadSongsLoading
+                        running: backend.librarySongsLoading
                     }
                     Label {
                         objectName: "uploadSongsLoadTitle"
                         Layout.fillWidth: true
                         wrapMode: Text.Wrap
                         color: "#eeeeee"
-                        text: backend.uploadSongsLoading
+                        text: backend.librarySongsLoading
                             ? "Načítám další skladby… · " + trackPage.tracks.count + " načteno\nSkladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; akce nad celým seznamem až po dokončení."
-                            : backend.uploadSongsComplete ? "Vše načteno · " + trackPage.tracks.count + " skladeb"
-                            : "Načítání se nepodařilo dokončit. Seznam není úplný; otevři Nahrané skladby znovu."
+                            : backend.librarySongsComplete ? "Vše načteno · " + trackPage.tracks.count + " skladeb"
+                            : "Načítání se nepodařilo dokončit. Seznam není úplný; otevři "
+                              + (root.currentLibrarySection === "songs" ? "Skladby" : "Nahrané skladby") + " znovu."
                     }
                 }
             }
@@ -1861,8 +1897,8 @@ ApplicationWindow {
                 model: tracks
                 delegate: TrackDelegate {
                     sourceKey: trackPage.sourceKey
-                    enabled: trackPage.sourceKey !== "library" || root.currentLibrarySection !== "upload_songs"
-                             || backend.uploadSongsComplete || backend.uploadSongsLoading
+                    enabled: trackPage.sourceKey !== "library" || (root.currentLibrarySection !== "songs" && root.currentLibrarySection !== "upload_songs")
+                             || backend.librarySongsComplete || backend.librarySongsLoading
                 }
                 Keys.onPressed: function(event) { root.trackKeys(event, trackPage.sourceKey) }
                 ScrollBar.vertical: ScrollBar { }
@@ -2702,6 +2738,14 @@ ApplicationWindow {
                             enabled: backend.connected && !backend.busy && backend.selectionCanSavePlaylist
                                      && backend.selectedTrackIndices.length > 1
                             onTriggered: backend.openSelectedPlaylistSave()
+                        }
+                        MenuItem {
+                            objectName: "selectedPlaylistRemoveAction"
+                            text: "Odebrat z playlistu…"
+                            visible: backend.selectionCanRemovePlaylist
+                            height: visible ? implicitHeight : 0
+                            enabled: backend.connected && !backend.busy && backend.selectionCanRemovePlaylist
+                            onTriggered: backend.openSelectedPlaylistRemove()
                         }
                     }
                 }
