@@ -1361,7 +1361,7 @@ ApplicationWindow {
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
             visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
-                     || backend.detailMeta.kind === "artist"
+                     || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
             ToolTip.visible: hovered
@@ -1424,6 +1424,14 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanArtistRadio && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.startArtistPlayback("radio")
+            }
+            MenuItem {
+                objectName: "uploadArtistMix"
+                text: "Spustit mix"
+                visible: backend.detailMeta.kind === "upload_artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.detailCanUploadArtistMix && backend.connected && !backend.busy && backend.playerCanEditQueue
+                onTriggered: backend.startUploadArtistMix()
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"

@@ -270,6 +270,7 @@ class BackendBridge(QObject):
         self._library_order = ""
         self._detail_title = ""
         self._detail_meta = {}
+        self._upload_artist_radio_ids = {}
         self._detail_history = []
         self._pending_detail_parent = None
 
@@ -2767,6 +2768,64 @@ class BackendBridge(QObject):
         return self._detail_meta.get("kind") == "artist" and bool(self._detail_meta.get("radioId"))
 
     @Property(bool, notify=detailTitleChanged)
+    def detailCanUploadArtistMix(self):
+        return self._detail_meta.get("kind") == "upload_artist" and bool(self._detail_meta.get("radioId"))
+
+    @Slot(result=bool)
+    def startUploadArtistMix(self):
+        if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
+                or not self.detailCanUploadArtistMix):
+            return False
+        self._radio_refill_revision += 1
+        state = self._detail_state()
+        origin = self._make_origin("detail", -1, state["tracks"])
+        api, generation, marker = self._ytmusic, self._playback_generation, self._radio_queue_marker()
+
+        def task():
+            result = dict(state=state, origin=origin, generation=generation, marker=marker, upload=True)
+            try:
+                pager = WatchPages(api, state["meta"]["radioId"], shuffle=False, limit=None)
+                for _ in range(3):
+                    tracks, more = pager.next_page()
+                    tracks = core.usable_tracks(tracks)
+                    if tracks or not more:
+                        break
+                if not tracks:
+                    raise RuntimeError("empty_upload_mix")
+                result.update(pager=pager, more=more,
+                    items=[self._track(x, upload=True, artist_links=[{
+                        "id": state["meta"]["browseId"], "name": state["title"]}]) for x in tracks])
+            except Exception as exc:
+                result["error"] = type(exc).__name__
+            return result
+
+        self._submit("upload_artist_mix", f"Načítám mix · {state['title']}…", task)
+        return True
+
+    def _apply_upload_artist_mix(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker() or result["state"] != self._detail_state()):
+            return
+        if result.get("error"):
+            self._set_status("Mix nahraného interpreta se nepodařilo načíst")
+            self.errorOccurred.emit(result["error"])
+            return
+        positions = {}
+        for i, item in enumerate(result["state"]["tracks"]):
+            positions.setdefault(item.get("videoId"), []).append(i)
+        tracks = []
+        for item in result["items"]:
+            indices = positions.get(item["videoId"], [])
+            track = self._playback_track(item)
+            track["_guiOrigin"] = dict(result["origin"], index=indices.pop(0) if indices else -1)
+            tracks.append(track)
+        self._start_generated_queue(tracks, f"{result['state']['title']} – Mix", origin=result["origin"])
+        self._queue.source_playlist_id = result["state"]["meta"]["radioId"]
+        self._queue_source_indices = [song["_guiOrigin"]["index"] for song in self._queue.tracks]
+        self._attach_watch_stream(result)
+        self.artistPlaybackStarted.emit()
+
+    @Property(bool, notify=detailTitleChanged)
     def detailCanArtistShuffle(self):
         return (self._detail_meta.get("kind") == "artist"
                 and any(item.get("videoId") for item in
@@ -2955,7 +3014,8 @@ class BackendBridge(QObject):
             if index in positions:
                 positions.remove(index)
         self._watch_stream = {"queue": self._queue, "pager": result["pager"],
-            "origin": origin, "matches": matches, "state": "loading", "waiting": False}
+            "origin": origin, "matches": matches, "state": "loading", "waiting": False,
+            "upload": result.get("upload", False)}
         self.playerChanged.emit()
         self._schedule_watch_page(self._watch_stream)
 
@@ -2970,7 +3030,11 @@ class BackendBridge(QObject):
                 result = {"stream": stream}
                 try:
                     tracks, more = stream["pager"].next_page()
-                    result.update(items=[self._track(x) for x in core.usable_tracks(tracks)], more=more)
+                    meta = stream["origin"].get("detail_state", {}).get("meta", {})
+                    links = ([{"id": meta["browseId"], "name": stream["origin"]["detail_title"]}]
+                             if stream.get("upload") else [])
+                    result.update(items=[self._track(x, upload=stream.get("upload", False), artist_links=links)
+                                         for x in core.usable_tracks(tracks)], more=more)
                 except Exception as exc:
                     result["error"] = type(exc).__name__
                     trace = current_trace()
@@ -2994,7 +3058,8 @@ class BackendBridge(QObject):
         if result.get("error"):
             stream.update(state="error", waiting=False)
             self.playerChanged.emit()
-            self._set_status("Další část náhodné fronty se nepodařilo načíst")
+            self._set_status("Další část mixu se nepodařilo načíst" if stream.get("upload") else
+                             "Další část náhodné fronty se nepodařilo načíst")
             return
         previous_next = self._next_prefetch_id()
         for item in result["items"]:
@@ -3476,6 +3541,9 @@ class BackendBridge(QObject):
             elif name == "artist_playback":
                 self._apply_artist_playback(result)
 
+            elif name == "upload_artist_mix":
+                self._apply_upload_artist_mix(result)
+
             elif name == "shuffle_queue":
                 self._apply_queue_shuffle(result)
 
@@ -3676,6 +3744,8 @@ class BackendBridge(QObject):
                 self._set_status(f"Playlisty · {len(result)}")
 
             elif name.startswith("library:"):
+                if name == "library:upload_artists":
+                    self._upload_artist_radio_ids.update({item["browseId"]: item.get("radioId", "") for item in result})
                 if name == "library:playlists":
                     result = [x for x in result if x.get("playlistId") not in self._deleted_playlists]
                     received_ids = {item.get("playlistId") for item in result}
@@ -3724,6 +3794,7 @@ class BackendBridge(QObject):
                 tracks = result.get("tracks") or []
                 self._detail_title = title
                 self._detail_meta = result.get("meta") or {}
+                self._upload_artist_radio_ids.update(result.get("uploadArtistRadioIds", {}))
                 self._detail_tracks_model.set_items(tracks)
                 self.detailTitleChanged.emit()
                 label = "položek" if self._detail_meta.get("section") in ("albums", "singles") else "skladeb"
@@ -3978,6 +4049,7 @@ class BackendBridge(QObject):
             "playlistId": "",
             "browseId": str(item.get("browseId") or ""),
             "thumbnail": cls._thumbnail(item),
+            **({"radioId": str(item.get("radioId") or "").strip()} if kind == "upload_artist" else {}),
         }
 
     @classmethod
@@ -4440,6 +4512,12 @@ class BackendBridge(QObject):
         browse_id = (browse_id or "").strip()
         playlist_id = (playlist_id or "").strip()
         title = (title or "Knihovna").strip()
+        upload_radio_ids = dict(self._upload_artist_radio_ids)
+        if kind == "upload_artist":
+            for source in ("library", "search"):
+                for item in self._source_items(source):
+                    if item.get("browseId") == browse_id and item.get("radioId"):
+                        upload_radio_ids[browse_id] = item["radioId"]
 
         if kind == "playlist":
             self.loadPlaylistTracks(playlist_id, title)
@@ -4516,6 +4594,15 @@ class BackendBridge(QObject):
             elif kind == "upload_artist":
                 if not browse_id:
                     raise RuntimeError("Nahraný interpret nemá browseId.")
+                if browse_id.startswith("FEmusic_library_privately_owned_artist") and browse_id not in upload_radio_ids:
+                    try:
+                        for item in ytmusic.get_library_upload_artists(limit=None) or []:
+                            if item.get("browseId"):
+                                upload_radio_ids[item["browseId"]] = str(item.get("radioId") or "").strip()
+                    except Exception as exc:
+                        trace = current_trace()
+                        if trace:
+                            trace.event("upload.artist_actions.unavailable", error=type(exc).__name__)
                 tracks = core.usable_tracks(
                     ytmusic.get_library_upload_artist(
                         browse_id,
@@ -4527,6 +4614,7 @@ class BackendBridge(QObject):
                         for artist in (track.get("artists") or []) if isinstance(artist, dict)
                         and artist.get("id") == browse_id and artist.get("name")), detail_title)
                 meta = {"kind": kind, "browseId": browse_id, "section": "songs", "orders": {},
+                        "radioId": upload_radio_ids.get(browse_id, ""),
                         "sections": {"songs": [self._track(x, upload=True,
                             artist_links=[{"id": browse_id, "name": detail_title}]) for x in tracks]}}
 
@@ -4538,6 +4626,7 @@ class BackendBridge(QObject):
             return {
                 "title": detail_title,
                 "meta": meta,
+                "uploadArtistRadioIds": upload_radio_ids if kind == "upload_artist" else {},
                 "tracks": self._artist_sorted_items(meta) if kind in ("artist", "upload_artist") else [
                     self._track(
                         x,
