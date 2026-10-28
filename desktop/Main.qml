@@ -917,7 +917,7 @@ ApplicationWindow {
     function followPlayingRow(view, sourceKey) {
         if (!view || (sourceKey !== "playing" && backend.playerQueueSource !== sourceKey))
             return
-        var i = sourceKey === "playing" ? backend.playerQueueIndex : backend.playerSourceIndex
+        var i = sourceKey === "playing" ? backend.playerQueueIndex : backend.playerVisibleSourceIndex
         if (i >= 0 && i < view.count)
             view.positionViewAtIndex(i, ListView.Contain)
     }
@@ -960,7 +960,7 @@ ApplicationWindow {
     function revealPlayingSource(view, sourceKey) {
         if (!view.visible || backend.playerQueueSource !== sourceKey)
             return
-        var index = backend.playerSourceIndex
+        var index = backend.playerVisibleSourceIndex
         if (index < 0 || index >= view.count)
             return
         view.currentIndex = index
@@ -993,7 +993,7 @@ ApplicationWindow {
                                     && (sourceKey === "playing"
                                         ? backend.playerQueueIndex === index
                                         : (backend.playerQueueSource === sourceKey
-                                           && backend.playerSourceIndex === index
+                                           && backend.playerVisibleSourceIndex === index
                                            && backend.playerVideoId === videoId))
 
         function kindCaption(value) {
@@ -1467,7 +1467,7 @@ ApplicationWindow {
     }
 
     component ArtistNavigation: ColumnLayout {
-        visible: backend.detailMeta.kind === "artist"
+        visible: backend.detailMeta.kind === "artist" || backend.detailMeta.kind === "upload_artist"
         spacing: 6
         Flow {
             objectName: "artistNavigationFlow"
@@ -1475,6 +1475,7 @@ ApplicationWindow {
             Layout.preferredHeight: childrenRect.height
             spacing: 8
             Row {
+                visible: backend.detailMeta.kind === "artist"
                 spacing: 6
                 height: artistOrder.implicitHeight
                 Repeater {
@@ -1501,7 +1502,7 @@ ApplicationWindow {
                 valueRole: "key"
                 model: backend.detailMeta.section === "songs"
                        ? [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
-                          {key: "default", label: "Původní pořadí YTM"}]
+                          {key: "default", label: backend.detailMeta.kind === "upload_artist" ? "Původní pořadí" : "Původní pořadí YTM"}]
                        : [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
                           {key: "default", label: "Původní pořadí YTM"},
                           {key: "newest", label: "Od nejnovějších"},

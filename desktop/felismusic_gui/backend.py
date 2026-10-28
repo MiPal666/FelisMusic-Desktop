@@ -172,6 +172,7 @@ class BackendBridge(QObject):
     initialized = Signal()
     playerChanged = Signal()
     playerTrackChanged = Signal()
+    playingSourceViewChanged = Signal()
     playbackSourceCaptured = Signal()
     radioStarted = Signal()
     queueShuffled = Signal()
@@ -314,6 +315,12 @@ class BackendBridge(QObject):
         self._detail_tracks_model = DictListModel(self)
         # Keep the playing list independent of subsequent browsing/searches.
         self._playing_tracks_model = DictListModel(self)
+        self._visible_source_index = None
+        self.playerChanged.connect(self._invalidate_playing_source_view)
+        self.detailTitleChanged.connect(self._invalidate_playing_source_view)
+        for model in (self._library_items_model, self._detail_tracks_model):
+            for signal in (model.modelReset, model.rowsInserted, model.rowsRemoved, model.rowsMoved):
+                signal.connect(self._invalidate_playing_source_view)
         for source in ("library", "liked", "history", "search", "detail", "playing"):
             model = self._source_model(source)
             for signal in (model.modelReset, model.rowsInserted, model.rowsRemoved, model.rowsMoved):
@@ -586,6 +593,55 @@ class BackendBridge(QObject):
             return int(self._queue_source_indices[queue_index])
         return -1
 
+    def _invalidate_playing_source_view(self, *args):
+        self._visible_source_index = None
+        self.playingSourceViewChanged.emit()
+
+    @staticmethod
+    def _source_occurrence_key(item):
+        if item.get("setVideoId"):
+            return ("occurrence", item["setVideoId"])
+        return tuple(item.get(key) or "" for key in
+                     ("kind", "videoId", "title", "artists", "albumId", "album", "duration"))
+
+    @Property(int, notify=playingSourceViewChanged)
+    def playerVisibleSourceIndex(self):
+        """Locate the captured occurrence in the current view, never edit its queue origin."""
+        if self._visible_source_index is not None:
+            return self._visible_source_index
+        origin = self._current_origin()
+        source, index = origin.get("source"), self.playerSourceIndex
+        targeted = False
+        if source == "detail":
+            meta = origin.get("detail_state", {}).get("meta", {})
+            targeted = meta.get("kind") in ("artist", "upload_artist")
+            if targeted and (not meta.get("browseId") or
+                    any(meta.get(key) != self._detail_meta.get(key) for key in ("kind", "browseId", "section"))):
+                index = -1
+        elif source == "library":
+            section = origin.get("library_section") or origin.get("context", {}).get("librarySection")
+            targeted = section in ("songs", "upload_songs")
+            if targeted and (section != self._library_section or self._detail_title):
+                index = -1
+        if targeted and index >= 0:
+            snapshot = origin.get("snapshots", {}).get(source, [])
+            if index >= len(snapshot):
+                index = -1
+            else:
+                key = self._source_occurrence_key(snapshot[index])
+                # Stable occurrence rank distinguishes identical duplicate rows
+                # when the endpoint provides no per-occurrence identifier.
+                rank = sum(self._source_occurrence_key(item) == key for item in snapshot[:index])
+                index = -1
+                for row, item in enumerate(self._source_items(source)):
+                    if self._source_occurrence_key(item) == key:
+                        if rank == 0:
+                            index = row
+                            break
+                        rank -= 1
+        self._visible_source_index = index
+        return index
+
     @Property(bool, notify=playerChanged)
     def playerCanPrevious(self):
         return (
@@ -706,7 +762,7 @@ class BackendBridge(QObject):
 
     @Slot(str)
     def setArtistOrder(self, order):
-        if self._busy or self._detail_meta.get("kind") != "artist":
+        if self._busy or self._detail_meta.get("kind") not in ("artist", "upload_artist"):
             return
         section = self._detail_meta["section"]
         allowed = {"a_to_z", "z_to_a", "default"}
@@ -886,6 +942,7 @@ class BackendBridge(QObject):
             "detail_title": self._detail_title if source == "detail" else "",
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._liked_order, "context": dict(context or {}),
+            "library_section": self._library_section if source == "library" else "",
         }
 
     @Slot("QVariantMap")
@@ -1577,6 +1634,7 @@ class BackendBridge(QObject):
             "detail_title": self._playing_detail_title,
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._playing_liked_order, "context": {},
+            "library_section": self._library_section if source == "library" else "",
         }
         for song, original_index in zip(self._queue.tracks, source_indices):
             song["_guiOrigin"] = dict(origin, index=original_index)
@@ -4395,7 +4453,8 @@ class BackendBridge(QObject):
                         limit=None,
                     ) or []
                 )
-                meta = {"kind": kind, "browseId": browse_id}
+                meta = {"kind": kind, "browseId": browse_id, "section": "songs", "orders": {},
+                        "sections": {"songs": [self._track(x, upload=True) for x in tracks]}}
 
             else:
                 raise RuntimeError(
@@ -4405,7 +4464,7 @@ class BackendBridge(QObject):
             return {
                 "title": detail_title,
                 "meta": meta,
-                "tracks": self._artist_sorted_items(meta) if kind == "artist" else [
+                "tracks": self._artist_sorted_items(meta) if kind in ("artist", "upload_artist") else [
                     self._track(
                         x,
                         upload=kind.startswith("upload_"),

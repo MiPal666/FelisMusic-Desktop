@@ -2,6 +2,35 @@
 
 Aktualizováno: 2026-10-28 (Europe/Prague).
 
+## Čtecí ověření Mixu Nahraných pro další plán (2026-10-28)
+
+- Michal ve webu našel Mix u nahraného interpreta a požádal ověřit API, nikoli implementovat funkci. Dokumentace odděluje seznam upload interpretů a detail jeho skladeb; kontrola instalovaného parseru ukázala, že seznam zachovává menu radioId/shuffleId. GUI normalizace `_artist_item` tyto údaje aktuálně nepřenáší.
+- Skutečný první blok seznamu: 25 interpretů, radioId i shuffleId 25/25. Přímé watch čtení pro dva vrácené radioId (prefix MLPAa_po) dalo 20 a 39 přehratelných skladeb; všechny řádky měly MUSIC_VIDEO_TYPE_PRIVATELY_OWNED_TRACK. WatchPages u obou bez pokračování. Srovnání s úplným upload detailem týchž interpretů: shodné množiny videoId a počty 20/20 a 39/39. Nezobecňovat absenci pokračování na všechny účty/interpretace bez odpovědi serveru.
+- Pro plán: Mix lze nabídnout přes skutečné radioId z upload karty, zachovat původní detail a cover. Jde v ověřených případech o konečný upload seznam; nevynucovat nekonečné katalogové doplňování přes existující CLI rádio z poslední skladby. Respektovat vrácený konec/pokračování. Mix upload alba/skladby se nepřidává, playlisty jsou společné.
+- Pouze omezené čtecí dotazy s 15s request timeoutem, bez přehrávání, zápisů do knihovny nebo dumpování cookies/tokenů/odpovědí. Žádná změna aplikačního kódu či verze v tomto ověřování.
+
+## 0.3.48-dev – zvýraznění přehrávaného výskytu po řazení, přijato
+
+- Michal potvrdil opravu jako funkční. Poznámka k zobrazení „moje“/všech skladeb v Knihovna → Interpreti → interpret uložená do PLAN.md; podrobnosti dodá později, nyní bez implementace.
+
+- Michal ověřil řazení 0.3.47, ale našel ztrátu zvýraznění při přerovnání. Schválil opravu pouze ve čtyřech místech: Knihovna → Skladby, Nahrané → Skladby a detail katalogového/nahraného interpreta. Aplikace zavřená, úprava povolená. Předchozí commit e0b75ba; řazení 0.3.47 ještě necommitované.
+- `_guiOrigin.index` a `playerSourceIndex` zůstávají původními přesnými zdrojovými indexy. Nový `playerVisibleSourceIndex` vyhledá výskyt v aktuálně zobrazeném seznamu, pokud jde o stejný zdroj. U interpreta hlídá kind/browseId/sekci, u hlavních seznamů songs/upload_songs příslušnou sekci; původ knihovny se zachytí při vytvoření fronty i ručním vložení. Náhled jiného interpreta či jiné sekce se shodným videoId nemá marker.
+- Identita výskytu používá setVideoId, je-li dostupné, jinak kombinaci normalizovaných údajů a pořadí mezi identickými duplicitami. To respektuje stabilní řazení a neoznačí všechny výskyty videoId. Chybějící příslušný výskyt nemá marker. Výpočet se sdílí mezi delegáty cache a zneplatní po změně modelu, detailu nebo stavu přehrávače.
+- QML používá viditelný index pro zvýraznění, dosavadní sledování při změně skladby a explicitní návrat coverem. Změna řazení nevysílá playerTrackChanged ani nepřestavuje frontu, nezahajuje audio a nespouští automatické sledování řádku. Cover zachovává dosavadní obnovu snapshotu s původním řazením. Ostatní typy zdrojů mají dosavadní index.
+- **395 offline testů prošlo**. Šest nových testů: všechna čtyři místa s druhým identickým výskytem při A–Z/Z–A/původním pořadí, shodné video v jiném zdroji, chybějící výskyt, pause/Stop/Next/cover, ruční enqueue/Shuffle a cache pro více delegátů. Přitom kontrola nezměněné fronty/originů/audia/času a počtu track-change signálů. Účet/audio mockované.
+- Osm QML scénářů (čtyři místa × 900×600/1280×800) ověřilo skutečný `TrackDelegate.currentTrack`: právě jeden správný řádek před i po řazení, žádný marker v jiné kolekci a správný návrat coverem. Bez QML varování, API/audio/obrázky mockované. `git diff --check` prošel.
+- Skutečný test: spustit skladbu v každém ze čtyř zdrojů, přepnout řazení a ověřit zvýraznění na nové pozici, pokračující audio a neměnnou Frontu. Ověřit i duplicitní výskyt, pokud je k dispozici. Načítání po blocích a Shuffle hlavního Knihovna → Skladby nejsou součástí této opravy.
+
+## 0.3.47-dev – řazení skladeb nahraného interpreta, čeká na skutečný test
+
+- Předchozí přijaté body 1–2 Nahraných uložené jako **e0b75ba**, pracovní strom byl čistý. Michal povolil první podkrok bodu 3: pouze lokální řazení nahraného interpreta.
+- Upload interpret nyní ukládá původní normalizované skladby do metadat sekce songs a využívá existující `_artist_sorted_items`/`setArtistOrder`. Výchozí A–Z, dále Z–A a Původní pořadí; žádný nový API dotaz při změně. Zachované duplicity, upload druh i metadata. Albumové pořadí se nemění.
+- Společný QML ArtistNavigation nabízí řazení také pro upload_artist, ale katalogové přepínače Skladby/Alba/Singly jsou pro něj skryté. Nenabízí nejnovější/nejstarší bez dostupných dat. Mix ani katalogové sekce upload interpretovi nepřibývají.
+- Změna prohlíženého řazení nezasahuje do již sestavené fronty, audia/času/Repeat. Cover obnoví přesný snapshot včetně řazení a indexu zachyceného při spuštění, shodně s katalogovým interpretem. Nový Shuffle vychází z aktuálního viditelného řazení a zachová přesné výskyty.
+- **389 offline testů prošlo**, včetně pěti nových pro výchozí/obrácené/původní pořadí a metadata/duplicity, změnu za hraní/cover bez restartu, Shuffle a přesné indexy, albumové pořadí a validaci voleb/busy, opožděný Shuffle a prázdného interpreta. Starší test metadat upraven na sekci songs. API/audio mockované.
+- QML 900×600 a 1280×800: skutečný přepínač se třemi volbami, aktivace Z–A/původního/A–Z, skryté katalogové záložky, zachování audia/fronty, návrat coverem se správně obnovenou volbou a nepřítomnost řazení v albu. Bez QML varování, API/audio/obrázky mockované. `git diff --check` prošel.
+- Reálný test: Nahrané → Interpreti → interpret, přepínat řazení; pak spustit skladbu nebo Shuffle a ověřit pokračování audia a cover. Po přijetí samostatný commit. Navigace skladba → nahrané album/interpret, rychlé otevření Nahraných a hromadné odebrání z playlistu zůstávají další samostatné kroky.
+
 ## 0.3.46-dev – akce Nahraných pro frontu a playlisty, přijato
 
 - Michal potvrdil práci Nahraných s frontou a playlisty jako funkční. Body 1 a 2 (0.3.45–0.3.46) skutečně otestované a přijaté; připraveno ke společnému commitu. Další požadavky (multivýběr → odebrat z playlistu a rychlé otevření Nahraných) zapsané v PLAN.md, zatím neimplementované.
