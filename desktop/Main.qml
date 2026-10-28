@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQml.Models
 
 ApplicationWindow {
     id: root
@@ -57,6 +58,20 @@ ApplicationWindow {
     function capturePlaybackContext() {
         playbackContext = navigationContext()
         backend.setPlaybackSourceContext(playbackContext)
+    }
+
+    function restoreTrackNavigation(context) {
+        if (context.librarySection !== undefined) {
+            currentLibrarySection = context.librarySection || currentLibrarySection
+            currentLibraryLabel = context.libraryLabel || currentLibraryLabel
+            currentLibraryOrder = context.libraryOrder || ""
+        }
+        if (context.page === 0) {
+            currentSearchScope = context.searchScope || currentSearchScope
+            currentSearchMode = context.searchMode || currentSearchMode
+            searchField.text = context.searchText || ""
+        }
+        if (context.page !== undefined) currentPage = context.page
     }
 
     function pageSelected(index) {
@@ -147,6 +162,8 @@ ApplicationWindow {
         target: backend
         function onDetailTitleChanged() { backend.clearTrackSelection() }
         function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onUploadNavigationOpened(context) { root.restoreTrackNavigation(context) }
+        function onSourceNavigationRestored(context) { root.restoreTrackNavigation(context) }
         function onQueueShuffled() {
             if (root.currentPage === 5) Qt.callLater(root.revealQueueRow)
         }
@@ -980,6 +997,8 @@ ApplicationWindow {
         required property string thumbnail
         required property string videoId
         required property string setVideoId
+        required property string albumId
+        required property var artistLinks
         required property string kind
         required property string playlistId
         required property string browseId
@@ -1217,6 +1236,30 @@ ApplicationWindow {
                 onTriggered: backend.startRadioFrom(trackDelegate.sourceKey, trackDelegate.index)
             }
             MenuItem {
+                objectName: "uploadTrackAlbum"
+                text: "Otevřít nahrané album"
+                visible: !trackDelegate.multipleSelection && kind === "upload_song"
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "upload_album")
+                         && albumId.indexOf("FEmusic_library_privately_owned_release") === 0
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "album", "", root.navigationContext())
+            }
+            MenuItem {
+                objectName: "uploadTrackArtist"
+                text: "Otevřít nahraného interpreta" + (artistLinks.length > 1 ? "…" : "")
+                visible: !trackDelegate.multipleSelection && kind === "upload_song" && artistLinks.length > 0
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "upload_artist")
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: {
+                    if (artistLinks.length === 1)
+                        backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "artist", artistLinks[0].id, root.navigationContext())
+                    else
+                        uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
+                }
+            }
+            MenuItem {
                 objectName: "playlistMoveUpAction"
                 text: "Posunout nahoru"
                 visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail"
@@ -1255,6 +1298,28 @@ ApplicationWindow {
             }
 
         }
+
+        Menu {
+            id: uploadArtistMenu
+            objectName: "uploadArtistChoiceMenu"
+            popupType: Popup.Item
+            width: 260
+            palette.text: "#eeeeee"
+            palette.windowText: "#eeeeee"
+            background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+            Instantiator {
+                model: trackDelegate.artistLinks
+                delegate: MenuItem {
+                    required property var modelData
+                    text: modelData.name
+                    enabled: backend.connected && !backend.busy
+                    onTriggered: backend.openUploadTrackTarget(trackDelegate.sourceKey, trackDelegate.index,
+                        "artist", modelData.id, root.navigationContext())
+                }
+                onObjectAdded: function(index, object) { uploadArtistMenu.insertItem(index, object) }
+                onObjectRemoved: function(index, object) { uploadArtistMenu.removeItem(object) }
+            }
+        }
     }
 
     component CollectionHeader: RowLayout {
@@ -1263,6 +1328,7 @@ ApplicationWindow {
         Layout.fillWidth: true
         spacing: 10
         Button {
+            objectName: "collectionBackButton"
             text: parent.backText
             enabled: !backend.busy
             onClicked: parent.goBack()

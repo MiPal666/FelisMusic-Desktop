@@ -2,6 +2,8 @@
 
 ## Stav
 
+U nahrané skladby nabízí menu ⋮ otevření nahraného alba a interpreta, pokud jsou k dispozici jejich ID. V detailu interpreta se nabízí jen album, v detailu alba jen interpret, v hlavním seznamu a Frontě obojí. Přechod přepne i sekci Nahrané → Alba/Interpreti; Zpět obnoví původní sekci. U více interpretů lze vybrat konkrétního. Funguje také z Fronty a hledání v Nahraných; Zpět obnoví předchozí seznam a řazení bez zásahu do přehrávání.
+
 Zvýraznění přehrávaného výskytu nyní v seznamech skladeb knihovny a Nahraných i u katalogového/nahraného interpreta sleduje jeho novou pozici po změně řazení. Fronta a audio pokračují beze změny; řazení nevyvolává automatické posunutí k přehrávané skladbě.
 
 U nahraného interpreta lze skladby řadit A–Z (výchozí), Z–A nebo obnovit původní pořadí. Přepnutí je lokální a nemění již přehrávanou frontu. Nahraná alba si zachovávají pořadí skladeb.
@@ -14,7 +16,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.48-dev** (řazení upload interpreta a zvýraznění po přerovnání; otestováno a přijato)
+- Desktop GUI: **0.3.51-dev** (navigace Nahraných do alba/interpreta a zpět; otestováno a přijato)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

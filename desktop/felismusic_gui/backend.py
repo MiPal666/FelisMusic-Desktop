@@ -23,6 +23,7 @@ from ytmusicapi.exceptions import YTMusicServerError
 
 from . import legacy_core as core
 from .paging import PlaylistPages, WatchPages
+from .uploads import load_upload_album
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -50,6 +51,8 @@ class DictListModel(QAbstractListModel):
         "thumbnail",
         "likeStatus",
         "setVideoId",
+        "albumId",
+        "artistLinks",
     )
 
     def __init__(self, parent=None):
@@ -174,6 +177,8 @@ class BackendBridge(QObject):
     playerTrackChanged = Signal()
     playingSourceViewChanged = Signal()
     playbackSourceCaptured = Signal()
+    uploadNavigationOpened = Signal("QVariantMap")
+    sourceNavigationRestored = Signal("QVariantMap")
     radioStarted = Signal()
     queueShuffled = Signal()
     artistPlaybackStarted = Signal()
@@ -697,9 +702,55 @@ class BackendBridge(QObject):
         if self._busy:
             return
         if self._detail_history:
-            self._restore_detail_state(self._detail_history[-1])
+            parent = self._detail_history[-1]
+            context = parent.get("returnContext", {})
+            self._library_section = context.get("librarySection", self._library_section)
+            self._library_order = context.get("libraryOrder", self._library_order)
+            self._restore_detail_state(parent)
+            source = parent.get("returnSource")
+            if source in ("library", "search"):
+                self._source_model(source).set_items(parent["returnItems"])
+            if parent.get("returnContext"):
+                self.sourceNavigationRestored.emit(parent["returnContext"])
         else:
             self.clearDetail()
+
+    @Slot(str, int, str, str, "QVariantMap", result=bool)
+    def openUploadTrackTarget(self, source, index, target, artist_id, context):
+        if self._busy or self._closing.is_set() or self._ytmusic is None:
+            return False
+        items = self._source_items(source)
+        if not 0 <= index < len(items):
+            return False
+        item = items[index]
+        if item.get("kind") != "upload_song":
+            return False
+        if source == "detail" and ((self._detail_meta.get("kind") == "upload_artist" and target == "artist")
+                or (self._detail_meta.get("kind") == "upload_album" and target == "album")):
+            return False
+        if target == "album":
+            browse_id, title = item.get("albumId", ""), item.get("album", "")
+            if not browse_id.startswith("FEmusic_library_privately_owned_release"):
+                return False
+        elif target == "artist":
+            artist = next((x for x in item.get("artistLinks", []) if x["id"] == artist_id), None)
+            if not artist:
+                return False
+            browse_id, title = artist["id"], artist["name"]
+            if not browse_id.startswith("FEmusic_library_privately_owned_artist"):
+                return False
+        else:
+            return False
+        parent = self._detail_state()
+        parent["returnContext"] = dict(context)
+        if source in ("library", "search"):
+            parent.update(returnSource=source, returnItems=items)
+        parent["uploadNavigationContext"] = dict(context, page=1,
+            librarySection="upload_albums" if target == "album" else "upload_artists",
+            libraryLabel="Nahraná alba" if target == "album" else "Nahraní interpreti")
+        self._pending_detail_parent = parent
+        self.openLibraryItem("upload_" + target, browse_id, "", title or "Nahrané")
+        return True
 
     @Slot(int)
     def openDetailItem(self, index):
@@ -798,6 +849,7 @@ class BackendBridge(QObject):
             "_guiSubtitle": str(item.get("subtitle") or ""),
             "_guiThumbnail": thumbnail,
             "_guiKind": str(item.get("kind") or "song"),
+            "_guiArtistLinks": deepcopy(item.get("artistLinks") or []),
         }
         return track
 
@@ -3403,6 +3455,7 @@ class BackendBridge(QObject):
 
     @Slot(str, object)
     def _apply_result(self, name: str, result: Any):
+        upload_navigation_context = None
         emit_initialized = False
         emit_song_library_changed = False
         emit_playlist_save_requested = False
@@ -3664,6 +3717,7 @@ class BackendBridge(QObject):
                         self._pending_removed_playlist_items.pop(playlist_id, None)
                     self._update_playlist_browse_snapshots(result)
                 if self._pending_detail_parent is not None:
+                    upload_navigation_context = self._pending_detail_parent.get("uploadNavigationContext")
                     self._detail_history.append(self._pending_detail_parent)
                     self._pending_detail_parent = None
                 title = result.get("title") or "Fronta"
@@ -3688,6 +3742,10 @@ class BackendBridge(QObject):
 
         if emit_initialized:
             self.initialized.emit()
+        if upload_navigation_context is not None:
+            self._library_section = upload_navigation_context["librarySection"]
+            self._library_order = upload_navigation_context.get("libraryOrder", "")
+            self.uploadNavigationOpened.emit(upload_navigation_context)
         if emit_song_library_changed:
             self.songLibraryChanged.emit()
         if emit_playlist_save_requested:
@@ -3811,7 +3869,7 @@ class BackendBridge(QObject):
         return str(album or "")
 
     @classmethod
-    def _track(cls, item, upload=False, album_thumbnail="", album_id=""):
+    def _track(cls, item, upload=False, album_thumbnail="", album_id="", artist_links=None):
         upload = upload or cls._is_upload(item)
         artists = cls._artists(item)
         album = cls._album(item)
@@ -3826,6 +3884,14 @@ class BackendBridge(QObject):
             if seconds:
                 duration = core.format_seconds(seconds)
         subtitle_parts = [x for x in (artists, album) if x]
+        links = item.get("artistLinks") or item.get("_guiArtistLinks") or []
+        if not links and isinstance(item.get("artists"), list):
+            links = item["artists"]
+        links = [{"id": x["id"], "name": str(x.get("name") or "Interpret")}
+                 for x in links if isinstance(x, dict) and isinstance(x.get("id"), str)
+                 and x["id"].startswith("FEmusic_library_privately_owned_artist")]
+        if not links:
+            links = artist_links or []
         return {
             "kind": "upload_song" if upload else (item.get("resultType") or "song"),
             "title": str(item.get("title") or "Bez názvu"),
@@ -3833,6 +3899,7 @@ class BackendBridge(QObject):
             "artists": artists,
             "album": album,
             "albumId": str(album_id or ""),
+            "artistLinks": deepcopy(links),
             "duration": str(duration),
             "videoId": str(item.get("videoId") or ""),
             "setVideoId": str(item.get("setVideoId") or ""),
@@ -4383,6 +4450,7 @@ class BackendBridge(QObject):
             tracks = []
             detail_title = title
             album_thumbnail = ""
+            album_artist_links = []
             meta = {}
 
             if kind == "album":
@@ -4438,9 +4506,10 @@ class BackendBridge(QObject):
             elif kind == "upload_album":
                 if not browse_id:
                     raise RuntimeError("Nahrané album nemá browseId.")
-                data = ytmusic.get_library_upload_album(browse_id)
+                data = load_upload_album(ytmusic, browse_id)
                 detail_title = data.get("title") or title
                 album_thumbnail = self._thumbnail(data, allow_video_fallback=False)
+                album_artist_links = self._track(data, upload=True)["artistLinks"]
                 tracks = core.usable_tracks(data.get("tracks") or [])
                 meta = {"kind": kind, "browseId": browse_id}
 
@@ -4453,8 +4522,13 @@ class BackendBridge(QObject):
                         limit=None,
                     ) or []
                 )
+                if detail_title == "Interpret":
+                    detail_title = next((artist.get("name") for track in tracks
+                        for artist in (track.get("artists") or []) if isinstance(artist, dict)
+                        and artist.get("id") == browse_id and artist.get("name")), detail_title)
                 meta = {"kind": kind, "browseId": browse_id, "section": "songs", "orders": {},
-                        "sections": {"songs": [self._track(x, upload=True) for x in tracks]}}
+                        "sections": {"songs": [self._track(x, upload=True,
+                            artist_links=[{"id": browse_id, "name": detail_title}]) for x in tracks]}}
 
             else:
                 raise RuntimeError(
@@ -4469,7 +4543,8 @@ class BackendBridge(QObject):
                         x,
                         upload=kind.startswith("upload_"),
                         album_thumbnail=album_thumbnail,
-                        album_id=browse_id if kind == "album" else "",
+                        album_id=browse_id if kind in ("album", "upload_album") else "",
+                        artist_links=album_artist_links,
                     )
                     for x in tracks
                 ],

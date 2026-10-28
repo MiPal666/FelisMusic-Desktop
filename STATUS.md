@@ -2,6 +2,34 @@
 
 Aktualizováno: 2026-10-28 (Europe/Prague).
 
+## 0.3.51-dev – odkazy interpreta z nahraného alba, přijato
+
+- Michal skutečným testem potvrdil funkčnost. Navigace 3b včetně oprav nabídek, sekcí menu a albumových odkazů (0.3.49–0.3.51) přijata; připraveno ke společnému commitu.
+
+- Michal potvrdil, že stejná skladba má odkaz na interpreta v hlavním seznamu, ale v albu nikoli, a povolil opravu při zavřené aplikaci. První hypotéza o potřebném fallbacku na hlavičku nebyla úplná: skutečný čtecí test vzorku alba dal 10 tracks, všech 10 artists=None, hlavička bez artists; ani karta alba neměla artist metadata. Proto pouhé doplnění hlavičky nestačilo.
+- Omezená kontrola surového browse nalezla 10 privátních artist browseId v menuNavigationItemRenderer každého musicResponsiveListItemRenderer. ytmusicapi get_library_upload_album tyto menu odkazy nepřenáší, ačkoli hlavní seznam je u skladeb vrací. Nový `uploads.load_upload_album` na mělké kopii API klienta pozoruje tutéž odpověď public parseru a zachová vazbu videoId→privátní artist ID. Sdílenou metodu klienta nemění, nepřidává druhý dotaz na album a neodvozuje ID podle názvu.
+- Přímé platné údaje skladby mají přednost; hlavičkové artist ID jsou další fallback, jsou-li skutečně dostupné. Odkazy z raw menu bez jména používají dočasný text Interpret; po otevření se název doplní z upload artist skladeb podle shodného ID. Zachován návrat do alba, výběr dalších známých interpretů a odkazy v přehrávací frontě. Při úplné absenci privátního ID se odkaz nevymýšlí.
+- **412 offline testů prošlo**. Nově hlavička při artists=None/přednost konkrétního track interpreta/Fronta, více hlavičkových ID a chybějící/katalogové ID, skutečný název po otevření menu odkazu. Samostatné testy adaptéru ověřují vazbu na videoId, deduplikaci, více ID, neodpovídající řádky, jediný požadavek a nezměněnou sdílenou metodu i po chybě.
+- Šest QML scénářů 900×600/1280×800 (hlavní seznam/Fronta/více interpretů), včetně album řádků artists=None a prázdné hlavičky se skutečnou cestou raw-menu adaptér → album → interpret → zpět. Nabídky/sekce dle 0.3.50, bez QML varování a bez nového audio startu. API/audio/obrázky mockované. `git diff --check` prošel.
+- Navíc omezený skutečný read-only test adaptéru pro tentýž vzorek: 10 skladeb, **10 odkazů na privátní interprety**. Bez přehrávání, změn knihovny a dumpování odpovědí/auth. Nejde o univerzální garanci všech upload metadat. Reálný test: znovu otevřít problematické nahrané album → menu skladby → Otevřít nahraného interpreta → Zpět. 0.3.49–0.3.51 stále společně necommitované; poslední commit c5bc90c.
+
+## 0.3.50-dev – nabídky a sekce navigace Nahraných, čeká na skutečný test
+
+- Michal v reálném testu 0.3.49 upřesnil pravidlo: v detailu nahraného interpreta jen Otevřít album, v detailu nahraného alba jen Otevřít interpreta, v seznamu skladeb obojí. Nejde pouze o skrytí odkazu na stejné ID; omezuje se celý typ přechodu podle prohlíženého detailu. Ve Frontě a hledání obě akce podle dostupných ID. Po zavření aplikace povolil opravu.
+- Pravidlo je v QML viditelnosti a také v backend validaci. Úspěšná navigace z libovolného místa přepne na stránku Knihovna a odpovídající upload_albums/upload_artists, včetně titulku. Backend sekce se aktualizuje také. Zpět obnoví původní sekci a řazení ještě před obnovou modelů, aby se správně invalidoval marker; QML vrací kontext i při návratu do Fronty/hledání. Při chybě se sekce nemění.
+- **405 offline testů prošlo**; dvě nové regrese kontrolují omezení akcí v detailech, cílové sekce i návrat obou úrovní a přechod z hledání do správné knihovní sekce a zpět. Šest QML scénářů (hlavní seznam/Fronta/více interpretů × 900×600/1280×800) ověřilo viditelnost obou/jedné akce, přepnutí menu a obnovu sekcí při návratu, nezměněné audio/frontu. Bez QML varování, API/audio/obrázky mockované. `git diff --check` prošel.
+- Reálný test: Nahrané skladby → album (menu Alba) → interpret (menu Interpreti) → Zpět (Alba) → Zpět (Skladby). U interpreta pouze přechod na album, v albu pouze na interpreta. Zopakovat z Fronty. 0.3.49 a oprava dosud necommitované; poslední commit c5bc90c.
+
+## 0.3.49-dev – navigace nahraná skladba → album/interpret → zpět, čeká na skutečný test
+
+- Michal uložil přijaté řazení/marker jako **c5bc90c**; pracovní strom čistý. Povolil podkrok 3b, aplikace zavřená. Rozsah pouze navigace Nahraných, nikoli Mix nebo stránkování.
+- `_track` uchovává privátní artistLinks (ID a jméno); DictListModel je zpřístupňuje spolu s albumId. `_playback_track` přenáší odkazy do `_guiArtistLinks`, aby se neztratily při převodu fronty zpět na GUI model. Upload album může doplnit své skutečné browseId, chybí-li u řádku album ID; upload interpret může doplnit vlastní známé ID jako kontext, chybí-li artist link u jeho řádku. ID se neodvozují z názvů a katalogové UC/MPRE cíle se nepoužívají jako upload.
+- Menu jedné nahrané skladby má „Otevřít nahrané album“ a „Otevřít nahraného interpreta“ podle dostupných soukromých ID. U více dostupných interpretů se otevře jejich výběr. Hromadný výběr tyto jednotlivé navigační akce nenabízí. Backend validuje typ řádku, index, cíl, konkrétní artist ID, busy/closing/připojené API.
+- Před otevřením se uloží původní detail/history, případně hlavní seznam knihovny/hledání a navigační kontext. Úspěch přejde na detail; z Fronty do knihovního zobrazení. Zpět obnoví přesný předchozí detail/řazení nebo seznam/hledání/Frontu bez dalšího síťového dotazu. Navigace nemění audio, frontu ani čas. Při chybě endpointu zůstává předchozí detail a pending parent se zahodí; nevznikne nefunkční krok historie.
+- **403 offline testů prošlo**, osm nových: skladba→album→interpret→dvakrát zpět při hraní, interpret→album→zpět s řazením/duplicitami, Fronta a zachování ID, hledání, více interpretů a konkrétní ID bez name search, fallback známých upload ID, chybějící ID/katalogové řádky/busy/nesprávné cíle a chyba endpointu bez změny historie. Účet/audio mockované.
+- Šest QML scénářů (hlavní seznam/Fronta/více interpretů × 900×600/1280×800): skutečné řádkové menu, aktivace přechodu do alba/interpreta, výběr druhého interpreta, skutečné tlačítko Zpět a zachování audia/fronty. Bez QML varování, API/audio/obrázky mockované. `git diff --check` prošel.
+- Reálný test: Nahrané skladby → ⋮ → album/interpret → Zpět; také z nahraného interpreta do alba a zpět s řazením. Zopakovat z Fronty při hraní. Akce se nabízejí jen tam, kde zdroj vrací potřebné ID. Po přijetí samostatný commit.
+
 ## Čtecí ověření Mixu Nahraných pro další plán (2026-10-28)
 
 - Michal ve webu našel Mix u nahraného interpreta a požádal ověřit API, nikoli implementovat funkci. Dokumentace odděluje seznam upload interpretů a detail jeho skladeb; kontrola instalovaného parseru ukázala, že seznam zachovává menu radioId/shuffleId. GUI normalizace `_artist_item` tyto údaje aktuálně nepřenáší.
