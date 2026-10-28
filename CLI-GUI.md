@@ -1,5 +1,11 @@
 # FelisMusic – porovnání CLI a Desktop GUI
 
+**0.3.44-dev:** opraven návrat coverem z Mixu playlistu/alba/interpreta (také hlavních Oblíbených) do původního zdroje, včetně doporučení z dalších bloků. Obnoví detail/záložku bez restartu audia. 372 offline testů a šest QML scénářů prošlo. Michal potvrdil celek 0.3.42–0.3.44 jako otestovaný a funkční; připraveno ke společnému commitu.
+
+**0.3.43-dev:** domluvené pravidlo RD… pro dynamické zdroje. Playlisty i Mixy pro vás načtou stejnou cestou první watch blok; pokračování stejného ID až podle postupu poslechu, s EOS/Stop/pauzou/Repeat a odstupem při výpadku. Pevné seznamy dál celé po blocích. 371 offline testů a 4 QML scénáře prošly; navíc dva skutečné read-only bloky Supermixu 24+24 s pokračováním. Čeká na reálný poslech/test, necommitováno spolu s 0.3.42. Poslední commit 0bc66cb.
+
+**0.3.42-dev:** playlistové detaily včetně „Liked Music“ mají první blok a background doplnění stejně jako hlavní Oblíbené. Běžné přehrávání z prefixu rozšiřuje tutéž konečnou frontu; akce nad celkem až po dokončení. Ochrany EOS/Repeat/Stop, chyby, cover a zneplatnění. Výjimka obnovy s čekajícím přesunem: úplné načtení pro porovnání. 355 offline testů + QML dvojklik při načítání v obou velikostech prošly; čeká na Michalův reálný test. Předchozí commit 0bc66cb. Potom samostatně Nahrané a podle dostupných endpointů další velké kolekce.
+
 **0.3.41-dev:** lokální Zamíchat aktuální frontu bez serverového pořadí, se zachováním aktuálního výskytu/audia/času/pauzy/Repeat, všech ručních i duplicitních výskytů. 337 offline testů a obě QML velikosti prošly; Michal skutečným testem potvrdil funkčnost. Po přijetí/commitu sjednocení stránkování detailů playlistů. Předchozí commit 6135d69.
 
 **0.3.40-dev:** Michal ověřil lokální Shuffle interpreta; menu sjednoceno na Přehrát náhodně → Spustit mix, stejně jako u alb/playlistů. Přehrávací logika se v této drobné úpravě nemění.

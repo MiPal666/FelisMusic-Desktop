@@ -104,6 +104,8 @@ class PlaylistPagesTests(TestCase):
             tracks, more = pages.next_page()
         self.assertTrue(more)
         self.assertEqual(tracks[0]['videoId'], 'A')
+        self.assertEqual(pages.metadata['title'], 'Liked')
+        self.assertNotIn('tracks', pages.metadata)
         api._send_request.assert_called_once_with('browse', {'browseId': 'VLLM'}, '')
 
 

@@ -135,11 +135,17 @@ class LikedPlaybackTests(support.AudioPlaybackTestCase):
         self.start('radio')
         self.api.get_watch_playlist.assert_called_once_with(playlistId='RDAMPLLL', limit=support.core.MIX_LIMIT, radio=True)
         self.assertTrue(self.b._queue.radio_active)
-        self.assertEqual(self.b.playerQueueSource, 'playing')
+        self.assertEqual(self.b.playerQueueSource, 'liked')
         self.api.get_watch_playlist.return_value = {'tracks': [dict(videoId='new', title='New')]}
         self.b._maybe_refill_radio()
         self.until(lambda: not self.b._radio_refill_pending)
         self.assertEqual(self.b._queue.tracks[-1]['videoId'], 'new')
+        self.b.playFrom('playing', 3); self.until(lambda: self.b.playerState == 'playing')
+        self.assertEqual(self.b.playerSourceIndex, -1)
+        self.assertEqual(self.b.playerSourceContext['page'], 2)
+        self.b._liked_model.set_items([])
+        self.assertTrue(self.b.restorePlayingSource(2))
+        self.assertEqual(self.b.likedModel.count, 3)
         self.assertEqual(self.starts, ['radio'])
 
     def test_failed_request_preserves_queue_repeat_and_emits_no_navigation(self):

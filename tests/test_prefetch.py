@@ -27,6 +27,18 @@ class FakeWatchPages:
         return self.api.get_watch_playlist(**kwargs).get('tracks', []), False
 
 
+class FakePlaylistPages:
+    """One-page account stub; real continuation parsing has separate tests."""
+    def __init__(self, api, playlist_id, **kwargs):
+        self.api, self.playlist_id = api, playlist_id
+        self.metadata = {}
+
+    def next_page(self):
+        data = self.api.get_playlist(self.playlist_id, limit=0)
+        self.metadata = {key: value for key, value in data.items() if key != 'tracks'}
+        return data.get('tracks', []), False
+
+
 class AudioPlaybackTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -92,6 +104,7 @@ class AudioPlaybackTestCase(unittest.TestCase):
 
         self.patches = [
             patch.object(backend, 'WatchPages', FakeWatchPages),
+            patch.object(backend, 'PlaylistPages', FakePlaylistPages),
             patch.object(core, 'LOCAL_CACHE_DIR', self.temp.name),
             patch.object(core, 'LOCAL_AUDIO_CACHE', {}),
             patch.object(core, 'LOCAL_CACHE_ORDER', []),

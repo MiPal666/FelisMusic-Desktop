@@ -24,6 +24,7 @@ class PlaylistPages:
         self.started = False
         self.collaborative = False
         self._seen = set()
+        self.metadata = {}
 
     def next_page(self):
         if not self.started:
@@ -42,6 +43,7 @@ class PlaylistPages:
             # In ytmusicapi 1.12.3 limit=0 suppresses continuation requests;
             # the initial shelf is still parsed by the library itself.
             data = client.get_playlist(self.playlist_id, limit=0)
+            self.metadata = {key: value for key, value in data.items() if key != 'tracks'}
             if len(responses) != 1:
                 raise RuntimeError('Neočekávaný průběh stránkování playlistu.')
             contents = nav(responses[0], [*TWO_COLUMN_RENDERER, 'secondaryContents',

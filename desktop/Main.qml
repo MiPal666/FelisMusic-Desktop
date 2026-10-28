@@ -984,7 +984,8 @@ ApplicationWindow {
         required property string playlistId
         required property string browseId
         property string sourceKey: ""
-        property bool partialLiked: sourceKey === "liked" && !backend.likedComplete
+        property bool partialLiked: (sourceKey === "liked" && !backend.likedComplete)
+                                    || (sourceKey === "detail" && !backend.detailComplete)
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
@@ -1380,6 +1381,70 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
                 onTriggered: backend.openPlaylistDelete()
+            }
+        }
+    }
+
+    component PlaylistLoadBanner: Rectangle {
+        objectName: "playlistLoadBanner"
+        property bool sawLoading: backend.detailLoading
+        visible: backend.detailMeta.dynamicMix === true || backend.detailLoading || !backend.detailComplete || doneTimer.running
+        implicitHeight: pageLoadRow.implicitHeight + 20
+        radius: 6
+        color: backend.detailMeta.playlistLoadState === "error" ? "#3b2920"
+             : backend.detailLoading || backend.detailMeta.dynamicMix === true ? "#23243b"
+             : backend.detailComplete ? "#173328" : "#3b2920"
+        Timer { id: doneTimer; interval: 4000 }
+        Connections {
+            target: backend
+            function onDetailTitleChanged() {
+                if (backend.detailLoading) { sawLoading = true; doneTimer.stop() }
+                else if (sawLoading && backend.detailComplete && backend.detailMeta.kind === "playlist") {
+                    sawLoading = false; doneTimer.restart()
+                } else if (backend.detailMeta.kind !== "playlist") { sawLoading = false; doneTimer.stop() }
+            }
+        }
+        RowLayout {
+            id: pageLoadRow
+            anchors.fill: parent
+            anchors.margins: 10
+            BusyIndicator {
+                objectName: "playlistLoadSpinner"
+                Layout.preferredWidth: 28
+                Layout.preferredHeight: 28
+                running: backend.detailLoading
+                visible: running
+            }
+            ColumnLayout {
+                Layout.fillWidth: true
+                Label {
+                    objectName: "playlistLoadTitle"
+                    Layout.fillWidth: true
+                    wrapMode: Text.Wrap
+                    text: backend.detailMeta.dynamicMix === true
+                        ? (backend.detailMeta.playlistLoadState === "error" ? "Další část mixu se nepodařila načíst"
+                           : backend.detailLoading ? "Načítám další doporučení…"
+                           : backend.detailMeta.playlistLoadState === "complete" ? "Mix už nenabízí další pokračování"
+                           : "Dynamický mix · " + backend.detailTracksModel.count + " načtených skladeb")
+                        : backend.detailLoading ? "Načítám další skladby…"
+                        : backend.detailComplete ? "Vše načteno · " + backend.detailTracksModel.count + " skladeb"
+                        : "Načítání se nepodařilo dokončit"
+                    color: "#eeeeee"
+                    font.bold: true
+                }
+                Label {
+                    Layout.fillWidth: true
+                    visible: backend.detailMeta.dynamicMix === true || !backend.detailComplete
+                    wrapMode: Text.Wrap
+                    text: backend.detailMeta.dynamicMix === true
+                        ? (backend.detailMeta.playlistLoadState === "error"
+                           ? "Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu."
+                           : "Další skladby se načtou podle postupu přehrávání.")
+                        : backend.detailLoading
+                        ? "Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; ostatní akce až po dokončení."
+                        : "Seznam není úplný. Otevři playlist znovu."
+                    color: "#bbbbbb"
+                }
             }
         }
     }
@@ -1996,6 +2061,7 @@ ApplicationWindow {
                                     CollectionHeader {
                                         onGoBack: backend.backDetail()
                                     }
+                                    PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: searchDetailList
@@ -2003,7 +2069,7 @@ ApplicationWindow {
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
-                                        delegate: TrackDelegate { sourceKey: "detail" }
+                                        delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
                                         Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
@@ -2072,6 +2138,7 @@ ApplicationWindow {
                                     CollectionHeader {
                                         onGoBack: backend.backDetail()
                                     }
+                                    PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: libraryDetailList
@@ -2079,7 +2146,7 @@ ApplicationWindow {
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
-                                        delegate: TrackDelegate { sourceKey: "detail" }
+                                        delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
                                         Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
@@ -2272,13 +2339,14 @@ ApplicationWindow {
                                         backText: "← Mixy"
                                         onGoBack: backend.clearDetail()
                                     }
+                                    PlaylistLoadBanner { Layout.fillWidth: true }
                                     ListView {
                                         id: mixDetailList
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
-                                        delegate: TrackDelegate { sourceKey: "detail" }
+                                        delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
                                         Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
@@ -2315,8 +2383,10 @@ ApplicationWindow {
                                     objectName: "queuePosition"
                                     Layout.fillWidth: true
                                     text: (backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0")
-                                          + (backend.playerQueueLoading ? (backend.playerWaitingForTracks ? " · Čekám na další skladby…" : " · Načítám další skladby…")
-                                             : backend.playerQueueIncomplete ? " · Seznam není úplný" : "")
+                                          + (backend.playerWaitingForTracks ? " · Čekám na další skladby…"
+                                             : backend.playerQueueLoading ? " · Načítám další skladby…"
+                                             : backend.playerQueueIncomplete ? " · Seznam není úplný"
+                                             : backend.playerQueueDynamic ? " · Dynamický mix" : "")
                                     wrapMode: Text.Wrap
                                     color: "#b9b0ff"
                                     font.pixelSize: 16

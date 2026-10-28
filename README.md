@@ -2,11 +2,13 @@
 
 ## Stav
 
-Příprava náhodné fronty už nekopíruje celý původní seznam pro každou skladbu zvlášť. Cover a přesné výskyty zůstávají zachované; načítání playlistových detailů po blocích je další samostatný krok.
+Seznamy s ID `RD…` nyní oběma cestami (Playlisty i Mixy pro vás) zobrazí jen úvodní náhled. Další blok stejného mixu se načte až při přiblížení ke konci přehrávané fronty, místo neomezeného stahování dopředu. Detail i Fronta označují dynamický mix. Pevné playlisty se dál načítají celé po blocích; dostupné ukončení pokračování se respektuje i u mixu.
+
+Příprava náhodné fronty už nekopíruje celý původní seznam pro každou skladbu zvlášť. Cover a přesné výskyty zůstávají zachované; playlistové detaily se nyní také načítají po blocích. První část lze přehrát dvojklikem, další skladby přibývají i do téže fronty; akce nad celkem čekají na dokončení. Při obnově s dosud nepotvrzeným přesunem položek se nejprve načte úplný seznam kvůli porovnání pořadí.
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.41-dev** (lokální přemíchání aktuální fronty ověřeno uživatelem)
+- Desktop GUI: **0.3.44-dev** (playlisty po blocích, dynamické mixy a návrat coverem; otestováno a přijato)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

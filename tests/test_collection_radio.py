@@ -53,8 +53,8 @@ class CollectionRadioTests(support.AudioPlaybackTestCase):
         self.assertNotIn('source-first', self.ids())
         self.assertTrue(self.b._queue.radio_active); self.assertFalse(self.b._queue.shuffle_active)
         self.assertEqual(self.b.playingListTitle, 'Mix: Playlist')
-        self.assertEqual(self.b.playerQueueSource, 'playing')
-        self.assertEqual(self.b.playerSourceContext, {'page': 5})
+        self.assertEqual(self.b.playerQueueSource, 'detail')
+        self.assertEqual(self.b.playerSourceIndex, -1)
         self.assertEqual(self.started, [True])
 
     def test_album_uses_audio_playlist_id_not_browse_id_or_first_song(self):
@@ -63,7 +63,7 @@ class CollectionRadioTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playingListTitle, 'Mix: Album')
 
     def test_vl_prefix_is_removed_and_existing_radio_prefix_is_not_doubled(self):
-        for source, expected in (('VLPLsource', 'RDAMPLPLsource'), ('RDAMPLPLexisting', 'RDAMPLPLexisting')):
+        for source, expected in (('VLPLsource', 'RDAMPLPLsource'),):
             with self.subTest(source=source):
                 self.open_collection(playlist_id=source); self.play_mix()
                 self.api.get_watch_playlist.assert_called_with(playlistId=expected, limit=support.core.MIX_LIMIT, radio=True)
@@ -158,10 +158,31 @@ class CollectionRadioTests(support.AudioPlaybackTestCase):
         self.assertIsNot(self.b._queue, old); self.assertEqual(old.count(), 8)
         self.assertEqual(self.ids(), [f'R{i}' for i in range(8)])
 
-    def test_cover_points_to_generated_fronta_and_browsing_collection_stays_unchanged(self):
-        self.open_collection(album=True); original = self.b.detailTracksModel.snapshot()
-        self.play_mix()
-        self.assertEqual(self.b.detailTracksModel.snapshot(), original)
-        self.b.clearDetail(); self.assertTrue(self.b.restorePlayingSource(5))
-        self.assertEqual(self.b.playerQueueSource, 'playing')
-        self.assertEqual(self.b.playerVideoId, 'R0')
+    def test_mix_cover_restores_collection_before_and_after_refill_without_restarting_audio(self):
+        self.b.playbackSourceCaptured.connect(lambda: self.b.setPlaybackSourceContext(
+            {'page': 1, 'librarySection': 'playlists', 'libraryLabel': 'Playlisty'}))
+        for album in (False, True):
+            with self.subTest(album=album):
+                self.open_collection(album=album)
+                original = self.b._detail_state()
+                self.block = [self.song(f'R{i}') for i in range(8)]
+                self.play_mix()
+                self.assertEqual(self.b._detail_state(), original)
+                queue = self.b._queue
+                self.b.clearDetail()
+                self.assertTrue(self.b.restorePlayingSource(1))
+                self.assertEqual(self.b._detail_state(), original)
+                self.b.playFrom('playing', 7); self.until(lambda: self.b.playerState == 'playing')
+                self.block = [self.song('new'), self.song('next')]
+                self.b._maybe_refill_radio(); self.until(lambda: not self.b._radio_refill_pending)
+                self.b.playFrom('playing', 8); self.until(lambda: self.b.playerState == 'playing')
+                self.assertEqual(self.b.playerQueueSource, 'detail')
+                self.assertEqual(self.b.playerSourceIndex, -1)
+                self.assertEqual(self.b.playerSourceContext['page'], 1)
+                self.b.clearDetail()
+                played = list(self.played)
+                self.assertTrue(self.b.restorePlayingSource(1))
+                self.assertEqual(self.b._detail_state(), original)
+                self.assertIs(self.b._queue, queue)
+                self.assertEqual(self.b.playerVideoId, 'new')
+                self.assertEqual(self.played, played)

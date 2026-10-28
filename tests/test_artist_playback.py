@@ -64,7 +64,8 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.ids(), [f'R{i}' for i in range(8)])
         self.assertTrue(self.b._queue.radio_active); self.assertFalse(self.b._queue.shuffle_active)
         self.assertEqual(self.b.playingListTitle, 'Artist - Mix / rádio')
-        self.assertEqual(self.b.playerSourceContext, {'page': 5})
+        self.assertEqual(self.b.playerQueueSource, 'detail')
+        self.assertEqual(self.b.playerSourceIndex, -1)
         self.assertEqual(self.started, [True])
         self.b.playFrom('playing', 7); self.until(lambda: self.b.playerState == 'playing')
         self.b._maybe_refill_radio(); self.until(lambda: not self.b._radio_refill_pending)
@@ -268,9 +269,31 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertEqual(old.count(), 8); self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
         self.assertFalse(self.b._queue.radio_active)
 
-    def test_radio_cover_uses_generated_queue_not_visible_artist_tab(self):
+    def test_radio_cover_restores_visible_artist_tab(self):
         self.open_artist(); self.b.selectArtistSection('albums'); self.play('radio')
         self.b.clearDetail()
-        self.assertTrue(self.b.restorePlayingSource(5))
-        self.assertEqual(self.b.playerQueueSource, 'playing')
+        self.assertTrue(self.b.restorePlayingSource(1))
+        self.assertEqual(self.b.playerQueueSource, 'detail')
+        self.assertEqual(self.b.detailMeta['section'], 'albums')
         self.assertEqual(self.b.playingTracksModel.count, 8)
+
+    def test_radio_cover_restores_artist_tab_also_from_refilled_recommendations(self):
+        self.b.playbackSourceCaptured.connect(lambda: self.b.setPlaybackSourceContext(
+            {'page': 1, 'librarySection': 'artists', 'libraryLabel': 'Interpreti'}))
+        for section in ('songs', 'albums', 'singles'):
+            with self.subTest(section=section):
+                self.open_artist(); self.b.selectArtistSection(section); self.ready()
+                original = self.b._detail_state()
+                self.play('radio')
+                self.b.playFrom('playing', 7); self.until(lambda: self.b.playerState == 'playing')
+                self.b._maybe_refill_radio(); self.until(lambda: not self.b._radio_refill_pending)
+                self.b.playFrom('playing', 8); self.until(lambda: self.b.playerState == 'playing')
+                queue = self.b._queue
+                self.b.openLibraryItem('album', 'other', '', 'Other'); self.ready()
+                self.assertEqual(self.b.playerSourceContext['page'], 1)
+                self.assertEqual(self.b.playerSourceIndex, -1)
+                played = list(self.played)
+                self.assertTrue(self.b.restorePlayingSource(1))
+                self.assertEqual(self.b._detail_state(), original)
+                self.assertIs(self.b._queue, queue)
+                self.assertEqual(self.played, played)

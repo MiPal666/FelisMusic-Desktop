@@ -279,7 +279,7 @@ class PlaylistSaveTests(support.AudioPlaybackTestCase):
     def test_collection_loads_full_playlist_and_rejects_non_song_section(self):
         self.data['mine']['tracks'] = [dict(title='A', videoId='A'), dict(title='Upload', videoId='private-id')]
         self.b.loadPlaylistTracks('mine', 'Mine'); self.ready()
-        self.api.get_playlist.assert_called_with('mine', limit=None)
+        self.api.get_playlist.assert_called_with('mine', limit=0)
         self.assertTrue(self.b.detailCanSavePlaylist)
         self.assertTrue(self.b.openCollectionPlaylistSave()); self.ready()
         self.assertEqual(self.b.playlistSaveState['selectionCount'], 2)

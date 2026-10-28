@@ -201,6 +201,7 @@ class BackendBridge(QObject):
     _radioRefillReady = Signal(object)
     _likedPageReady = Signal(object)
     _watchPageReady = Signal(object)
+    _playlistPageReady = Signal(object)
     likedLoadChanged = Signal()
 
     def __init__(self, parent=None):
@@ -222,6 +223,10 @@ class BackendBridge(QObject):
         self._radio_waiting_for_tracks = None
         self._liked_stream = None
         self._watch_stream = None
+        self._playlist_stream = None
+        self._playlist_load = None
+        self._playlist_load_revision = 0
+        self._playlistPageReady.connect(self._apply_playlist_page, Qt.ConnectionType.QueuedConnection)
         self._ytmusic = None
         self._status = "Připravuji backend…"
         self._account_name = "YouTube Music"
@@ -497,7 +502,7 @@ class BackendBridge(QObject):
         return self._queue is not None and self._radio_waiting_for_tracks is self._queue
 
     def _active_queue_stream(self):
-        for stream in (self._watch_stream, self._liked_stream):
+        for stream in (self._playlist_stream, self._watch_stream, self._liked_stream):
             if stream and stream["queue"] is self._queue:
                 return stream
         return None
@@ -505,7 +510,18 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerQueueLoading(self):
         stream = self._active_queue_stream()
+        return bool(stream and stream["state"] == "loading"
+                    and (not stream.get("load", {}).get("dynamic")
+                         or stream["load"].get("fetching", False)))
+
+    def _queue_has_more(self):
+        stream = self._active_queue_stream()
         return bool(stream and stream["state"] == "loading")
+
+    @Property(bool, notify=playerChanged)
+    def playerQueueDynamic(self):
+        stream = self._active_queue_stream()
+        return bool(stream and stream.get("load", {}).get("dynamic"))
 
     @Property(bool, notify=playerChanged)
     def playerQueueIncomplete(self):
@@ -575,7 +591,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and (self._queue.index > 0 or (self._repeat_mode == "all" and not self.playerQueueLoading))
+            and (self._queue.index > 0 or (self._repeat_mode == "all" and not self._queue_has_more()))
             and not self._playback_transitioning
         )
 
@@ -584,7 +600,7 @@ class BackendBridge(QObject):
         return (
             self._queue is not None
             and not self._queue.empty()
-            and (self._queue.index + 1 < self._queue.count() or (self._repeat_mode == "all" and not self.playerQueueLoading))
+            and (self._queue.index + 1 < self._queue.count() or (self._repeat_mode == "all" and not self._queue_has_more()))
             and not self._playback_transitioning
         )
 
@@ -606,6 +622,14 @@ class BackendBridge(QObject):
                          "meta": self._detail_meta, "history": self._detail_history})
 
     def _restore_detail_state(self, state):
+        state = deepcopy(state)
+        revision = state.get("meta", {}).get("playlistLoadRevision")
+        if revision:
+            load = self._playlist_load_for_revision(revision)
+            if load:
+                state.update(tracks=list(load["items"]), meta=dict(load["meta"]))
+            elif state["meta"].get("playlistLoadState") == "loading":
+                state["meta"]["playlistLoadState"] = "error"
         self._detail_title = state.get("title", "")
         self._detail_meta = deepcopy(state.get("meta", {}))
         self._detail_history = deepcopy(state.get("history", []))
@@ -727,6 +751,8 @@ class BackendBridge(QObject):
             self._liked_stream = None
         if self._watch_stream and self._watch_stream["queue"] is not self._queue:
             self._watch_stream = None
+        if self._playlist_stream and self._playlist_stream["queue"] is not self._queue:
+            self._playlist_stream = None
         items = []
         for song in self._queue.tracks if self._queue is not None else []:
             item = self._track(song, upload=str(song.get("_guiKind") or "").startswith("upload_"))
@@ -775,8 +801,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int, bool, bool)
     def selectTrack(self, source, index, control, shift):
-        if source == "liked" and not self.likedComplete and (
-                not self.likedLoading or control or shift or self._busy):
+        if not self._source_complete(source) and (
+                not (self.likedLoading if source == "liked" else self.detailLoading) or control or shift or self._busy):
             return
         items = self._source_items(source)
         if not 0 <= index < len(items) or not items[index].get("videoId"):
@@ -802,7 +828,7 @@ class BackendBridge(QObject):
 
     @Slot(str)
     def selectAllTracks(self, source):
-        if source == "liked" and not self.likedComplete:
+        if not self._source_complete(source):
             return
         self._selection_revision += 1
         self._selection_source = source
@@ -818,7 +844,7 @@ class BackendBridge(QObject):
 
     @Slot(result=bool)
     def openSelectedPlaylistSave(self):
-        if self._selection_source == "liked" and not self.likedComplete:
+        if not self._source_complete(self._selection_source):
             return False
         if self._busy or self._closing.is_set() or self._ytmusic is None:
             return False
@@ -1467,7 +1493,7 @@ class BackendBridge(QObject):
             advance = self._repeat_mode == "one"
             if not advance:
                 advance = self._queue.next()
-                if not advance and self._repeat_mode == "all" and not self.playerQueueLoading:
+                if not advance and self._repeat_mode == "all" and not self._queue_has_more():
                     self._queue.index = 0
                     advance = True
             if advance:
@@ -1476,7 +1502,7 @@ class BackendBridge(QObject):
                 return
             self._player_state = "idle"
             self._player_position = self._player_duration
-            if self.playerQueueLoading:
+            if self._queue_has_more():
                 self._active_queue_stream()["waiting"] = True
                 self._set_status("Čekám na další skladby…")
             if self._queue.radio_active:
@@ -1489,6 +1515,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
+        if source == "detail" and not self.detailComplete and (not self.detailLoading or self._busy):
+            return
         if source == "liked" and not self.likedComplete and (not self.likedLoading or self._busy):
             return
         if source == "playing":
@@ -1532,7 +1560,8 @@ class BackendBridge(QObject):
             playable,
             name=self._queue_name_for_source(source),
             start_index=start_index,
-            source_playlist_id=self._detail_shuffle_id() if source == "detail" else None,
+            source_playlist_id=(self._detail_meta.get("playlistId") if self._detail_meta.get("dynamicMix")
+                                else self._detail_shuffle_id()) if source == "detail" else None,
         )
         # Repeat belongs to this playback queue, not to future collections.
         self._repeat_mode = "off"
@@ -1559,6 +1588,12 @@ class BackendBridge(QObject):
                 "items": list(items), "bound": list(zip(self._queue.tracks, source_indices)),
                 "state": "loading", "waiting": False,
             }
+        if source == "detail" and (self.detailLoading or self._detail_meta.get("dynamicMix")):
+            load = self._playlist_load_for_revision(self._detail_meta.get("playlistLoadRevision"))
+            if load:
+                self._playlist_stream = {"queue": self._queue, "load": load,
+                    "origin": self._queue.current()["_guiOrigin"],
+                    "state": load["meta"]["playlistLoadState"], "waiting": False}
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
 
@@ -1769,6 +1804,7 @@ class BackendBridge(QObject):
         """Refresh saved browsing views, leaving the actual playback queue intact."""
         playlist_id = detail["meta"]["playlistId"]
         tracks = detail["tracks"]
+        snapshot = deepcopy(tracks)
         positions = {x.get("setVideoId"): i for i, x in enumerate(tracks) if x.get("setVideoId")}
         for song in self._queue.tracks if self._queue else []:
             origin = song.get("_guiOrigin", {})
@@ -1778,14 +1814,14 @@ class BackendBridge(QObject):
             # Origins may share snapshots/state; the queue song retains its own
             # occurrence ID even when its row has just been removed from YTM.
             origin["index"] = positions.get(song.get("setVideoId"), -1)
-            origin.setdefault("snapshots", {})["detail"] = deepcopy(tracks)
-            state.update(title=detail["title"], tracks=deepcopy(tracks), meta=dict(detail["meta"]))
+            origin.setdefault("snapshots", {})["detail"] = snapshot
+            state.update(title=detail["title"], tracks=snapshot, meta=dict(detail["meta"]))
             origin["detail_title"] = detail["title"]
         self.playerChanged.emit()
 
     @Property(bool, notify=detailTitleChanged)
     def detailCanEditPlaylist(self):
-        return (self._detail_meta.get("kind") == "playlist"
+        return (self.detailComplete and self._detail_meta.get("kind") == "playlist"
                 and bool(self._detail_meta.get("playlistId"))
                 and self._detail_meta.get("owned") is True)
 
@@ -2068,7 +2104,7 @@ class BackendBridge(QObject):
 
     @Slot(str, int, result=bool)
     def openPlaylistSave(self, source, index):
-        if source == "liked" and not self.likedComplete:
+        if not self._source_complete(source):
             return False
         if self._busy or self._closing.is_set() or self._ytmusic is None:
             return False
@@ -2082,7 +2118,7 @@ class BackendBridge(QObject):
 
     @Property(bool, notify=detailTitleChanged)
     def detailCanSavePlaylist(self):
-        return bool(self._detail_title and any(self._playlist_song_supported(x) for x in self._detail_tracks_model.snapshot()))
+        return bool(self.detailComplete and not self._detail_meta.get("dynamicMix") and self._detail_title and any(self._playlist_song_supported(x) for x in self._detail_tracks_model.snapshot()))
 
     @staticmethod
     def _playlist_song_supported(item):
@@ -2398,6 +2434,9 @@ class BackendBridge(QObject):
         return (id(self._queue), tuple(id(song) for song in self._queue.tracks)) if self._queue else None
 
     def _maybe_refill_radio(self):
+        stream = self._playlist_stream
+        if (stream and stream["queue"] is self._queue and stream["load"].get("dynamic")):
+            return self._maybe_refill_dynamic_mix(stream)
         queue = self._queue
         if (self._closing.is_set() or self._busy or self._radio_refill_pending
                 or self._ytmusic is None or queue is None or queue.empty() or not queue.radio_active
@@ -2448,9 +2487,11 @@ class BackendBridge(QObject):
         for offset, raw in enumerate(result["tracks"]):
             item = self._track(raw)
             track = self._playback_track(item)
-            track["_guiOrigin"] = {"source": "playing", "index": start + offset, "context": {"page": 5}}
+            origin = getattr(queue, "_gui_radio_origin", None)
+            track["_guiOrigin"] = (dict(origin, index=-1) if origin is not None else
+                                   {"source": "playing", "index": start + offset, "context": {"page": 5}})
             queue.tracks.append(track)
-            self._queue_source_indices.append(start + offset)
+            self._queue_source_indices.append(-1 if origin is not None else start + offset)
             self._playing_tracks_model.insert_item(start + offset, item)
         self.playerChanged.emit()
         if self._radio_waiting_for_tracks is queue and self._player_state == "idle":
@@ -2471,7 +2512,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerCanShuffle(self):
         return (self.playerHasTrack and self.playerCanEditQueue and not self._queue.radio_active
-                and not self.playerQueueLoading and not self.playerQueueIncomplete
+                and not self._queue_has_more() and not self.playerQueueIncomplete
                 and not self._queue.current().get("_guiRemoveAfterPlayback")
                 and self._queue.source_playlist_id not in self._deleted_playlists)
 
@@ -2529,7 +2570,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=detailTitleChanged)
     def detailCanShuffle(self):
         meta = self._detail_meta
-        return (meta.get("kind") in ("playlist", "album")
+        return (self.detailComplete and meta.get("kind") in ("playlist", "album")
                 and core.youtube_shuffle_supported(self._detail_shuffle_id())
                 and self._detail_tracks_model.count > 0)
 
@@ -2543,7 +2584,7 @@ class BackendBridge(QObject):
 
     @Property(bool, notify=detailTitleChanged)
     def detailCanCollectionRadio(self):
-        return (self._detail_meta.get("kind") in ("playlist", "album")
+        return (self.detailComplete and self._detail_meta.get("kind") in ("playlist", "album")
                 and bool(self._collection_radio_source_id())
                 and self._collection_radio_source_id() not in self._deleted_playlists
                 and self._detail_tracks_model.count > 0)
@@ -2556,12 +2597,13 @@ class BackendBridge(QObject):
         self._radio_refill_revision += 1
         kind, source_id = self._detail_meta["kind"], self._collection_radio_source_id()
         title = self._detail_title
+        origin = self._make_origin("detail", -1, self._source_items("detail"))
         radio_id = source_id if source_id.startswith("RDAMPL") else "RDAMPL" + source_id
         generation, marker, api = self._playback_generation, self._radio_queue_marker(), self._ytmusic
 
         def task():
             result = {"kind": kind, "sourceId": source_id, "name": f"Mix: {title}",
-                      "generation": generation, "marker": marker}
+                      "generation": generation, "marker": marker, "origin": origin}
             try:
                 # The collection is the seed, never its first video. Albums
                 # supply audioPlaylistId; the MPRE browse ID is not playable.
@@ -2589,7 +2631,7 @@ class BackendBridge(QObject):
             self._set_status("Mix kolekce se nepodařilo načíst")
             self.errorOccurred.emit(result["error"])
             return
-        self._start_generated_queue(result["tracks"], result["name"], radio=True)
+        self._start_generated_queue(result["tracks"], result["name"], radio=True, origin=result["origin"])
         self.radioStarted.emit()
 
     @Property(bool, notify=detailTitleChanged)
@@ -2663,7 +2705,7 @@ class BackendBridge(QObject):
                 song["_guiOrigin"] = dict(result["origin"], index=index)
         self._start_generated_queue(result["tracks"], result["name"],
             radio=result["mode"] == "radio", shuffle=result["mode"] == "shuffle",
-            origin=result["origin"] if result["mode"] == "shuffle" else None)
+            origin=result["origin"])
         if result["mode"] == "shuffle":
             self._queue_source_indices = result["indices"]
         self.artistPlaybackStarted.emit()
@@ -2690,6 +2732,11 @@ class BackendBridge(QObject):
         self._sync_queue_model()
         if origin is not None:
             self.playbackSourceCaptured.emit()
+            if radio:
+                # Keep the seed's navigation even after manual queue insertions
+                # or a refill. Recommendations have no exact source row.
+                self._queue._gui_radio_origin = self._queue.tracks[0]["_guiOrigin"]
+                self._queue_source_indices = [-1] * self._queue.count()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
 
@@ -2739,7 +2786,7 @@ class BackendBridge(QObject):
             self.errorOccurred.emit(result["error"])
             return
         shuffle = result["mode"] == "shuffle"
-        origin = result["origin"] if shuffle else None
+        origin = result["origin"]
         if shuffle:
             for song, index in zip(result["tracks"], result["indices"]):
                 song["_guiOrigin"] = dict(origin, index=index)
@@ -2906,7 +2953,7 @@ class BackendBridge(QObject):
 
     @Slot(str, int, result=bool)
     def startRadioFrom(self, source, index):
-        if source == "liked" and not self.likedComplete:
+        if not self._source_complete(source):
             return False
         if self._busy or not self.playerCanEditQueue or self._ytmusic is None:
             return False
@@ -2982,7 +3029,7 @@ class BackendBridge(QObject):
         return self._enqueue_items(source, [index], play_next, context)
 
     def _enqueue_items(self, source, indices, play_next, context):
-        if source == "liked" and not self.likedComplete:
+        if not self._source_complete(source):
             return False
         if not self.playerCanEditQueue or not indices:
             return False
@@ -3085,7 +3132,7 @@ class BackendBridge(QObject):
             self._leave_removed_current(1, stop_current=True)
             return
         moved = self._queue.next()
-        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self.playerQueueLoading:
+        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self._queue_has_more():
             self._queue.index = 0
             moved = True
         if moved:
@@ -3100,7 +3147,7 @@ class BackendBridge(QObject):
             self._leave_removed_current(-1, stop_current=True)
             return
         moved = self._queue.previous()
-        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self.playerQueueLoading:
+        if not moved and self._repeat_mode == "all" and not self._queue.empty() and not self._queue_has_more():
             self._queue.index = self._queue.count() - 1
             moved = True
         if moved:
@@ -3489,6 +3536,12 @@ class BackendBridge(QObject):
                 self.detailTitleChanged.emit()
                 label = "položek" if self._detail_meta.get("section") in ("albums", "singles") else "skladeb"
                 self._set_status(f"{title} · {len(tracks)} {label}")
+                if result.get("playlistLoad"):
+                    load = result["playlistLoad"]
+                    load["items"] = list(tracks)
+                    load["meta"] = dict(self._detail_meta)
+                    if load["meta"]["playlistLoadState"] == "loading" and not load.get("dynamic"):
+                        self._schedule_playlist_page(load)
 
         finally:
             # initialized is deliberately emitted only after busy=False so the
@@ -4421,6 +4474,9 @@ class BackendBridge(QObject):
         title = (title or "Mix pro vás").strip()
         if not playlist_id:
             return
+        if self._is_dynamic_playlist(playlist_id):
+            self.loadPlaylistTracks(playlist_id, title)
+            return
 
         def task():
             data = self._require_ytmusic().get_watch_playlist(
@@ -4438,11 +4494,65 @@ class BackendBridge(QObject):
     @Slot(str, str)
     def loadPlaylistTracks(self, playlist_id, title):
         playlist_id = (playlist_id or "").strip()
+        if self._is_dynamic_playlist(playlist_id):
+            playlist_id = playlist_id.removeprefix("VL")
         title = (title or "Playlist").strip()
-        if not playlist_id or playlist_id in self._deleted_playlists:
+        if (self._busy or self._closing.is_set() or self._ytmusic is None
+                or not playlist_id or playlist_id in self._deleted_playlists):
             return
 
         pending_moves = list(self._pending_playlist_moves.get(playlist_id, []))
+        dynamic = self._is_dynamic_playlist(playlist_id)
+        # Reconciliation of a recent write still needs the complete server
+        # snapshot before applying the existing occurrence projection.
+        if dynamic or not pending_moves:
+            if (not dynamic and self._playlist_stream and self._playlist_stream["state"] == "loading"
+                    and self._playlist_stream["load"]["playlistId"] == playlist_id):
+                self._playlist_stream.update(state="error", waiting=False)
+                self._playlist_stream["load"]["meta"]["playlistLoadState"] = "error"
+                self.playerChanged.emit()
+            self.clearTrackSelection()
+            self._playlist_load_revision += 1
+            load = {"revision": self._playlist_load_revision, "playlistId": playlist_id,
+                    "title": title, "dynamic": dynamic, "fetching": False, "retry_after": 0,
+                    "pager": (WatchPages(self._require_ytmusic(), playlist_id, shuffle=False)
+                              if dynamic else PlaylistPages(self._require_ytmusic(), playlist_id)),
+                    "items": [], "raw_ids": [], "meta": {}}
+            self._playlist_load = load
+            removed = set(self._pending_removed_playlist_items.get(playlist_id, set()))
+            load["removed"] = removed
+            def first_page():
+                try:
+                    tracks, more = load["pager"].next_page()
+                    if dynamic:
+                        # An empty/unavailable initial page may still have a
+                        # continuation; bound the search for a playable preview.
+                        for _ in range(2):
+                            if core.usable_tracks(tracks) or not more:
+                                break
+                            tracks, more = load["pager"].next_page()
+                        if not core.usable_tracks(tracks) and more:
+                            raise RuntimeError("Empty mix preview")
+                except Exception as exc:
+                    raise RuntimeError("První blok playlistu se nepodařilo načíst ("
+                                       + type(exc).__name__ + ").") from None
+                data = {} if dynamic else load["pager"].metadata
+                load["title"] = data.get("title") or title
+                load["raw_ids"] = [x.get("setVideoId") for x in tracks]
+                load["items"] = [self._track(x) for x in core.usable_tracks(tracks)
+                                 if x.get("setVideoId") not in removed]
+                load["meta"] = {"kind": "dynamic_mix" if dynamic else "playlist", "playlistId": playlist_id,
+                    "owned": data.get("owned") is True, "playlistLoadRevision": load["revision"],
+                    "playlistLoadState": "loading" if more else "complete"}
+                if dynamic:
+                    load["meta"].update(dynamicMix=True, dynamicFetching=False)
+                result = {"title": load["title"], "tracks": load["items"],
+                          "meta": load["meta"], "playlistLoad": load}
+                if not more and not dynamic:
+                    result.update(playlistOccurrenceIds=load["raw_ids"], playlistMovesCaughtUp=True)
+                return result
+            self._submit("detail", f"Načítám: {title}", first_page)
+            return
         def task():
             data = self._require_ytmusic().get_playlist(
                 playlist_id,
@@ -4460,6 +4570,153 @@ class BackendBridge(QObject):
             }
 
         self._submit("detail", f"Načítám: {title}", task)
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailLoading(self):
+        if self._detail_meta.get("dynamicMix"):
+            return bool(self._detail_meta.get("dynamicFetching"))
+        return self._detail_meta.get("playlistLoadState") == "loading"
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailComplete(self):
+        if self._detail_meta.get("dynamicMix"):
+            # The displayed mix preview is usable; it is not the whole stream.
+            return True
+        return self._detail_meta.get("playlistLoadState", "complete") == "complete"
+
+    @staticmethod
+    def _is_dynamic_playlist(playlist_id):
+        return isinstance(playlist_id, str) and playlist_id.strip().removeprefix("VL").startswith("RD")
+
+    def _maybe_refill_dynamic_mix(self, stream):
+        load = stream["load"]
+        if (self._closing.is_set() or self._busy or stream["state"] != "loading"
+                or load.get("fetching") or self._playback_transitioning
+                or not (self._player_state == "playing" or stream["waiting"])
+                or self._queue.count() - self._queue.index - 1 > core.current_mix_refill_threshold()
+                or monotonic() < load.get("retry_after", 0)):
+            return False
+        self._schedule_playlist_page(load)
+        return True
+
+    def _source_complete(self, source):
+        return self.likedComplete if source == "liked" else self.detailComplete if source == "detail" else True
+
+    def _playlist_load_for_revision(self, revision):
+        for load in (self._playlist_load,
+                     self._playlist_stream.get("load") if self._playlist_stream else None):
+            if load and load["revision"] == revision:
+                return load
+        return None
+
+    def _playlist_load_needed(self, load):
+        return (self._detail_meta.get("playlistLoadRevision") == load["revision"]
+                or (self._playlist_stream and self._playlist_stream["load"] is load
+                    and self._playlist_stream["queue"] is self._queue
+                    and self._playlist_stream["state"] == "loading"))
+
+    def _schedule_playlist_page(self, load):
+        if load.get("fetching"):
+            return
+        load["fetching"] = True
+        if load.get("dynamic"):
+            load["meta"]["dynamicFetching"] = True
+            if self._detail_meta.get("playlistLoadRevision") == load["revision"]:
+                self._detail_meta = dict(load["meta"])
+                self.detailTitleChanged.emit()
+            self.playerChanged.emit()
+        def submit():
+            if self._closing.is_set() or load["meta"]["playlistLoadState"] != "loading":
+                load["fetching"] = False
+                return
+            if not self._playlist_load_needed(load):
+                load["meta"]["playlistLoadState"] = "error"
+                load["fetching"] = False
+                return
+            def work():
+                result = {"load": load}
+                try:
+                    tracks, more = load["pager"].next_page()
+                    result.update(items=[self._track(x) for x in core.usable_tracks(tracks)
+                                         if x.get("setVideoId") not in load["removed"]],
+                                  raw_ids=[x.get("setVideoId") for x in tracks], more=more)
+                except Exception as exc:
+                    result["error"] = type(exc).__name__
+                    result["retryable"] = getattr(load["pager"], "_phase", "") in (
+                        "initial_request", "continuation_request")
+                self._playlistPageReady.emit(result)
+            self._executor.submit(work, _diagnostic_label="api.playlist_page")
+        QTimer.singleShot(0, submit)
+
+    @Slot(object)
+    def _apply_playlist_page(self, result):
+        load = result["load"]
+        if self._closing.is_set() or load["meta"]["playlistLoadState"] != "loading":
+            return
+        # Foreground writes/navigation get to commit before a background page.
+        if self._busy:
+            QTimer.singleShot(50, lambda: self._apply_playlist_page(result))
+            return
+        if not self._playlist_load_needed(load):
+            load["meta"]["playlistLoadState"] = "error"
+            load["fetching"] = False
+            return
+        load["fetching"] = False
+        if load.get("dynamic"):
+            load["meta"]["dynamicFetching"] = False
+        visible = self._detail_meta.get("playlistLoadRevision") == load["revision"]
+        stream = self._playlist_stream
+        bound = bool(stream and stream["queue"] is self._queue and stream["load"] is load
+                     and stream["state"] == "loading")
+        if result.get("error"):
+            retry = load.get("dynamic") and result.get("retryable")
+            if retry:
+                load["retry_after"] = monotonic() + 30
+                self._set_status("Další část mixu zatím není dostupná · zkusím znovu za 30 s")
+            else:
+                load["meta"]["playlistLoadState"] = "error"
+            if bound and not retry:
+                stream.update(state="error", waiting=False)
+                stream["origin"]["detail_state"]["meta"] = dict(load["meta"])
+                self.playerChanged.emit()
+        else:
+            start = len(load["items"])
+            load["items"].extend(result["items"])
+            load["raw_ids"].extend(result["raw_ids"])
+            load["meta"]["playlistLoadState"] = "loading" if result["more"] else "complete"
+            if not result["more"] and not load.get("dynamic"):
+                pending = self._pending_removed_playlist_items.get(load["playlistId"], set())
+                pending.intersection_update(load["raw_ids"])
+                if not pending:
+                    self._pending_removed_playlist_items.pop(load["playlistId"], None)
+                if not bound:
+                    self._update_playlist_browse_snapshots({"title": load["title"],
+                        "tracks": load["items"], "meta": load["meta"]})
+            if bound:
+                previous_next = self._next_prefetch_id()
+                origin = stream["origin"]
+                for index, item in enumerate(result["items"], start):
+                    song = self._playback_track(item)
+                    song["_guiOrigin"] = dict(origin, index=index)
+                    if item.get("setVideoId") and not load.get("dynamic"):
+                        song["_guiPlaylistBinding"] = (load["playlistId"], item["setVideoId"])
+                    self._queue.tracks.append(song)
+                    self._queue_source_indices.append(index)
+                origin["snapshots"]["detail"] = list(load["items"])
+                origin["detail_state"].update(tracks=list(load["items"]), meta=dict(load["meta"]))
+                self._playing_tracks_model.append_items(result["items"])
+                self._after_stream_append(stream, previous_next, result["more"])
+            if visible:
+                self._detail_tracks_model.append_items(result["items"])
+            if load.get("dynamic") and not result["items"] and result["more"]:
+                load["retry_after"] = monotonic() + 30
+            if result["more"] and not load.get("dynamic"):
+                self._schedule_playlist_page(load)
+        if bound and load.get("dynamic"):
+            self.playerChanged.emit()
+        if visible:
+            self._detail_meta = dict(load["meta"])
+            self.detailTitleChanged.emit()
 
     @Slot()
     def clearDetail(self):
