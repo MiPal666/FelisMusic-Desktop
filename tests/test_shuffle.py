@@ -18,13 +18,13 @@ class AlbumShuffleTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playerSourceIndex, 1)
         self.api.get_watch_playlist.assert_not_called()
 
-    def test_empty_missing_id_upload_and_artist_are_not_detail_shuffle_sources(self):
+    def test_empty_missing_id_and_catalog_artist_are_not_detail_shuffle_sources(self):
         self.api.get_album.return_value['tracks'] = []
         self.load(); self.assertFalse(self.b.shuffleDetail())
         self.api.get_album.return_value['tracks'] = self.source
         self.api.get_album.return_value.pop('audioPlaylistId')
         self.load(); self.assertFalse(self.b.shuffleDetail())
-        for kind in ('upload_album', 'artist'):
+        for kind in ('artist', 'podcast'):
             self.b._detail_meta = dict(kind=kind, shufflePlaylistId='OLAKfake')
             self.assertFalse(self.b.shuffleDetail())
         self.api.get_watch_playlist.assert_not_called()

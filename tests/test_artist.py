@@ -107,7 +107,7 @@ class ArtistTests(support.AudioPlaybackTestCase):
         self.api.get_library_upload_artist.return_value = [{'title': 'Private', 'videoId': 'private'}]
         self.b.clearDetail(); self.b.openLibraryItem('upload_artist', 'privateArtist', '', 'Uploaded artist')
         self.until(lambda: not self.b.busy)
-        self.assertEqual(self.b.detailMeta, {})
+        self.assertEqual(self.b.detailMeta, {'kind': 'upload_artist', 'browseId': 'privateArtist'})
         self.assertEqual(self.b.detailTracksModel.snapshot()[0]['kind'], 'upload_song')
         self.assertEqual(self.api.get_artist.call_count, 1)
 

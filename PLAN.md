@@ -1,12 +1,20 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
+**Další úprava Nahraných – rychlé první otevření (2026-10-28).** Po kliknutí na Nahrané se nyní jako první otevírají skladby a úplné načítání dlouho blokuje další akce. Michal požaduje vyřešit samostatně po aktuálním kroku: načítat nahrané skladby po blocích s použitelným prvním seznamem a dostupnou navigací/ovládáním, případně přesunout Skladby na poslední místo a jako výchozí otevřít jinou sekci. Konkrétní variantu domluvit před implementací; pouhé přesunutí položky nesmí být vydáváno za zrychlení načítání. Zatím pouze zapsáno, neimplementováno.
+
+**Domluvený podkrok – multivýběr: Odebrat z playlistu (2026-10-28).** Doplnit do hromadných akcí odebrání označených výskytů z vlastního upravitelného playlistu podle jejich setVideoId, včetně synchronizace související přehrávací fronty. Jde o odebrání z uloženého playlistu, nikoli pouze z Fronty. Zatím pouze zapsaný požadavek, neimplementováno; samostatný testovatelný krok.
+
+**0.3.46-dev:** bod 1 (Shuffle Nahraných) Michal přijal a povolil bod 2. Celé Nahrané skladby/album/interpret mají přidání jako další a na konec fronty; hlavní seznam také uložení celku do playlistu. Jednotlivé a vybrané skladby i uložení celých upload detailů už fungovaly a jsou regresně ověřené. 384 offline testů a šest QML scénářů prošlo. Michal potvrdil také bod 2 jako funkční; body 1 a 2 (0.3.45–0.3.46) přijaty a připraveny ke společnému commitu. Poslední commit 3689b13.
+
+**0.3.45-dev:** lokální Shuffle Nahraných: seznam skladeb, album a skladby interpreta; nabídky ⋮, Fronta a návrat coverem, přesné výskyty a metadata. Interpret se načítá bez limitu 2000. 378 offline testů a šest QML scénářů prošlo; Michal skutečným testem přijal bod 1. Předchozí celek přijat a uložen jako 3689b13. Mix Nahraných a další akce zůstávají samostatné kroky.
+
 **0.3.44-dev:** opraven návrat coverem z Mixu playlistu/alba/interpreta (také hlavních Oblíbených) do původního zdroje, včetně doporučení z dalších bloků. Obnoví detail/záložku bez restartu audia. 372 offline testů a šest QML scénářů prošlo. Michal potvrdil celek 0.3.42–0.3.44 jako otestovaný a funkční; připraveno ke společnému commitu.
 
 **0.3.43-dev:** domluvené pravidlo RD… pro dynamické zdroje. Playlisty i Mixy pro vás načtou stejnou cestou první watch blok; pokračování stejného ID až podle postupu poslechu, s EOS/Stop/pauzou/Repeat a odstupem při výpadku. Pevné seznamy dál celé po blocích. 371 offline testů a 4 QML scénáře prošly; navíc dva skutečné read-only bloky Supermixu 24+24 s pokračováním. Čeká na reálný poslech/test, necommitováno spolu s 0.3.42. Poslední commit 0bc66cb.
 
 **0.3.42-dev:** playlistové detaily včetně „Liked Music“ mají první blok a background doplnění stejně jako hlavní Oblíbené. Běžné přehrávání z prefixu rozšiřuje tutéž konečnou frontu; akce nad celkem až po dokončení. Ochrany EOS/Repeat/Stop, chyby, cover a zneplatnění. Výjimka obnovy s čekajícím přesunem: úplné načtení pro porovnání. 355 offline testů + QML dvojklik při načítání v obou velikostech prošly; čeká na Michalův reálný test. Předchozí commit 0bc66cb. Potom samostatně Nahrané a podle dostupných endpointů další velké kolekce.
 
-**Doplněný samostatný krok – Nahrané:** lokální náhodné přehrávání nahraných skladeb, alb a skladeb interpreta. Možnosti Mixu nahraných zdrojů nejprve ověřit podle skutečných možností API; podporu zatím neslibovat a nenahrazovat ji potichu katalogovou skladbou. Implementace dosud nezačala.
+**Doplněný samostatný krok – Nahrané:** lokální náhodné přehrávání nahraných skladeb, alb a skladeb interpreta. Možnosti Mixu nahraných zdrojů nejprve ověřit podle skutečných možností API; podporu zatím neslibovat a nenahrazovat ji potichu katalogovou skladbou. Lokální Shuffle 0.3.45-dev přijaté Michalem; hromadné akce fronty/playlistů připravené v 0.3.46-dev, čekají na test. Navigace/řazení a možnosti Mixu zůstávají samostatné kroky.
 
 **0.3.41-dev:** lokální Zamíchat aktuální frontu bez serverového pořadí, se zachováním aktuálního výskytu/audia/času/pauzy/Repeat, všech ručních i duplicitních výskytů. 337 offline testů a obě QML velikosti prošly; Michal skutečným testem potvrdil funkčnost. Po přijetí/commitu sjednocení stránkování detailů playlistů. Předchozí commit 6135d69.
 
@@ -152,7 +160,7 @@ Cast už v CLI funguje. Chybí propojení s GUI a ověření jeho nových funkc�
 
 Multivýběr, dvojklik/Enter, dávkové vkládání/ukládání, lišta od dvou vybraných a odznačení po úspěchu jsou rovněž hotové (`142bb2d`).
 
-Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Jejich prioritu domluvit samostatně; samy teď neblokují návrat ke Shuffle a Mix/Rádiu.
+Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Hromadné odebrání Michal dne 2026-10-28 výslovně požaduje doplnit k multivýběru; zatím zapsáno jako samostatný budoucí podkrok. Přetahování myší zůstává námětem.
 
 ## Mimo desktopovou 1.0
 

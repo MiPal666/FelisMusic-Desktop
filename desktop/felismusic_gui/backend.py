@@ -2131,6 +2131,22 @@ class BackendBridge(QObject):
         items = [dict(x) for x in self._detail_tracks_model.snapshot() if self._playlist_song_supported(x)]
         return self._open_playlist_selection(items, self._detail_title, True)
 
+    def _upload_collection_items(self, source):
+        if source == "library":
+            valid = self._library_section == "upload_songs" and not self._detail_title
+        else:
+            valid = (source == "detail" and self.detailComplete
+                     and self._detail_meta.get("kind") in ("upload_album", "upload_artist"))
+        return ([item for item in self._source_items(source) if self._playlist_song_supported(item)]
+                if valid else [])
+
+    @Slot(result=bool)
+    def openUploadSongsPlaylistSave(self):
+        if self._busy or self._closing.is_set() or self._ytmusic is None:
+            return False
+        items = self._upload_collection_items("library")
+        return bool(items) and self._open_playlist_selection(items, "Nahrané skladby", True)
+
     def _open_playlist_selection(self, items, title, collection):
         self._playlist_save_selection = None
         self._playlist_save_verification = None
@@ -2570,9 +2586,11 @@ class BackendBridge(QObject):
     @Property(bool, notify=detailTitleChanged)
     def detailCanShuffle(self):
         meta = self._detail_meta
-        return (self.detailComplete and meta.get("kind") in ("playlist", "album")
-                and core.youtube_shuffle_supported(self._detail_shuffle_id())
-                and self._detail_tracks_model.count > 0)
+        supported = (meta.get("kind") in ("upload_album", "upload_artist") or
+                     (meta.get("kind") in ("playlist", "album")
+                      and core.youtube_shuffle_supported(self._detail_shuffle_id())))
+        return (self.detailComplete and supported
+                and any(item.get("videoId") for item in self._source_items("detail")))
 
     def _detail_shuffle_id(self):
         meta = self._detail_meta
@@ -2882,6 +2900,54 @@ class BackendBridge(QObject):
             self._schedule_watch_page(stream)
 
     @Slot(result=bool)
+    def shuffleUploadSongs(self):
+        if (self._busy or self._ytmusic is None or not self.playerCanEditQueue
+                or self._library_section != "upload_songs" or self._detail_title):
+            return False
+        items = self._source_items("library")
+        if not any(item.get("videoId") for item in items):
+            return False
+        self._radio_refill_revision += 1
+        origin = self._make_origin("library", -1, items)
+        generation, marker = self._playback_generation, self._radio_queue_marker()
+        section, order = self._library_section, self._library_order
+
+        def task():
+            result = dict(origin=origin, generation=generation, marker=marker,
+                          section=section, order=order)
+            try:
+                indices = [i for i, item in enumerate(items) if item.get("videoId")]
+                random.shuffle(indices)
+                result["indices"] = indices
+            except Exception as exc:
+                result["error"] = type(exc).__name__
+            return result
+
+        self._submit("upload_shuffle", "Připravuji náhodné pořadí · Nahrané skladby…", task)
+        return True
+
+    def _apply_upload_shuffle(self, result):
+        if (self._closing.is_set() or result["generation"] != self._playback_generation
+                or result["marker"] != self._radio_queue_marker()
+                or result["section"] != self._library_section
+                or result["order"] != self._library_order or self._detail_title
+                or result["origin"]["snapshots"]["library"] != self._source_items("library")):
+            return
+        if result.get("error"):
+            self._set_status("Náhodné pořadí se nepodařilo připravit")
+            self.errorOccurred.emit(result["error"])
+            return
+        origin = result["origin"]
+        tracks = []
+        for index in result["indices"]:
+            track = self._playback_track(origin["snapshots"]["library"][index])
+            track["_guiOrigin"] = dict(origin, index=index)
+            tracks.append(track)
+        self._start_generated_queue(tracks, "Nahrané skladby – Náhodně", shuffle=True, origin=origin)
+        self._queue_source_indices = result["indices"]
+        self.collectionShuffleStarted.emit()
+
+    @Slot(result=bool)
     def shuffleDetail(self):
         if (self._busy or not self.playerCanEditQueue or self._ytmusic is None
                 or not self.detailCanShuffle):
@@ -3028,6 +3094,14 @@ class BackendBridge(QObject):
     def enqueueFrom(self, source, index, play_next, context):
         return self._enqueue_items(source, [index], play_next, context)
 
+    @Slot(str, bool, "QVariantMap", result=bool)
+    def enqueueUploadCollection(self, source, play_next, context):
+        if self._busy or self._closing.is_set() or not self._upload_collection_items(source):
+            return False
+        indices = [i for i, item in enumerate(self._source_items(source))
+                   if self._playlist_song_supported(item)]
+        return self._enqueue_items(source, indices, play_next, context)
+
     def _enqueue_items(self, source, indices, play_next, context):
         if not self._source_complete(source):
             return False
@@ -3038,20 +3112,23 @@ class BackendBridge(QObject):
             return False
         # Capture the whole selection before modifying the queue or its model.
         tracks = []
+        origin = self._make_origin(source, -1, items, context) if source != "playing" else None
+        origin_memo = {}
         for index in indices:
             track = self._playback_track(items[index])
             track["_guiManualEnqueue"] = True
             if source == "playing":
-                track["_guiOrigin"] = deepcopy(self._queue.tracks[index].get("_guiOrigin", {}))
+                track["_guiOrigin"] = deepcopy(self._queue.tracks[index].get("_guiOrigin", {}), origin_memo)
             else:
-                track["_guiOrigin"] = self._make_origin(source, index, items, context)
+                track["_guiOrigin"] = dict(origin, index=index)
             tracks.append(track)
         had_queue = self.playerHasTrack
         previous_next = self._next_prefetch_id()
         if not had_queue:
             self._queue_source = source
             self._queue_source_indices = list(indices)
-            self._queue = core.PlaybackQueue(tracks, name=self._queue_name_for_source(source))
+            name = "Nahrané skladby" if source == "library" and self._library_section == "upload_songs" else self._queue_name_for_source(source)
+            self._queue = core.PlaybackQueue(tracks, name=name)
             self._repeat_mode = "off"
             origin = tracks[0]["_guiOrigin"]
             self._playing_browse_snapshots = origin.get("snapshots", {})
@@ -3293,6 +3370,9 @@ class BackendBridge(QObject):
 
             elif name == "shuffle_detail":
                 self._apply_detail_shuffle(result)
+
+            elif name == "upload_shuffle":
+                self._apply_upload_shuffle(result)
 
             elif name == "initialize":
                 self._ytmusic = result["ytmusic"]
@@ -4304,6 +4384,7 @@ class BackendBridge(QObject):
                 detail_title = data.get("title") or title
                 album_thumbnail = self._thumbnail(data, allow_video_fallback=False)
                 tracks = core.usable_tracks(data.get("tracks") or [])
+                meta = {"kind": kind, "browseId": browse_id}
 
             elif kind == "upload_artist":
                 if not browse_id:
@@ -4311,9 +4392,10 @@ class BackendBridge(QObject):
                 tracks = core.usable_tracks(
                     ytmusic.get_library_upload_artist(
                         browse_id,
-                        limit=core.LIBRARY_LIMIT,
+                        limit=None,
                     ) or []
                 )
+                meta = {"kind": kind, "browseId": browse_id}
 
             else:
                 raise RuntimeError(

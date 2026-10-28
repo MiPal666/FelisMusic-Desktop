@@ -2,6 +2,28 @@
 
 Aktualizováno: 2026-10-28 (Europe/Prague).
 
+## 0.3.46-dev – akce Nahraných pro frontu a playlisty, přijato
+
+- Michal potvrdil práci Nahraných s frontou a playlisty jako funkční. Body 1 a 2 (0.3.45–0.3.46) skutečně otestované a přijaté; připraveno ke společnému commitu. Další požadavky (multivýběr → odebrat z playlistu a rychlé otevření Nahraných) zapsané v PLAN.md, zatím neimplementované.
+
+- Michal skutečně přijal bod 1 (0.3.45) a při zavřené aplikaci povolil bod 2. Předchozí podkrok dosud není commitovaný; oba navazují na 3689b13.
+- Audit: jednotlivé upload skladby mají Next/Append/Playlist save; multivýběr používá stejné funkce a podporuje upload_song. Celá upload alba a interpreti už mají uložení do playlistu. Tyto funkce nebyly implementovány znovu. Nově jsou v ⋮ nahraného alba/interpreta „Přehrát jako další“ a „Přidat na konec fronty“ a stejné dvě akce plus „Přidat seznam do playlistu…“ v hlavním seznamu Nahrané skladby.
+- Nový `enqueueUploadCollection` validuje podporovaný úplný upload zdroj a předá všechny přehratelné indexy existující `_enqueue_items`. Zachovává pořadí a duplicitní výskyty, upload metadata, přesné indexy/cover a běžící audio/čas/Repeat. Prázdná fronta se vytvoří zastavená (u hlavního seznamu název Nahrané skladby); pauza/Stop se nezruší. `openUploadSongsPlaylistSave` používá stávající ověřovaný save/create dialog včetně duplicit a soukromí.
+- `_enqueue_items` nyní připraví jeden původ/snapshot pro celý batch místo kopírování detailového snapshotu pro každou skladbu. Každý výskyt má vlastní index; sdílené snapshoty zůstávají společné. Při kopírování výběru ze samotné fronty používá společný deepcopy memo. Regrese existujících queue a multiselect funkcí ověřeny celou sadou.
+- **384 offline testů prošlo**. Šest nových testů s podscénáři pro tři zdroje: celé Next/Append s běžícím audiem, přesné duplicity a cover; prázdná fronta/pauza/Stop; jednotlivé i vybrané upload řádky a odznačení po akci; save do existujícího cíle s/bez duplicit i nový neveřejný playlist; 2101 položek s jediným vytvořením zdroje; odmítnutí nesprávného/neúplného/prázdného/busy/přecházejícího zdroje. Účet/audio mockované.
+- Šest QML scénářů (tři zdroje × 900×600/1280×800) otevřelo skutečné nabídky, vyvolalo nové Next/Append, ověřilo zachování hraní a stránku, otevřelo save dialog a dokončilo ověřený mock zápis s automatickým zavřením. Bez QML varování. `git diff --check` prošel.
+- Skutečný test: při hraní jiné skladby přidat z ⋮ celé Nahrané skladby, album či interpreta jako další a na konec; ověřit pořadí a pokračování audia. Z hlavního seznamu uložit celek do playlistu; zkontrolovat i jednotlivé a označené skladby. Navigace/řazení a průzkum Mixu zatím nejsou součástí tohoto kroku.
+
+## 0.3.45-dev – lokální náhodné přehrávání Nahraných, přijato
+
+- Michal uložil předchozí celek jako **3689b13**, pracovní strom byl čistý. Povolil první samostatný krok sjednocení Nahraných: náhodné přehrávání seznamu skladeb, nahraného alba a skladeb nahraného interpreta.
+- Seznam Nahrané skladby má vlastní nabídku ⋮ → Přehrát náhodně. Nový `shuffleUploadSongs` míchá přesné indexy načtené knihovny; nezískává další katalogovou/watch frontu. Zdroj, řazení, snapshot a generace fronty zneplatní opožděný výsledek. Detail nahraného alba/interpreta používá dosavadní lokální `shuffleDetail`; dostupnost není vázaná na katalogové playlist ID. Detail nyní nese kind/browseId také pro tyto dva upload typy. Mix se nenabízí.
+- U nahraného interpreta se `get_library_upload_artist` volá s `limit=None` místo dosavadních 2000. Podpora None ověřena v kódu instalované ytmusicapi: předává neomezený remaining_limit pokračováním. Nahrané skladby už None používaly a album vrací své tracks. V tomto kroku se nemění způsob plného načtení na stránkování.
+- Všechny přehratelné výskyty včetně duplicit zůstávají; přesný zdrojový index, upload druh, thumbnail/album/interpret se zachovají. Prohlížený seznam se nemíchá. Po spuštění Fronta, cover vrátí původní sekci/detail bez restartu audia; nová fronta resetuje Repeat. Žádné vymyšlené playlistové edit bindingy pro upload kolekce.
+- **378 offline testů prošlo**. Šest nových testů s podscénáři pro všechny tři zdroje: výskyty/metadata/cover a žádné opakované načtení pro Shuffle, Next/Previous/Repeat All/One/Stop/konec, selhání se zachováním audia a Repeat, opožděné výsledky po Stop/nové skladbě/navigaci, 2101 skladeb interpreta, filtrování nedostupných/chybějících ID a prázdné zdroje. Dva starší testy upraveny na novou podporu upload detailů a jejich metadata. Účet/audio mockované.
+- QML 900×600/1280×800 × tři zdroje: otevření skutečné nabídky ⋮, aktivace Přehrát náhodně, přechod do Fronty, celý počet, původní pořadí zdroje a návrat přes `showPlayingList` do správné sekce při zachování fronty/audia. Bez QML varování, API/audio/obrázky mockované. `git diff --check` prošel.
+- Reálný test: Nahrané skladby → ⋮ → Přehrát náhodně; pak totéž v otevřeném nahraném albu a interpretovi. Ověřit Frontu, cover, další/předchozí, Repeat a Stop. Zatím necommitováno; další akce až po přijetí tohoto kroku.
+
 ## 0.3.44-dev – cover z mixu zpět do zdrojové kolekce, přijato
 
 - Michal skutečným testem potvrdil celek jako otestovaný a funkční. Změny 0.3.42–0.3.44 (playlisty po blocích, dynamické RD mixy a návrat coverem) přijaty a připraveny ke společnému commitu.

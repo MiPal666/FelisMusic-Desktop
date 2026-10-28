@@ -1,5 +1,9 @@
 # FelisMusic – porovnání CLI a Desktop GUI
 
+**0.3.46-dev:** bod 1 (Shuffle Nahraných) Michal přijal a povolil bod 2. Celé Nahrané skladby/album/interpret mají přidání jako další a na konec fronty; hlavní seznam také uložení celku do playlistu. Jednotlivé a vybrané skladby i uložení celých upload detailů už fungovaly a jsou regresně ověřené. 384 offline testů a šest QML scénářů prošlo. Michal potvrdil také bod 2 jako funkční; body 1 a 2 (0.3.45–0.3.46) přijaty a připraveny ke společnému commitu. Poslední commit 3689b13.
+
+**0.3.45-dev:** lokální Shuffle Nahraných: seznam skladeb, album a skladby interpreta; nabídky ⋮, Fronta a návrat coverem, přesné výskyty a metadata. Interpret se načítá bez limitu 2000. 378 offline testů a šest QML scénářů prošlo; Michal skutečným testem přijal bod 1. Předchozí celek přijat a uložen jako 3689b13. Mix Nahraných a další akce zůstávají samostatné kroky.
+
 **0.3.44-dev:** opraven návrat coverem z Mixu playlistu/alba/interpreta (také hlavních Oblíbených) do původního zdroje, včetně doporučení z dalších bloků. Obnoví detail/záložku bez restartu audia. 372 offline testů a šest QML scénářů prošlo. Michal potvrdil celek 0.3.42–0.3.44 jako otestovaný a funkční; připraveno ke společnému commitu.
 
 **0.3.43-dev:** domluvené pravidlo RD… pro dynamické zdroje. Playlisty i Mixy pro vás načtou stejnou cestou první watch blok; pokračování stejného ID až podle postupu poslechu, s EOS/Stop/pauzou/Repeat a odstupem při výpadku. Pevné seznamy dál celé po blocích. 371 offline testů a 4 QML scénáře prošly; navíc dva skutečné read-only bloky Supermixu 24+24 s pokračováním. Čeká na reálný poslech/test, necommitováno spolu s 0.3.42. Poslední commit 0bc66cb.

@@ -1330,6 +1330,7 @@ ApplicationWindow {
                 objectName: "collectionShuffle"
                 text: "Přehrát náhodně"
                 visible: backend.detailMeta.kind === "playlist" || backend.detailMeta.kind === "album"
+                         || backend.detailMeta.kind === "upload_album" || backend.detailMeta.kind === "upload_artist"
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanShuffle && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.shuffleDetail()
@@ -1365,6 +1366,22 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanSavePlaylist && !backend.busy
                 onTriggered: backend.openCollectionPlaylistSave()
+            }
+            MenuItem {
+                objectName: "uploadCollectionNext"
+                text: "Přehrát jako další"
+                visible: backend.detailMeta.kind === "upload_album" || backend.detailMeta.kind === "upload_artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanSavePlaylist
+                onTriggered: backend.enqueueUploadCollection("detail", true, root.navigationContext())
+            }
+            MenuItem {
+                objectName: "uploadCollectionAppend"
+                text: "Přidat na konec fronty"
+                visible: backend.detailMeta.kind === "upload_album" || backend.detailMeta.kind === "upload_artist"
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanSavePlaylist
+                onTriggered: backend.enqueueUploadCollection("detail", false, root.navigationContext())
             }
             MenuItem {
                 objectName: "collectionPlaylistEdit"
@@ -1630,14 +1647,75 @@ ApplicationWindow {
             anchors.margins: 22
             spacing: 12
 
-            Label {
+            RowLayout {
                 Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                text: heading
-                color: "white"
-                font.pixelSize: 28
-                font.bold: true
-                elide: Text.ElideRight
+                Label {
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    text: heading
+                    color: "white"
+                    font.pixelSize: 28
+                    font.bold: true
+                    elide: Text.ElideRight
+                }
+                Button {
+                    id: uploadMenuButton
+                    objectName: "uploadSongsMenuButton"
+                    visible: trackPage.sourceKey === "library" && root.currentLibrarySection === "upload_songs"
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    enabled: backend.connected && !backend.busy
+                    hoverEnabled: true
+                    ToolTip.visible: hovered
+                    ToolTip.text: "Možnosti nahraných skladeb"
+                    onClicked: uploadMenu.popup(uploadMenuButton, width - uploadMenu.width, height)
+                    background: Rectangle { color: uploadMenuButton.hovered ? "#3b3b3b" : "#222222"; radius: 4 }
+                    contentItem: Canvas {
+                        onPaint: {
+                            var ctx = getContext("2d")
+                            ctx.fillStyle = "#dddddd"
+                            for (var i = 0; i < 3; ++i) {
+                                ctx.beginPath()
+                                ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
+                                ctx.fill()
+                            }
+                        }
+                    }
+                    Menu {
+                        id: uploadMenu
+                        objectName: "uploadSongsMenu"
+                        popupType: Popup.Item
+                        width: 260
+                        palette.text: "#eeeeee"
+                        palette.windowText: "#eeeeee"
+                        palette.highlight: "#6757b8"
+                        background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+                        MenuItem {
+                            objectName: "uploadSongsShuffle"
+                            text: "Přehrát náhodně"
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            onTriggered: backend.shuffleUploadSongs()
+                        }
+                        MenuItem {
+                            objectName: "uploadSongsNext"
+                            text: "Přehrát jako další"
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            onTriggered: backend.enqueueUploadCollection("library", true, root.navigationContext())
+                        }
+                        MenuItem {
+                            objectName: "uploadSongsAppend"
+                            text: "Přidat na konec fronty"
+                            enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && trackPage.tracks.count > 0
+                            onTriggered: backend.enqueueUploadCollection("library", false, root.navigationContext())
+                        }
+                        MenuItem {
+                            objectName: "uploadSongsPlaylistSave"
+                            text: "Přidat seznam do playlistu…"
+                            enabled: backend.connected && !backend.busy && trackPage.tracks.count > 0
+                            onTriggered: backend.openUploadSongsPlaylistSave()
+                        }
+                    }
+                }
             }
             Label {
                 text: tracks.count + " položek"
