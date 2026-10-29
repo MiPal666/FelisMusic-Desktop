@@ -1,5 +1,9 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
+**0.3.77-dev / Plán 7 – odhlášení a první start:** Michal přijal přihlášení/obnovu 0.3.76 a povolil skutečný test odhlášení včetně sdíleného CLI účtu. Účet → Odhlásit… s potvrzením, Stop a vyčištění dat GUI, odstranění cookie/state/legacy přihlášení a pouze samostatných profilů FelisMusic. První start bez session nabídne login dialog bez API chyby; prohlížeč až na kliknutí, nabídku lze zrušit. 594 offline testů a dvě QML kontroly prošly. Michal 2026-10-29 potvrdil celý cyklus odhlášení → nový start bez účtu → první přihlášení. Celek 0.3.76–0.3.77 a plán 7 přijatý; po commitu následuje Cast.
+
+**0.3.76-dev / Plán 7 – přihlášení z GUI:** Účet → Přihlásit / obnovit přihlášení, volba podporovaného prohlížeče, samostatný profil z AuthManager, explicitní převzetí po zavření okna a ověření účtu před uložením. Zrušení/chyba nezveřejní rozpracované přihlášení; starý účet zůstává do potvrzení použitelný. Před přihlášením Stop a dokončení probíhajících požadavků; po úspěchu obnova dat účtu bez automatického audia/Castu. 590 offline testů a dvě QML kontroly prošly; čeká na skutečný test. Poslední commit 670b35b.
+
 **Upřesnění pořadí po 1.0 (2026-10-29):** odložené funkce jsou (1) stahování a správa stažené hudby, (2) uložení fronty při vypnutí a obnovení po zapnutí aplikace. Port pro Sailfish OS / Silica bude první navazující projekt hned po desktopové 1.0, před těmito rozšířeními.
 
 **Rozhodnutí 2026-10-29 – obnova přehrávání až po 1.0:** Michal obvykle začíná nový poslech a odložil celý bod 6 (fronta, skladba, pozice, Shuffle/Repeat/Mix i zdrojový kontext). Rozpracované necommitované změny byly odstraněny; kód zůstává v přijaté 0.3.75-dev, commit 384c9fc. Další krok do 1.0 je přihlášení z GUI, potom Cast, MPRIS a dokončení vydání.

@@ -34,14 +34,16 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.75-dev** (kopírování a otevírání odkazů; Michalem otestováno a přijato)
+- Desktop GUI: **0.3.77-dev** (přihlášení, odhlášení a první start bez účtu; Michalem otestováno a přijato)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
 - GUI toolkit: PySide6 + QML
 - FelisMusic CLI 1.0.0 je samostatný, zmrazený projekt / referenční implementace.
 
-GUI používá existující FCM session z `~/.config/felismusic/`.
+GUI používá FCM přihlášení z `~/.config/felismusic/`. Přihlásit se nebo přihlášení obnovit lze přes **Účet → Přihlásit / obnovit přihlášení** přímo v aplikaci. Při prvním spuštění bez uloženého přihlášení se tento dialog nabídne automaticky. Prohlížeč se otevře až na tvoje kliknutí; nabídku lze zrušit a přihlásit se později.
+
+**Účet → Odhlásit…** po potvrzení zastaví poslech, vyprázdní frontu a přehledy a odstraní uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také sdílený účet CLI; běžný profil prohlížeče zůstane nedotčený. Pokud se některý soubor nepodaří odstranit, aplikace oznámí nedokončené odhlášení a lze je zopakovat.
 
 ## Hotová datová vrstva
 
@@ -102,7 +104,7 @@ source env/bin/activate
 ./run-gui.sh
 ```
 
-Pokud session není platná, obnov ji v samostatném FelisMusic CLI 1.0.0 a GUI spusť znovu.
+Pokud přihlášení chybí nebo není platné, použij **Účet → Přihlásit / obnovit přihlášení**. Vyber prohlížeč, otevři přihlašovací okno, přihlas se do YouTube Music, ověř knihovnu a celé okno zavři. Potom stiskni **Převzít přihlášení**. Aplikace ověří účet před uložením. Před změnou přihlášení zastav poslech tlačítkem Stop a nech dokončit načítání; při zrušení nebo chybě ověření se dosavadní přihlášení nepřepíše. Samostatný profil prohlížeče sdílí dosavadní mechanismus CLI; při běžném poslechu prohlížeč neběží.
 
 ## 0.3.1-dev
 

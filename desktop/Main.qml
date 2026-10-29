@@ -176,6 +176,19 @@ ApplicationWindow {
 
     Connections {
         target: backend
+        function onLoginRequested() { loginDialog.open() }
+        function onLoginChanged() {
+            if (backend.loginState.phase === "closed" || backend.loginState.phase === "success")
+                loginDialog.close()
+            if (backend.loginState.phase === "success") {
+                root.playbackContext = null
+                root.currentPage = 1
+            }
+            if (backend.loginState.phase === "closed" && !backend.connected) {
+                root.playbackContext = null
+                root.currentPage = 1
+            }
+        }
         function onDetailTitleChanged() { backend.clearTrackSelection() }
         function onPlaybackSourceCaptured() {
             root.capturePlaybackContext()
@@ -277,6 +290,106 @@ ApplicationWindow {
             color: "#eeeeee"
             wrapMode: Text.WordWrap
             padding: 18
+        }
+    }
+
+    Dialog {
+        id: logoutDialog
+        objectName: "logoutDialog"
+        title: "Odhlásit FelisMusic?"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(500, root.width - 40)
+        background: Rectangle { color: "#202020"; border.color: "#555555"; radius: 6 }
+        header: Label { text: logoutDialog.title; color: "#eeeeee"; font.bold: true; padding: 14 }
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                Layout.fillWidth: true
+                text: "Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také CLI."
+                color: "#eeeeee"
+                wrapMode: Text.WordWrap
+            }
+            Button {
+                objectName: "logoutConfirmButton"
+                Layout.fillWidth: true
+                text: "Odhlásit"
+                onClicked: { logoutDialog.close(); backend.logout() }
+            }
+            Button {
+                objectName: "logoutCancelButton"
+                Layout.fillWidth: true
+                text: "Zrušit"
+                onClicked: logoutDialog.close()
+            }
+        }
+    }
+
+    Dialog {
+        id: loginDialog
+        objectName: "loginDialog"
+        title: "Přihlášení k YouTube Music"
+        background: Rectangle { color: "#202020"; border.color: "#555555"; radius: 6 }
+        header: Label {
+            text: loginDialog.title
+            color: "#eeeeee"
+            font.bold: true
+            padding: 14
+        }
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(520, root.width - 40)
+        closePolicy: Popup.NoAutoClose
+        contentItem: ColumnLayout {
+            spacing: 14
+            Label {
+                Layout.fillWidth: true
+                text: backend.loginState.message || ""
+                color: "#eeeeee"
+                wrapMode: Text.WordWrap
+            }
+            Label {
+                Layout.fillWidth: true
+                text: "Přihlášení proběhne v samostatném profilu prohlížeče."
+                color: "#aaaaaa"
+                wrapMode: Text.WordWrap
+            }
+            ComboBox {
+                id: loginBrowserChoice
+                objectName: "loginBrowserChoice"
+                Layout.fillWidth: true
+                model: backend.loginState.browsers || []
+                textRole: "name"
+                valueRole: "id"
+                visible: backend.loginState.phase === "choose" || backend.loginState.phase === "error"
+            }
+            BusyIndicator {
+                Layout.alignment: Qt.AlignHCenter
+                running: backend.loginState.phase === "detecting" || backend.loginState.phase === "verifying"
+                visible: running
+            }
+            Button {
+                objectName: "loginStartButton"
+                Layout.fillWidth: true
+                text: "Otevřít přihlašovací okno"
+                visible: backend.loginState.phase === "choose" || backend.loginState.phase === "error"
+                enabled: loginBrowserChoice.currentIndex >= 0
+                onClicked: backend.startLogin(loginBrowserChoice.currentValue)
+            }
+            Button {
+                objectName: "loginFinishButton"
+                Layout.fillWidth: true
+                text: "Převzít přihlášení"
+                visible: backend.loginState.phase === "browser"
+                enabled: backend.loginState.canFinish || false
+                onClicked: backend.finishLogin()
+            }
+            Button {
+                objectName: "loginCancelButton"
+                Layout.fillWidth: true
+                text: "Zrušit"
+                onClicked: backend.cancelLogin()
+            }
         }
     }
 
@@ -2416,6 +2529,29 @@ ApplicationWindow {
                                      : backend.status)
                             color: backend.status.indexOf("Chyba") >= 0 ? "#ff8a80" : "#999999"
                             font.pixelSize: 13
+                        }
+                        PlayerTextButton {
+                            objectName: "accountButton"
+                            text: "Účet"
+                            enabled: !backend.busy
+                            onClicked: accountMenu.popup(this, width - accountMenu.width, height)
+                            Menu {
+                                id: accountMenu
+                                objectName: "accountMenu"
+                                popupType: Popup.Item
+                                MenuItem {
+                                    objectName: "accountLoginAction"
+                                    text: "Přihlásit / obnovit přihlášení"
+                                    enabled: !backend.busy
+                                    onTriggered: backend.openLogin()
+                                }
+                                MenuItem {
+                                    objectName: "accountLogoutAction"
+                                    text: "Odhlásit…"
+                                    enabled: !backend.busy
+                                    onTriggered: logoutDialog.open()
+                                }
+                            }
                         }
                         PlayerTextButton {
                             objectName: "infoButton"

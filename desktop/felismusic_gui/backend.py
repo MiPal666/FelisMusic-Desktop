@@ -16,6 +16,7 @@ from PySide6.QtCore import (
     Slot,
     QTimer,
     QUrl,
+    QProcess,
 )
 from PySide6.QtGui import QDesktopServices, QGuiApplication
 from ytmusicapi import YTMusic
@@ -29,6 +30,7 @@ from .uploads import load_upload_album
 from .album_library import load_catalog_album
 from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
+from .login import LoginCandidate, remove_login
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -178,6 +180,9 @@ class BackendBridge(QObject):
     detailTitleChanged = Signal()
     errorOccurred = Signal(str)
     initialized = Signal()
+    loginChanged = Signal()
+    loginRequested = Signal()
+    _loginResult = Signal(int, str, object)
     playerChanged = Signal()
     playerTrackChanged = Signal()
     playingSourceViewChanged = Signal()
@@ -249,6 +254,13 @@ class BackendBridge(QObject):
         self._account_name = "YouTube Music"
         self._busy = False
         self._connected = False
+        self._login_state = {"phase": "closed", "browsers": [], "message": ""}
+        self._login_generation = 0
+        self._login_cancel = Event()
+        self._login_browsers = {}
+        self._login_backend = None
+        self._login_process = None
+        self._loginResult.connect(self._apply_login_result, Qt.ConnectionType.QueuedConnection)
         self._library_probe_executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="felismusic-library-probe")
         self._library_probe_api = None
         self._library_probe_headers = {}
@@ -409,6 +421,202 @@ class BackendBridge(QObject):
     @Property(bool, notify=connectedChanged)
     def connected(self):
         return self._connected
+
+    @Property("QVariantMap", notify=loginChanged)
+    def loginState(self):
+        return dict(self._login_state)
+
+    def _set_login_state(self, phase, message, **values):
+        self._login_state = dict(self._login_state, phase=phase, message=message, **values)
+        self._set_status(message)
+        self.loginChanged.emit()
+
+    def _account_jobs_pending(self):
+        return (self.likedLoading or self.uploadSongsLoading or self.detailLoading or self._radio_refill_pending
+                or self._rating_action_pending or self._song_library_action_pending or self._player_rating_busy
+                or (self._library_probe_future is not None and not self._library_probe_future.done()))
+
+    @Slot(result=bool)
+    def logout(self):
+        if self._closing.is_set() or self._busy:
+            return False
+        if self._account_jobs_pending():
+            self.errorOccurred.emit("Před odhlášením nech dokončit načítání seznamů a změny účtu.")
+            return False
+        if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
+            self.errorOccurred.emit("Před odhlášením zavři přihlašovací okno prohlížeče.")
+            return False
+        if self._local_output is not None and self.playerHasTrack and self.stopPlayback() is False:
+            return False
+        self._login_generation += 1
+        self._login_cancel.set()
+        self._ytmusic = None
+        self._library_probe_headers = {}
+        self._set_connected(False)
+        self._account_name = "YouTube Music"
+        self.accountNameChanged.emit()
+        self._reset_account_views()
+        self._set_login_state("closed", "Odhlašuji účet…", browsers=[], canFinish=False)
+        manager, legacy_file = core.AUTH, core.LEGACY_AUTH_FILE
+        self._submit("logout", "Odstraňuji uložené přihlášení…", lambda: remove_login(manager, legacy_file))
+        return True
+
+    @Slot(result=bool)
+    def openLogin(self):
+        if self._closing.is_set() or self._busy:
+            return False
+        if (self._playback_transitioning or self._player_state in ("playing", "paused")
+                or self._account_jobs_pending()):
+            message = "Před přihlášením zastav poslech tlačítkem Stop a nech dokončit načítání seznamů a změny účtu."
+            self._set_status(message)
+            self.errorOccurred.emit(message)
+            return False
+        self._login_generation += 1
+        self._login_cancel = Event()
+        self._set_busy(True)
+        self._set_login_state("detecting", "Hledám podporované prohlížeče…", browsers=[], canFinish=False)
+        self.loginRequested.emit()
+        generation = self._login_generation
+        def work():
+            try:
+                result = core.AUTH.detect_browsers()
+            except Exception:
+                result = []
+            self._loginResult.emit(generation, "browsers", result)
+        self._executor.submit(work, _diagnostic_label="auth.browsers")
+        return True
+
+    @Slot(str, result=bool)
+    def startLogin(self, browser_id):
+        if (self._closing.is_set() or self._login_state["phase"] not in ("choose", "error")
+                or browser_id not in self._login_browsers):
+            return False
+        if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
+            return False
+        browser = self._login_browsers[browser_id]
+        generation = self._login_generation
+        try:
+            core.AUTH._ensure_profile_permissions(browser)
+            command = core.AUTH._launch_command(browser)
+            process = QProcess(self)
+            process.setStandardOutputFile(QProcess.nullDevice())
+            process.setStandardErrorFile(QProcess.nullDevice())
+            process.finished.connect(lambda *args: self._login_browser_finished(generation))
+            process.errorOccurred.connect(lambda error: self._login_browser_error(generation, error))
+            self._login_process = process
+            self._login_backend = browser
+            self._set_login_state("browser", "Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno.", canFinish=False)
+            process.start(command[0], command[1:])
+        except Exception:
+            self._set_login_state("error", "Přihlašovací prohlížeč se nepodařilo spustit.")
+            return False
+        return True
+
+    def _login_browser_finished(self, generation):
+        if generation == self._login_generation and self._login_state["phase"] == "browser":
+            self._set_login_state("browser", "Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení.", canFinish=True)
+
+    def _login_browser_error(self, generation, error):
+        if generation == self._login_generation and error == QProcess.ProcessError.FailedToStart:
+            self._set_login_state("error", "Přihlašovací prohlížeč se nepodařilo spustit.")
+
+    @Slot(result=bool)
+    def finishLogin(self):
+        if (self._closing.is_set() or self._login_state["phase"] != "browser"
+                or not self._login_state.get("canFinish")):
+            return False
+        generation, cancelled, browser = self._login_generation, self._login_cancel, self._login_backend
+        self._set_login_state("verifying", "Ověřuji účet YouTube Music…", canFinish=False)
+        def work():
+            candidate = None
+            try:
+                candidate = LoginCandidate(core.AUTH, browser)
+                candidate.verify()
+                if cancelled.is_set():
+                    candidate.close()
+                    return
+                self._loginResult.emit(generation, "verified", candidate)
+            except Exception as exc:
+                if candidate:
+                    candidate.close()
+                print(f"FelisMusic ověření přihlášení: {type(exc).__name__}")
+                self._loginResult.emit(generation, "error", None)
+        self._executor.submit(work, _diagnostic_label="auth.verify")
+        return True
+
+    @Slot()
+    def cancelLogin(self):
+        if self._login_state["phase"] in ("closed", "success"):
+            return
+        self._login_generation += 1
+        self._login_cancel.set()
+        if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
+            self._login_process.terminate()
+        self._set_login_state("closed", "Přihlášení zrušeno", canFinish=False)
+        self._set_busy(False)
+        self._set_status("Přihlášení zrušeno · dosavadní účet zachován")
+
+    @Slot(int, str, object)
+    def _apply_login_result(self, generation, stage, result):
+        if self._closing.is_set() or generation != self._login_generation:
+            if stage == "verified":
+                result.close()
+            return
+        if stage == "browsers":
+            self._login_browsers = {x["id"]: x for x in result}
+            self._set_login_state("choose" if result else "error",
+                "Vyber prohlížeč pro samostatné přihlašovací okno." if result else
+                "Nenašla jsem podporovaný prohlížeč. Nainstaluj Firefox, Chromium, Chrome, Brave, Vivaldi nebo Edge.",
+                browsers=[{"id": x["id"], "name": x["name"]} for x in result])
+        elif stage == "error":
+            self._set_login_state("error", "Přihlášení se nepodařilo ověřit. Zavři celé přihlašovací okno a zkus se přihlásit znovu. Dosavadní účet zůstává zachován.")
+        elif stage == "verified":
+            try:
+                data = result.publish()
+            except Exception:
+                self._set_login_state("error", "Přihlášení se nepodařilo uložit. Zkontroluj místo na disku a zkus to znovu.")
+                return
+            finally:
+                result.close()
+            self._reset_account_views()
+            self._set_login_state("success", "Přihlášení ověřeno a uloženo")
+            self._apply_result("initialize", data)
+
+    def _reset_account_views(self):
+        self._playback_generation += 1
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        self._library_probe_generation += 1
+        self._library_probe_api = None
+        self._rating_generation += 1
+        self._liked_load_revision += 1
+        self._upload_load_revision += 1
+        self._playlist_load_revision += 1
+        self._liked_load_state = "complete"
+        self._liked_default_items = []
+        self._liked_stream = self._upload_stream = self._watch_stream = self._playlist_stream = None
+        self._upload_load = self._upload_view_load = self._playlist_load = None
+        self._queue = None
+        self._queue_source = ""
+        self._queue_source_indices = []
+        self._repeat_mode = "off"
+        self._playing_browse_snapshots = {}
+        self._detail_title = ""
+        self._detail_meta = {}
+        self._detail_history = []
+        self._pending_detail_parent = None
+        for name in ("_deleted_playlists", "_pending_created_playlists", "_pending_removed_playlist_items",
+                     "_pending_playlist_moves", "_upload_artist_radio_ids", "_song_library_menu"):
+            getattr(self, name).clear()
+        self._song_library_token = ""
+        for model in (self._mixes_model, self._liked_model, self._history_model, self._playlists_model,
+                      self._library_items_model, self._search_results_model, self._detail_tracks_model, self._playing_tracks_model):
+            model.clear()
+        self._set_player_from_queue()
+        self.detailTitleChanged.emit()
+        self.likedLoadChanged.emit()
+        self.uploadSongsLoadChanged.emit()
 
     @Property(QObject, constant=True)
     def mixesModel(self):
@@ -4014,12 +4222,13 @@ class BackendBridge(QObject):
             except Exception as exc:
                 self.playerChanged.emit()
                 self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
-                return
+                return False
         if self._queue.current().get("_guiRemoveAfterPlayback"):
             self._prune_removed_queue_tracks(drop_current=True)
             self._set_player_from_queue()
         self._set_status("Přehrávání zastaveno")
         self.playerChanged.emit()
+        return True
 
     @Slot()
     def togglePlayPause(self):
@@ -4231,6 +4440,9 @@ class BackendBridge(QObject):
                 self._set_connected(True)
                 self._set_status(f"Připojeno · {self._account_name}")
                 emit_initialized = True
+
+            elif name == "logout":
+                self._set_status("Odhlášeno · přihlas se přes tlačítko Účet")
 
             elif name == "playlist_delete_read":
                 self._playlist_delete_verification = None
@@ -4540,15 +4752,13 @@ class BackendBridge(QObject):
         if name == "detail":
             self._pending_detail_parent = None
         self._set_busy(False)
-        if name == "initialize":
+        if name == "logout":
+            self._set_status("Odhlášení není dokončené · zkus odhlášení znovu")
+        elif name == "initialize":
             self._ytmusic = None
             self._set_connected(False)
             self._set_status("Backend nepřipojen")
-            message = (
-                message
-                + "\n\nGUI používá existující ~/.config/felismusic session. "
-                  "Pokud session chybí nebo expirovala, obnov přihlášení v samostatném FelisMusic CLI 1.0.0."
-            )
+            message = "Připojení k YouTube Music se nepodařilo ověřit. Zkontroluj připojení k síti, případně použij tlačítko Účet → Přihlásit / obnovit přihlášení."
         else:
             self._set_status("Chyba při načítání")
         self.errorOccurred.emit(message)
@@ -4888,6 +5098,14 @@ class BackendBridge(QObject):
 
     @Slot()
     def initialize(self):
+        if self._closing.is_set() or self._busy:
+            return
+        if not core.AUTH.session_exists():
+            self._ytmusic = None
+            self._set_connected(False)
+            self._set_status("Nejsi přihlášený · použij tlačítko Účet")
+            self.openLogin()
+            return
         def task():
             # Deliberately non-interactive. Existing CLI auth is reused.
             headers = core.AUTH.ytmusic_headers()
@@ -5861,6 +6079,9 @@ class BackendBridge(QObject):
     def shutdown(self):
         if self._closing.is_set():
             return
+        self.cancelLogin()
+        if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
+            self._login_process.kill()
         self._closing.set()
         self._player_timer.stop()
         try:
