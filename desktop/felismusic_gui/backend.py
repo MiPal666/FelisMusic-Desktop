@@ -15,7 +15,9 @@ from PySide6.QtCore import (
     Signal,
     Slot,
     QTimer,
+    QUrl,
 )
+from PySide6.QtGui import QDesktopServices, QGuiApplication
 from ytmusicapi import YTMusic
 from ytmusicapi.parsers.library import get_library_contents
 from ytmusicapi.parsers.browsing import parse_content_list, parse_playlist
@@ -26,6 +28,7 @@ from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages
 from .uploads import load_upload_album
 from .album_library import load_catalog_album
 from .playlist_library import load_library_playlist
+from .public_links import public_link, valid_public_link
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -1243,6 +1246,37 @@ class BackendBridge(QObject):
     def _source_items(self, source):
         model = self._source_model(source)
         return model.snapshot() if model is not None else []
+
+    @Slot(str, int, result=str)
+    def publicLinkFrom(self, source, index):
+        items = self._source_items(source)
+        if not 0 <= index < len(items) or self._is_upload(items[index]):
+            return ""
+        return public_link(items[index])
+
+    @Property(str, notify=detailTitleChanged)
+    def detailPublicLink(self):
+        return public_link(self._detail_meta)
+
+    @Slot(str, result=bool)
+    def copyPublicLink(self, url):
+        if self._closing.is_set() or not valid_public_link(url):
+            return False
+        clipboard = QGuiApplication.clipboard()
+        if clipboard is None:
+            self._set_status("Schránka není dostupná")
+            return False
+        clipboard.setText(url)
+        self._set_status("Odkaz zkopírován")
+        return True
+
+    @Slot(str, result=bool)
+    def openPublicLink(self, url):
+        if self._closing.is_set() or not valid_public_link(url):
+            return False
+        opened = QDesktopServices.openUrl(QUrl(url))
+        self._set_status("Odkaz otevřen v prohlížeči" if opened else "Odkaz se nepodařilo otevřít v prohlížeči")
+        return opened
 
     @Slot(str, int, result="QVariantMap")
     def trackInfoFrom(self, source, index):

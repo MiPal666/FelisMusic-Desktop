@@ -1245,8 +1245,10 @@ ApplicationWindow {
             id: trackMenu
             objectName: "trackContextMenu"
             property int libraryRequest: 0
+            property string publicLink: ""
             property bool libraryMatches: libraryRequest > 0 && backend.songLibraryMenuState.requestId === libraryRequest
             onAboutToShow: {
+                publicLink = trackDelegate.multipleSelection ? "" : backend.publicLinkFrom(trackDelegate.sourceKey, trackDelegate.index)
                 if (!trackDelegate.multipleSelection && (kind === "song" || kind === "video"))
                     libraryRequest = backend.prepareSongLibrary(trackDelegate.sourceKey, trackDelegate.index)
             }
@@ -1356,6 +1358,20 @@ ApplicationWindow {
                         trackInfo.open()
                     }
                 }
+            }
+            MenuItem {
+                objectName: "itemCopyLinkAction"
+                text: "Kopírovat odkaz"
+                visible: !trackDelegate.multipleSelection && trackMenu.publicLink.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: backend.copyPublicLink(trackMenu.publicLink)
+            }
+            MenuItem {
+                objectName: "itemOpenLinkAction"
+                text: "Otevřít v prohlížeči"
+                visible: !trackDelegate.multipleSelection && trackMenu.publicLink.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: backend.openPublicLink(trackMenu.publicLink)
             }
             MenuItem {
                 objectName: "trackRatingAction"
@@ -1546,8 +1562,9 @@ ApplicationWindow {
             visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
                      || backend.detailCanAlbumLibrary
                      || backend.detailCanPlaylistLibrary
+                     || backend.detailPublicLink.length > 0
                      || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
-            enabled: !backend.busy && backend.connected
+            enabled: backend.detailPublicLink.length > 0 || (!backend.busy && backend.connected)
             hoverEnabled: true
             ToolTip.visible: hovered
             ToolTip.text: "Možnosti kolekce"
@@ -1571,12 +1588,28 @@ ApplicationWindow {
         Menu {
             id: collectionMenu
             objectName: "collectionContextMenu"
+            property string publicLink: ""
+            onAboutToShow: publicLink = backend.detailPublicLink
             popupType: Popup.Item
             width: 260
             palette.text: "#eeeeee"
             palette.windowText: "#eeeeee"
             palette.highlight: "#6757b8"
             background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+            MenuItem {
+                objectName: "collectionCopyLinkAction"
+                text: "Kopírovat odkaz"
+                visible: collectionMenu.publicLink.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: backend.copyPublicLink(collectionMenu.publicLink)
+            }
+            MenuItem {
+                objectName: "collectionOpenLinkAction"
+                text: "Otevřít v prohlížeči"
+                visible: collectionMenu.publicLink.length > 0
+                height: visible ? implicitHeight : 0
+                onTriggered: backend.openPublicLink(collectionMenu.publicLink)
+            }
             MenuItem {
                 objectName: "collectionShuffle"
                 text: "Přehrát náhodně"
@@ -1650,7 +1683,7 @@ ApplicationWindow {
                 text: "Přidat seznam do playlistu…"
                 visible: backend.detailCanSavePlaylist
                 height: visible ? implicitHeight : 0
-                enabled: backend.detailCanSavePlaylist && !backend.busy
+                enabled: backend.connected && backend.detailCanSavePlaylist && !backend.busy
                 onTriggered: backend.openCollectionPlaylistSave()
             }
             MenuItem {
