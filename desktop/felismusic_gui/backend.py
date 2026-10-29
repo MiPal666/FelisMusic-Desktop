@@ -24,6 +24,7 @@ from ytmusicapi.exceptions import YTMusicServerError
 from . import legacy_core as core
 from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages, LibraryArtistSongPages
 from .uploads import load_upload_album
+from .album_library import load_catalog_album
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -693,6 +694,89 @@ class BackendBridge(QObject):
     def detailMeta(self):
         return self._detail_meta
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanAlbumLibrary(self):
+        controls = self._detail_meta.get("albumLibrary") or {}
+        return (self._detail_meta.get("kind") == "album"
+                and str(self._detail_meta.get("browseId") or "").startswith("MPRE")
+                and isinstance(controls.get("inLibrary"), bool)
+                and bool(controls.get("playlistId")))
+
+    @Slot(result=bool)
+    def changeAlbumLibrary(self):
+        if (self._busy or self._closing.is_set() or not self._connected
+                or self._ytmusic is None or not self.detailCanAlbumLibrary):
+            return False
+        browse_id = self._detail_meta["browseId"]
+        self._album_library_target = browse_id
+        controls = dict(self._detail_meta["albumLibrary"])
+        wanted = not controls["inLibrary"]
+        api = self._ytmusic
+        def task():
+            data = load_catalog_album(api, browse_id)
+            fresh = data.get("_albumLibraryControls")
+            if not fresh or fresh["playlistId"] != controls["playlistId"]:
+                raise RuntimeError("Nelze ověřit ovládání knihovny tohoto alba. Otevři album znovu.")
+            if fresh["inLibrary"] != wanted:
+                try:
+                    response = api.rate_playlist(fresh["playlistId"],
+                        core.LikeStatus.LIKE if wanted else core.LikeStatus.INDIFFERENT)
+                    if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
+                        raise RuntimeError("YouTube Music nepotvrdilo změnu.")
+                    data = load_catalog_album(api, browse_id)
+                    fresh = data.get("_albumLibraryControls")
+                    if not fresh or fresh["playlistId"] != controls["playlistId"] or fresh["inLibrary"] != wanted:
+                        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav.")
+                except Exception as exc:
+                    raise RuntimeError("Změnu knihovny se nepodařilo ověřit. Otevři album znovu a zkontroluj stav. " + str(exc)) from exc
+            warning = ""
+            try:
+                albums = [self._album_item(item) for item in api.get_library_albums(
+                    limit=core.LIBRARY_LIMIT, order="recently_added") or []]
+            except Exception:
+                albums = None
+                warning = " · Přehled Alb se nepodařilo obnovit, otevři sekci Alba znovu."
+            return {"browseId": browse_id, "controls": fresh, "albums": albums, "warning": warning}
+        self._submit("album_library_action", "Ukládám album v knihovně…", task)
+        return True
+
+    def _update_album_library_views(self, browse_id, controls, albums=None):
+        def update_cards(items, order):
+            return self._sort_normalized([dict(item) for item in albums], order)
+
+        if albums is not None and self._library_section == "albums":
+            self._library_items_model.set_items(update_cards(self._library_items_model.snapshot(), self._library_order))
+        origins = [song.get("_guiOrigin", {}) for song in self._queue.tracks] if self._queue else []
+        snapshots = [(self._playing_browse_snapshots, self._current_origin())] + [
+            (origin.get("snapshots", {}), origin) for origin in origins]
+        seen_lists = set()
+        for snapshot, origin in snapshots:
+            items = snapshot.get("library")
+            is_albums = origin.get("library_snapshot_section") == "albums"
+            if (albums is not None and isinstance(items, list) and id(items) not in seen_lists
+                    and (is_albums or (items and all(item.get("kind") == "album" for item in items)))):
+                seen_lists.add(id(items))
+                items[:] = update_cards(items, origin.get("context", {}).get("libraryOrder", self._library_order))
+        seen = set()
+        def update_meta(value):
+            if not isinstance(value, (dict, list)) or id(value) in seen:
+                return
+            seen.add(id(value))
+            if isinstance(value, dict):
+                if value.get("kind") == "album" and value.get("browseId") == browse_id:
+                    value["albumLibrary"] = dict(controls) if controls else None
+                for child in value.values():
+                    update_meta(child)
+            else:
+                for child in value:
+                    update_meta(child)
+        update_meta(self._detail_meta)
+        update_meta(self._detail_history)
+        update_meta(self._pending_detail_parent)
+        for origin in origins:
+            update_meta(origin.get("detail_state"))
+        self.detailTitleChanged.emit()
+
     @classmethod
     def _collection_header(cls, data, album=False):
         author = data.get("author") or ""
@@ -1126,6 +1210,7 @@ class BackendBridge(QObject):
         return {
             "source": source, "index": index, "snapshots": snapshots,
             "detail_title": self._detail_title if source == "detail" else "",
+            "library_snapshot_section": self._library_section,
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._liked_order, "context": dict(context or {}),
             "library_section": self._library_section if source == "library" else "",
@@ -1945,6 +2030,7 @@ class BackendBridge(QObject):
         self._playing_liked_order = self._liked_order
         origin = {
             "source": self._queue_source, "snapshots": self._playing_browse_snapshots,
+            "library_snapshot_section": self._library_section,
             "detail_title": self._playing_detail_title,
             "detail_state": self._detail_state() if source == "detail" else {},
             "liked_order": self._playing_liked_order, "context": {},
@@ -4086,6 +4172,10 @@ class BackendBridge(QObject):
                         self._detail_tracks_model.set_items([self._track(x) for x in core.usable_tracks(result["detail"].get("tracks", []))])
                         self.detailTitleChanged.emit()
 
+            elif name == "album_library_action":
+                self._update_album_library_views(result["browseId"], result["controls"], result["albums"])
+                self._set_status(("Album přidáno do knihovny" if result["controls"]["inLibrary"] else "Album odebráno z knihovny") + result["warning"])
+
             elif name == "song_library_action":
                 self._song_library_action_pending = False
                 state = result["inLibrary"]
@@ -4218,6 +4308,8 @@ class BackendBridge(QObject):
 
     @Slot(str, str)
     def _apply_error(self, name: str, message: str):
+        if name == "album_library_action":
+            self._update_album_library_views(self._album_library_target, None)
         if name.startswith("playlist_save_"):
             message = ("Playlisty se nepodařilo načíst. Zkus to prosím znovu."
                        if name == "playlist_save_choices" else
@@ -5035,11 +5127,12 @@ class BackendBridge(QObject):
             if kind == "album":
                 if not browse_id:
                     raise RuntimeError("Album nemá browseId.")
-                data = ytmusic.get_album(browse_id)
+                data = load_catalog_album(ytmusic, browse_id)
                 album_artist_links = self._track(data)["artistLinks"]
                 detail_title = data.get("title") or title
                 tracks = core.usable_tracks(data.get("tracks") or [])
                 meta = {"kind": "album", "browseId": browse_id,
+                        "albumLibrary": data.get("_albumLibraryControls"),
                         "header": self._collection_header(data, album=True),
                         "shufflePlaylistId": data.get("audioPlaylistId") or ""}
 

@@ -1540,6 +1540,7 @@ ApplicationWindow {
             Layout.preferredWidth: 36
             Layout.preferredHeight: 36
             visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
+                     || backend.detailCanAlbumLibrary
                      || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
@@ -1611,6 +1612,15 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.detailCanUploadArtistMix && backend.connected && !backend.busy && backend.playerCanEditQueue
                 onTriggered: backend.startUploadArtistMix()
+            }
+            MenuItem {
+                objectName: "albumLibraryAction"
+                text: backend.detailMeta.albumLibrary && backend.detailMeta.albumLibrary.inLibrary
+                      ? "Odebrat album z knihovny" : "Přidat album do knihovny"
+                visible: backend.detailCanAlbumLibrary
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.changeAlbumLibrary()
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"
