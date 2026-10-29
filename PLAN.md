@@ -1,6 +1,31 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
-**0.3.58-dev / Poznámky 4:** Knihovna → Interpreti → interpret s přesným knihovním ID MPLAUC nabízí rozbalovací **Skladby / Všechny skladby**. Výchozí Skladby čtou jeho vlastní knihovní shelf včetně pokračování; Všechny skladby zachovávají dosavadní celý katalog. Bez hledání podle jména, odvozování členství nebo odstraňování duplicit. Přepínání a řazení jsou lokální, Zpět/cover zachovávají zdrojový stav a audio/frontu nemění. Alba, Singly/EP i rozsah dosavadních akcí Náhodně/Mix zůstávají stejné; běžný katalogový interpret bez knihovního ID má původní zobrazení. 482 offline testů a tři QML scénáře prošly (obě velikosti a regrese online navigace). Michal skutečným testem potvrdil i bod 4 jako plně funkční. Všechny čtyři nadiktované poznámky jsou hotové a přijaté; body 1–2 uložené v c0c5ccf, body 3–4 připravené ke společnému commitu.
+**0.3.60-dev / Plán 1b – celý online playlist do fronty:** v ⋮ dokončeného běžného playlistu Přehrát jako další / Přidat na konec fronty. Vkládá všechny načtené přehratelné výskyty v původním pořadí včetně duplicit, bez nového API požadavku, zápisu do playlistu či přerušení audia. Akce čekají na dokončení všech bloků; při chybě zůstanou neaktivní. Průběžné Mixy tyto akce nenabízejí. Prázdná fronta se připraví bez spuštění; cover vrací zdroj a přesný výskyt. Album 0.3.59-dev Michalem přijato. 493 offline testů a dva QML scénáře prošly. Playlist Michalem skutečně otestován a přijat 2026-10-29; album i playlist připravené ke společnému commitu, poslední commit 443cfa1.
+
+**0.3.59-dev / Plán 1a – online album do fronty:** v ⋮ otevřeného alba „Přehrát jako další“ vloží celé album hned za aktuální skladbu, „Přidat na konec fronty“ za dosavadní konec. Pořadí a duplicitní výskyty alba zachované; bez dalšího požadavku YTM, nového startu audia či změny pozice/Repeat/Mix. Prázdná fronta se připraví bez automatického spuštění. Vložené skladby mají zdrojový kontext pro cover/navigaci. 488 offline testů a tři QML scénáře prošly; Michal skutečným testem přijal. Playlist navazuje v 0.3.60-dev. Poslední commit 443cfa1.
+
+
+## Aktuální pořadí dalších prací – domluva 2026-10-28
+
+Tento přehled nahrazuje starší pořadí níže. Dokončené čtyři Michalovy poznámky už nejsou otevřené úkoly; body 3–4 uložené v **443cfa1**. Cast má přednost před MPRIS. MPRIS bude poslední funkční krok před závěrečnou kontrolou a vydáním, včetně ovládání již zapojeného Castu.
+
+| Pořadí | Co přibude v aplikaci | Samostatně testovatelné podkroky |
+|---|---|---|
+| 1. Celé album/playlist do fronty | Při poslechu přidat celé další album nebo playlist, aniž se přeruší současná skladba. | 1a album: jako další / na konec; 1b playlist se stejnými akcemi a zachováním duplicit. Menu ⋮, bez nových tlačítek. Online Knihovna → Skladby zůstává bez těchto celoseznamových akcí. |
+| 2. Upravit samotnou Frontu | Vyřadit skladbu z dnešního poslechu nebo ji posunout dřív, aniž se změní uložený playlist. | 2a odebrat konkrétní výskyt, zvlášť dohodnout právě hrající; 2b přesunout výskyt a ověřit nové pořadí, Shuffle/Mix a přednačítání. Přetahování není podmínkou. |
+| 3. Info a hodnocení jiné skladby | Přes ⋮ zjistit údaje nebo dát líbí/nelíbí i skladbě, která právě nehraje. | 3a Info vybrané skladby; 3b dostupné hodnocení s ověřením výsledku. |
+| 4. Údaje u alba/playlistu/interpreta | Doplnit do kompaktní hlavičky to, co YTM skutečně vrací, například autora, rok nebo délku. | 4a prověřit současné údaje a navrhnout jen chybějící; 4b doplnit a zkontrolovat malé okno. Žádné odhadované údaje. |
+| 5. Knihovna, odběry a odkazy | Uložit/odebrat album či playlist, sledovat interpreta, zkopírovat nebo otevřít veřejný odkaz. | 5a alba v knihovně; 5b playlisty v knihovně (jiná věc než smazat vlastní playlist); 5c odběr interpreta; 5d odkazy. Každá část zvlášť. |
+| 6. Pokračovat po restartu | Po novém spuštění nabídnout návrat ke skladbě, její pozici a frontě. | 6a uložení/obnova běžné fronty a odmítnutí nabídky; 6b Shuffle, Repeat, Mix a zdrojový kontext. Bez automatického přehrání či připojení Castu. |
+| 7. Přihlášení z aplikace | Přihlásit účet nebo obnovit neplatné přihlášení bez práce v terminálu. | 7a první přihlášení existujícím mechanismem CLI; 7b obnovení, zrušení a chyby. |
+| 8. Cast – přednost před MPRIS | Vybrat Kočičku/jiné zařízení/skupinu a přenášet na ně poslech. | 8a najít a zobrazit zařízení na pokyn; 8b notebook → Cast; 8c Cast → notebook; 8d Cast1 → Cast2/skupina; 8e výpadky, odpojení a celý přehrávací provoz. Každý přechod zvlášť, využít funkční CLI. |
+| 9. MPRIS – poslední nová funkce | Ovládat FelisMusic z přehrávacího panelu KDE, multimediálních kláves a sluchátek. | 9a lokální přehrávání; 9b stejná integrace pro vybraný Cast výstup; 9c skutečný test kláves a sluchátek. |
+| 10. Dokončení desktopové 1.0 | Doladit celek a připravit instalovatelnou aplikaci se spouštěčem. | 10a společná kontrola funkcí; 10b vzhled/menu/texty; 10c ikona, instalace a spouštěč; 10d dokumentace a kandidát vydání. Publikace pouze na samostatný pokyn. |
+
+Před každým podkrokem Klára stručně popíše konkrétní chování. Potom: zavřená aplikace a Michalovo „můžeš“ → úprava → kontroly Kláry → skutečný test Michala → případné opravy → přijetí a commit → další podkrok. Tento zápis autorizuje plánování, nikoli automatické zahájení programování.
+
+
+**0.3.58-dev / Poznámky 4:** Knihovna → Interpreti → interpret s přesným knihovním ID MPLAUC nabízí rozbalovací **Skladby / Všechny skladby**. Výchozí Skladby čtou jeho vlastní knihovní shelf včetně pokračování; Všechny skladby zachovávají dosavadní celý katalog. Bez hledání podle jména, odvozování členství nebo odstraňování duplicit. Přepínání a řazení jsou lokální, Zpět/cover zachovávají zdrojový stav a audio/frontu nemění. Alba, Singly/EP i rozsah dosavadních akcí Náhodně/Mix zůstávají stejné; běžný katalogový interpret bez knihovního ID má původní zobrazení. 482 offline testů a tři QML scénáře prošly (obě velikosti a regrese online navigace). Michal skutečným testem potvrdil i bod 4 jako plně funkční. Všechny čtyři nadiktované poznámky jsou hotové a přijaté; body 1–2 uložené v c0c5ccf, body 3–4 uložené v 443cfa1.
 
 
 **0.3.57-dev / Poznámky 3:** online navigace přes skutečná album/artist ID, stejná pravidla nabídek jako Nahrané, volba více interpretů. Společná historie vrací seznam/řazení, hledání/Oblíbené/historii nebo Frontu, přepíná cílové sekce a zachovává audio. Také karta alba v diskografii přepíná menu a vrací se na původní záložku. 475 offline testů, 12 online QML scénářů a dvě upload regrese prošly; Michal skutečným testem potvrdil funkčnost a povolil bod 4. Poslední commit c0c5ccf (přijaté body 1–2).
@@ -122,10 +147,10 @@ Rozpracováno **0.3.26-dev / B3**: **⋮ v hlavičce alba/playlistu → Spustit 
 | **1. Repeat / Shuffle** | Repeat včetně resetu pro novou frontu (0.3.21) a A1 náhodné spuštění playlistu/alba přijaté. | A2 zamíchání běžící fronty přijaté v 0.3.23. Bod 1 hotový; Shuffle interpreta patří do B2. |
 | **2. Fronta + Info + Stop** | **Hotovo** v původním rozsahu. | Samostatné zásahy do fronty patří do 3c. |
 | **3. Kontextová menu** | Menu skladeb, vložení jedné či vybraných skladeb jako další/na konec, multivýběr hotové. | **3a:** Info/hodnocení konkrétní vybrané skladby v menu. **3b:** přímé přehrávací a vkládací akce celých kolekcí. **3c:** odebrání/přesun přímo ve Frontě. |
-| **4. Detaily a navigace** | **4a hotovo:** interpret – dostupné úplné skladby/alba/singly/EP, řazení, otevření alba a návrat. Kompaktní hlavičky hotové. | **4b:** dostupná metadata hlaviček. **4c:** přímé přechody skladba → album/interpret a album → interpret. |
+| **4. Detaily a navigace** | **4a hotovo:** interpret – dostupné úplné skladby/alba/singly/EP, řazení, otevření alba a návrat. Kompaktní hlavičky hotové. | **4b:** dostupná metadata hlaviček. **4c hotovo:** online i upload přechody a návraty, přijato v 443cfa1 (online). |
 | **5. Rádio / Mix** | **5a hotovo:** mix z jedné skladby, první blok doporučení. Mixy pro vás lze načíst a otevřít. | **5b / B1 hotovo:** uživatelsky přijato v 0.3.24-dev. **5c / B2:** Mix/Náhodně interpreta přijaté v 0.3.25. **B3:** Mix alba/playlistu přes ⋮ skutečně ověřený 2026-10-27; doplnění Oblíbené hudby v 0.3.29 čeká na test. |
 | **6. Knihovna a odběry** | Přímé přidání/odebrání podporované skladby v knihovně hotové. | **6a zbytek:** alba/playlisty. **6b:** odběry interpretů. **6c:** kopírování/otevírání odkazů. |
-| **7. Správa playlistů** | **7a–7d hotové, uživatelsky přijaté a commitnuté.** | Další náměty: hromadné odebrání a přetahování; nezpochybňují dokončení domluveného rozsahu 7a–7d. |
+| **7. Správa playlistů** | **7a–7d hotové, uživatelsky přijaté a commitnuté.** | Hromadné odebrání hotové v c0c5ccf; další námět přetahování; nezpochybňují dokončení domluveného rozsahu 7a–7d. |
 | **8. Session a přihlášení** | GUI používá existující FCM přihlášení. | **8a:** uložit/obnovit přehrávání. **8b:** přihlásit/obnovit přihlášení z GUI. |
 | **9. MPRIS** | Nezapojeno. | Systémové ovládání KDE, multimediální klávesy a Bluetooth sluchátka. |
 | **10. Cast** | GUI má lokální výstup. Ověřený Cast existuje v CLI. | Discovery, výběr výstupu, Local ↔ Cast ↔ Cast, odpojení/ztráta zařízení a integrace ostatních funkcí. |
@@ -170,24 +195,24 @@ Uživatel zdůraznil časté používání Mix/Rádia. Proto se po bodu 7 nepost
 
 Autentizační session a obnovení přehrávání jsou dvě různé věci. Přihlášené GUI dnes neznamená uloženou frontu po restartu.
 
-### E. MPRIS (9)
-
-1. Lokální Play/Pause/PlayPause/Stop/Next/Previous, metadata, cover, délka, pozice a dostupné seek/volume/repeat/shuffle podle podporovaného rozhraní.
-2. Ověřit KDE, fyzické multimediální klávesy a skutečná Bluetooth sluchátka. Systém i GUI ovládají jeden stav přehrávání.
-3. Po zapojení Castu zopakovat integraci pro aktuální výstup.
-
-MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
-
-### F. Cast (10)
+### E. Cast (10)
 
 1. **10a – Ruční discovery a výběr.** Místní výstup, Chromecast Audio a Cast Groups, aktuální dostupnost. Startup zůstává lokální.
 2. **10b.1 – Local → Cast.** Převzít `switch_playback_output`, ověřit stejnou skladbu, pozici, pause/play, hlasitost a že starý výstup současně nehraje.
 3. **10b.2 – Cast → Local.** Samostatný skutečný test včetně přípravy lokálního audia.
 4. **10b.3 – Cast1 → Cast2 / skupina.** Samostatný skutečný test se zařízeními uživatele.
 5. **10c – Odpojení a výpadky.** Stav zařízení, dlouhá pauza, obnova spojení, aktualizace discovery, nefunkční/zmizelý výstup a ukončení aplikace.
-6. **10d – Celek.** Fronta, repeat/shuffle, průběžné rádio, MPRIS a systémové ovládání míří na zvolený výstup. Cast používá svůj streamovací postup CLI; lokální cache/prefetch nezapojovat mechanicky stejným způsobem.
+6. **10d – Celek.** Fronta, repeat/shuffle a průběžné rádio míří na zvolený výstup. MPRIS se doplní až v následujícím posledním funkčním kroku. Cast používá svůj streamovací postup CLI; lokální cache/prefetch nezapojovat mechanicky stejným způsobem.
 
 Cast už v CLI funguje. Chybí propojení s GUI a ověření jeho nových funkcí, nikoli vymyšlení přepínání výstupů od začátku.
+
+### F. MPRIS (9)
+
+1. Lokální Play/Pause/PlayPause/Stop/Next/Previous, metadata, cover, délka, pozice a dostupné seek/volume/repeat/shuffle podle podporovaného rozhraní.
+2. Ověřit KDE, fyzické multimediální klávesy a skutečná Bluetooth sluchátka. Systém i GUI ovládají jeden stav přehrávání.
+3. Cast je již zapojený; ověřit stejné systémové ovládání pro aktuální lokální i Cast výstup.
+
+MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
 ### G. Desktop 1.0 (11)
 
@@ -201,7 +226,7 @@ Cast už v CLI funguje. Chybí propojení s GUI a ověření jeho nových funkc�
 
 Multivýběr, dvojklik/Enter, dávkové vkládání/ukládání, lišta od dvou vybraných a odznačení po úspěchu jsou rovněž hotové (`142bb2d`).
 
-Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Hromadné odebrání Michal dne 2026-10-28 výslovně požaduje doplnit k multivýběru; zatím zapsáno jako samostatný budoucí podkrok. Přetahování myší zůstává námětem.
+Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Hromadné odebrání bylo mezitím implementované, skutečně přijaté a uložené v c0c5ccf. Přetahování myší zůstává námětem.
 
 ## Mimo desktopovou 1.0
 

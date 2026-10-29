@@ -1,8 +1,34 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.60-dev – celý online playlist do fronty, Michalem přijato
+
+- Michal potvrdil funkčnost alba 0.3.59-dev i navazujícího playlistu 0.3.60-dev (2026-10-29). Plán 1 je přijatý, oba podkroky připravené ke společnému commitu; poslední commit 443cfa1.
+- Menu ⋮ konečného online playlistu má Přehrát jako další / Přidat na konec fronty. Nový enqueuePlaylistCollection sdílí stávající _enqueue_items, validuje kind, úplnost, busy/closing a přechod přehrávání. Původní pořadí i duplicitní výskyty, žádné nové načítání nebo zápisy do YTM. Průběžný dynamicMix je výslovně vyloučený; jeho preview není celý playlist.
+- Akce se zpřístupní až po dokončení všech bloků; při chybě načítání se neprovede vložení prefixu. Audio/pozice/pauza/Stop/Repeat/radio beze změny; prázdná fronta pouze připravena. Zdrojové snapshoty a indexy zachovají návrat coverem na konkrétní výskyt.
+- **493 offline testů prošlo**, `git diff --check` bez chyb. Nové offline integrace pro next/append za nenulovou pozici, duplicity, návrat coverem bez reloadu, prázdnou frontu, pauzu/Stop, opakované vložení, guardy a skutečný dvoublokový mock pager. Dva QML scénáře 900×600/1280×800 ověřily skutečné nabídky/aktivaci obou akcí, pořadí fronty, nepřerušené audio, neúplný detail a skrytí u Mixu, bez QML varování. API/audio mockované.
+- Skutečný test: rozehrát skladbu, otevřít jiný playlist, vložit jako další a ověřit souvislý blok ve Frontě; pak vložit na konec. Zkusit duplicity a cover z vložené skladby. U dlouhého playlistu akce počkají na dokončení načítání. Michal potvrdil funkčnost. Následuje společný commit alba a playlistu, potom plán 2 – úpravy přímo ve Frontě.
+
+
+## 0.3.59-dev – celé online album do fronty, Michalem přijato
+
+- Michal při zavřené aplikaci povolil plán 1, první podkrok 1a pouze online album. Menu ⋮ otevřeného alba obsahuje Přehrát jako další / Přidat na konec fronty. Nový slot enqueueAlbumCollection validuje typ a úplnost detailu, busy/closing a transport přes společný _enqueue_items. Žádné nové API volání, práce pouze s načtenými přehratelnými řádky, zachováno pořadí a duplicity.
+- Použita již ověřená cesta pro vkládání: nezměněná aktuální skladba/pozice/audio, pauza/Stop, Repeat a radio_active; správné přesměrování prefetch při změně nástupce, původ jednotlivých výskytů a návrat coverem na album. Prázdná fronta pouze připravená bez přehrání. Akce nespouštějí album ihned a nemění jeho uložený obsah.
+- **488 offline testů prošlo**, šest nových integrací: next/append za nenulovou aktuální pozici, duplicitní pořadí, audio/repeat/radio, odkazy a cover druhého shodného výskytu, prázdná fronta/pozdější Play, pauza/Stop, guardy neúplného/prázdného/jiného zdroje/busy/přechodu a nedostupné skladby. API/audio mockované.
+- **Tři QML scénáře bez varování:** skutečné nabídky obou akcí při 900×600 a 1280×800, nepřístupnost neúplného alba a skrytí u playlistu; regrese existujících upload album akcí při 900×600. git diff --check prošel. Žádné zásahy do účtu.
+- Skutečný test: rozehrát něco, otevřít jiné online album, přidat jako další a ověřit souvislý blok za současnou skladbou. Pak jiné album na konec, ověřit Frontu, nepřerušené audio a návrat coverem po spuštění vložené skladby. Případně prázdná/zastavená fronta: vložení samo nespouští audio.
+- Po přijetí commit 1a; playlist 1b až jako další samostatný podkrok. Součástí pracovního stromu je i předchozí aktualizace plánu s prioritou Cast před MPRIS.
+
+
+## Další práce – plán aktualizován 2026-10-28
+
+- Michal potvrdil commit 443cfa1. Čtyři nadiktované poznámky uzavřené.
+- Na jeho žádost nový srozumitelný plán s konkrétními přínosy a malými testovatelnými podkroky na začátku PLAN.md. Cast před MPRIS; MPRIS poslední nová funkce před kontrolou/vydáním.
+- Nejbližší navržený podkrok: celé online album přes ⋮ jako další / na konec fronty, pak samostatně playlist. Programování zatím nezahájeno, aplikaci nebylo třeba zavírat.
+
+
 ## 0.3.58-dev – knihovní / všechny skladby interpreta, Michalem přijato
 
-- Michal skutečně potvrdil body 3 i 4 jako funkční. Všechny čtyři nadiktované poznámky jsou tím hotové a přijaté. Body 1–2 uložené v c0c5ccf; body 3–4 připravené ke společnému commitu.
+- Michal skutečně potvrdil body 3 i 4 jako funkční. Všechny čtyři nadiktované poznámky jsou tím hotové a přijaté. Body 1–2 uložené v c0c5ccf; body 3–4 uložené v 443cfa1.
 - U skutečného knihovního ID MPLAUC oddělené songScopes: library z přesného browse endpointu, all z dosavadního katalogového get_artist + plného songs pointeru. Výchozí library; nic se neodvozuje podle názvu, Like nebo členství v playlistech. LibraryArtistSongPages používá instalovaný parser, respektuje přesná pokračování i prázdnou mezistránku, chrání opakovaný cursor a chybnou odpověď. Duplicity zachovány; pouze core.usable_tracks odfiltruje nepřehratelné pomocné řádky.
 - QML místo tlačítka Skladby u knihovního interpreta ukazuje rozbalovací Skladby / Všechny skladby. Přepnutí vrátí i z Alb/Singlů na skladby, používá dosavadní řazení a nevyvolává síťový požadavek. Oba seznamy načtené při otevření detailu; nejde o novou trvalou cache ani nové progresivní načítání katalogu interpreta.
 - Navigační a přehrávací snapshoty uchovají scope i oba seznamy. Řazení/přepnutí nemění audio/frontu. Dosavadní Náhodně stále používá celý katalog, i když je zobrazen knihovní výběr (pak nevydává katalogové indexy za knihovní); Mix zůstává serverový. Alba, Singly/EP a běžný katalogový interpret bez MPLAUC beze změny.
@@ -11,7 +37,7 @@
 - Skutečný test přijat Michalem: Knihovna → Interpreti → Olympic (dříve karta 2 songs): výchozí Skladby mají odpovídající knihovní obsah; Všechny skladby celý katalog. Kontrolní rozsah: řazení, Alba/Singly→návrat přes nabídku Skladby, skladba→album→Zpět, běžící audio/fronta a cover.
 
 
-Aktualizováno: 2026-10-28 (Europe/Prague).
+Aktualizováno: 2026-10-29 (Europe/Prague).
 
 ## 0.3.57-dev – online skladba → album/interpret → zpět, Michalem přijato
 

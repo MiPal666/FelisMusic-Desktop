@@ -3434,6 +3434,20 @@ class BackendBridge(QObject):
     def enqueueFrom(self, source, index, play_next, context):
         return self._enqueue_items(source, [index], play_next, context)
 
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanEnqueueAlbum(self):
+        return (self._detail_meta.get("kind") == "album" and self.detailComplete
+                and any(self._playlist_song_supported(item)
+                        for item in self._source_items("detail")))
+
+    @Slot(bool, "QVariantMap", result=bool)
+    def enqueueAlbumCollection(self, play_next, context):
+        if self._busy or self._closing.is_set() or not self.detailCanEnqueueAlbum:
+            return False
+        indices = [i for i, item in enumerate(self._source_items("detail"))
+                   if self._playlist_song_supported(item)]
+        return self._enqueue_items("detail", indices, play_next, context)
+
     @Slot(str, bool, "QVariantMap", result=bool)
     def enqueueUploadCollection(self, source, play_next, context):
         if self._busy or self._closing.is_set() or not self._upload_collection_items(source):
@@ -3441,6 +3455,21 @@ class BackendBridge(QObject):
         indices = [i for i, item in enumerate(self._source_items(source))
                    if self._playlist_song_supported(item)]
         return self._enqueue_items(source, indices, play_next, context)
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanEnqueuePlaylist(self):
+        return (self._detail_meta.get("kind") == "playlist" and self.detailComplete
+                and not self._detail_meta.get("dynamicMix")
+                and any(self._playlist_song_supported(item)
+                        for item in self._source_items("detail")))
+
+    @Slot(bool, "QVariantMap", result=bool)
+    def enqueuePlaylistCollection(self, play_next, context):
+        if self._busy or self._closing.is_set() or not self.detailCanEnqueuePlaylist:
+            return False
+        indices = [i for i, item in enumerate(self._source_items("detail"))
+                   if self._playlist_song_supported(item)]
+        return self._enqueue_items("detail", indices, play_next, context)
 
     def _enqueue_items(self, source, indices, play_next, context):
         if not self._source_complete(source):

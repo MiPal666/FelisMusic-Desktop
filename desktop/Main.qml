@@ -1511,6 +1511,38 @@ ApplicationWindow {
                 onTriggered: backend.openCollectionPlaylistSave()
             }
             MenuItem {
+                objectName: "albumCollectionNext"
+                text: "Přehrát jako další"
+                visible: backend.detailMeta.kind === "album"
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanEnqueueAlbum
+                onTriggered: backend.enqueueAlbumCollection(true, root.navigationContext())
+            }
+            MenuItem {
+                objectName: "albumCollectionAppend"
+                text: "Přidat na konec fronty"
+                visible: backend.detailMeta.kind === "album"
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanEnqueueAlbum
+                onTriggered: backend.enqueueAlbumCollection(false, root.navigationContext())
+            }
+            MenuItem {
+                objectName: "playlistCollectionNext"
+                text: "Přehrát jako další"
+                visible: backend.detailMeta.kind === "playlist" && !backend.detailMeta.dynamicMix
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanEnqueuePlaylist
+                onTriggered: backend.enqueuePlaylistCollection(true, root.navigationContext())
+            }
+            MenuItem {
+                objectName: "playlistCollectionAppend"
+                text: "Přidat na konec fronty"
+                visible: backend.detailMeta.kind === "playlist" && !backend.detailMeta.dynamicMix
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy && backend.playerCanEditQueue && backend.detailCanEnqueuePlaylist
+                onTriggered: backend.enqueuePlaylistCollection(false, root.navigationContext())
+            }
+            MenuItem {
                 objectName: "uploadCollectionNext"
                 text: "Přehrát jako další"
                 visible: backend.detailMeta.kind === "upload_album" || backend.detailMeta.kind === "upload_artist"

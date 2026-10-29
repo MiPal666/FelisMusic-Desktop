@@ -78,6 +78,22 @@ class PlaylistPagingTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.playerPosition, 42); self.assertEqual(self.b.playerRepeatMode, 'all')
         self.assertFalse(self.b.playerQueueLoading); self.assertFalse(self.b.playerQueueIncomplete)
 
+    def test_whole_playlist_enqueue_waits_for_all_pages(self):
+        self.start('current', 'last')
+        self.load()
+        self.assertFalse(self.b.detailCanEnqueuePlaylist)
+        self.assertFalse(self.b.enqueuePlaylistCollection(True, {}))
+        self.assertEqual(self.ids(), ['current', 'last'])
+        self.finish()
+        calls, played = list(self.calls), list(self.played)
+        self.assertTrue(self.b.detailCanEnqueuePlaylist)
+        self.assertTrue(self.b.enqueuePlaylistCollection(True, {}))
+        self.assertEqual(self.ids(), ['current', 'A', 'B', 'B', 'C', 'last'])
+        self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks[1:5]],
+                         ['set-0', 'set-1', 'set-2', 'set-3'])
+        self.assertEqual(self.calls, calls)
+        self.assertEqual(self.played, played)
+
     def test_eos_waits_and_continues_when_more_arrives(self):
         self.load(); self.play(1); self.eos()
         self.assertTrue(self.b.playerWaitingForTracks)
