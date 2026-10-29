@@ -342,9 +342,9 @@ ApplicationWindow {
                         Button {
                             objectName: "castSelectButton"
                             text: "Přepnout"
-                            visible: modelData.kind !== "local" && modelData.id !== backend.castState.currentId
-                            enabled: backend.castState.canSelect
-                            onClicked: backend.selectCastOutput(modelData.id)
+                            visible: modelData.id !== backend.castState.currentId
+                            enabled: modelData.kind === "local" ? backend.castState.canReturn : backend.castState.canSelect
+                            onClicked: modelData.kind === "local" ? backend.selectLocalOutput() : backend.selectCastOutput(modelData.id)
                         }
                     }
                 }

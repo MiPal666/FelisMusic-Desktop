@@ -32,7 +32,7 @@ from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
 from .cast_discovery import CastDiscovery
-from .cast_output import handoff, dispose
+from .cast_output import handoff, handoff_to_local, dispose
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -314,6 +314,7 @@ class BackendBridge(QObject):
         self._local_output = core.create_local_output()
         self._cast_output = None
         self._output_switching = False
+        self._output_result_pending = False
         self._queue = None
         # Source model and original row indexes used to build the current
         # playback queue.  The queue itself contains only playable rows, so we
@@ -443,7 +444,10 @@ class BackendBridge(QObject):
                 "switching": self._output_switching,
                 "currentId": str(self._cast_output.cast_info.uuid) if self._cast_output else "local",
                 "canSelect": self._cast_output is None and not self._output_switching and not self._busy
-                             and not self._playback_transitioning,
+                             and not self._playback_transitioning and not self._output_result_pending,
+                "canReturn": self._cast_output is not None and self._local_output is not None
+                             and not self._output_switching and not self._busy and not self._playback_transitioning
+                             and not self._output_result_pending,
                 "devices": [{"id": "local", "name": "Toto zařízení", "kind": "local"}]
                            + [dict(row) for row in self._cast_devices]}
 
@@ -460,26 +464,47 @@ class BackendBridge(QObject):
 
     @Slot(str, result=bool)
     def selectCastOutput(self, device_id):
-        if (self._closing.is_set() or self._busy or self._playback_transitioning or self._cast_output is not None
-                or self._cast_discovery is None or not any(row["id"] == device_id for row in self._cast_devices)):
+        if device_id == "local":
+            return False
+        return self._select_output(device_id)
+
+    @Slot(result=bool)
+    def selectLocalOutput(self):
+        return self._select_output("local")
+
+    def _select_output(self, device_id):
+        returning = device_id == "local"
+        if self._closing.is_set() or self._busy or self._playback_transitioning or self._output_result_pending:
+            return False
+        if returning:
+            if self._cast_output is None:
+                return False
+            if self._local_output is None:
+                self.errorOccurred.emit("Místní GStreamer není dostupný. Návrat na toto zařízení není možný.")
+                return False
+        elif (self._cast_output is not None or self._cast_discovery is None
+              or not any(row["id"] == device_id for row in self._cast_devices)):
             return False
         self._output_switching = self._playback_transitioning = True
+        self._output_result_pending = True
         self._playback_generation += 1
         self._prefetch_revision += 1
         if self._prefetch_future is not None:
             self._prefetch_future.cancel()
         generation = self._playback_generation
         scanner = self._cast_discovery
+        source = self._cast_output
         song = self._queue.current() if self.playerHasTrack else None
         active = song is not None and self._player_state in ("playing", "paused")
         self._set_busy(True)
-        self._set_status("Přepínám poslech na Cast…")
+        self._set_status("Přepínám poslech na toto zařízení…" if returning else "Přepínám poslech na Cast…")
         self.castDevicesChanged.emit()
         self.playerChanged.emit()
         def cancelled():
             return self._closing.is_set() or generation != self._playback_generation
         def work():
-            result = handoff(scanner, device_id, self._local_output, song, active, cancelled)
+            result = (handoff_to_local(source, self._local_output, song, active, cancelled) if returning else
+                      handoff(scanner, device_id, self._local_output, song, active, cancelled))
             if self._closing.is_set():
                 dispose(result)
                 return
@@ -496,12 +521,24 @@ class BackendBridge(QObject):
         if self._closing.is_set() or generation != self._playback_generation:
             if target:
                 # A completed handoff may have queued its result just before Stop.
-                Thread(target=dispose, args=(result,), name="felismusic-cast-cancel", daemon=True).start()
+                if result.get("local"):
+                    # Local is shared. Clean it before another handoff can start.
+                    with self._transport_lock:
+                        dispose(result)
+                else:
+                    Thread(target=dispose, args=(result,), name="felismusic-cast-cancel", daemon=True).start()
+            self._output_result_pending = False
+            self.castDevicesChanged.emit()
             return
+        self._output_result_pending = False
         self._output_switching = self._playback_transitioning = False
         self._set_busy(False)
         if target:
-            self._cast_output = target
+            previous = self._cast_output
+            self._cast_output = None if result.get("local") else target
+            if result.get("local") and previous is not None:
+                Thread(target=core._disconnect_cast_safely, args=(previous,),
+                       name="felismusic-cast-disconnect", daemon=True).start()
             self._player_position = result["position"]
             self._set_player_state(("paused" if result["paused"] else "playing") if result["active"] else "idle")
             try:
@@ -511,6 +548,8 @@ class BackendBridge(QObject):
                 pass
             self._set_status(f"Výstup: {self.outputName}")
             self.outputChanged.emit()
+            if result.get("local") and result["active"]:
+                self._prefetch_next_track()
         else:
             if result.get("sourceStopped"):
                 self._set_player_state(("paused" if result["paused"] else "playing") if result["recovered"] else "idle")

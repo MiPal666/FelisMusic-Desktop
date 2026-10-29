@@ -1,4 +1,4 @@
-"""Cast transport adapter and an explicit Local -> Cast handoff."""
+"""Cast transport adapter and explicit Local / Cast handoffs."""
 from threading import Event
 from time import monotonic
 from . import legacy_core as core
@@ -10,7 +10,8 @@ def dispose(result):
     if target:
         if result.get("active"):
             core.stop_output_safely(target)
-        core._disconnect_cast_safely(target)
+        if not result.get("local"):
+            core._disconnect_cast_safely(target)
 
 
 class CastController:
@@ -168,5 +169,77 @@ def handoff(scanner, device_id, local, song, active, cancelled):
         message = ("Přepnutí na Cast se nepodařilo. Místní poslech byl obnoven." if recovered else
                    "Přepnutí na Cast se nepodařilo. Původní výstup zůstává vybraný." if not source_stopped else
                    "Přepnutí na Cast selhalo a přehrávání se nepodařilo obnovit. Zkontroluj výstupy.")
+        return {"output": None, "error": message, "sourceStopped": source_stopped,
+                "recovered": recovered, "paused": paused, "position": position}
+
+
+def handoff_to_local(source, local, song, active, cancelled):
+    """Prepare local audio before stopping Cast; never play both at once."""
+    source_stopped = touched = recovered = False
+    position, paused = 0.0, False
+
+    def event(stage):
+        trace = current_trace()
+        if trace:
+            trace.event("cast.return." + stage)
+
+    def check():
+        if cancelled():
+            raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+
+    try:
+        check()
+        if active:
+            event("prepare_begin")
+            url, content_type = core.get_local_audio_source(song["videoId"], cancelled=cancelled,
+                                                           diagnostics=current_trace())
+            event("prepare_ready")
+            check()
+            position = core.get_media_position(source.media_controller)
+            status = source.media_controller.status
+            if status.player_state not in ("PLAYING", "PAUSED", "BUFFERING"):
+                raise RuntimeError("Skladba mezitím dohrála. Zkus přepnutí znovu.")
+            paused = status.player_state == "PAUSED"
+        check()
+        source.media_controller.stop()
+        source_stopped = True
+        event("cast_stopped")
+        check()
+        if active:
+            touched = True
+            local.media_controller.play_media_at(url, content_type, position=position, paused=paused,
+                title=f"{core.artist_names(song)} - {song.get('title', '?')}", stream_type="BUFFERED")
+            local.media_controller.block_until_active(timeout=15, cancelled=cancelled)
+            check()
+        event("local_ready")
+        return {"output": local, "local": True, "active": active, "paused": paused,
+                "position": position, "error": ""}
+    except Exception as exc:
+        event("failed")
+        stopped_target = True
+        if touched:
+            try:
+                local.media_controller.stop(keep_output=True)
+            except Exception:
+                stopped_target = False
+        if active and source_stopped and stopped_target and not cancelled():
+            try:
+                url, content_type = core.get_playback_source(song["videoId"], source.media_controller)
+                check()
+                source.media_controller.play_media_at(url, content_type, position=position, paused=paused,
+                    title=song.get("title", ""), stream_type="BUFFERED")
+                source.media_controller.block_until_active(timeout=15, cancelled=cancelled)
+                check()
+                recovered = True
+                event("cast_recovered")
+            except Exception:
+                try:
+                    source.media_controller.stop()
+                except Exception:
+                    pass
+        print(f"FelisMusic návrat z Castu: {type(exc).__name__}")
+        message = ("Návrat na toto zařízení se nepodařil. Poslech na Castu byl obnoven." if recovered else
+                   "Návrat na toto zařízení se nepodařil. Cast zůstává vybraný." if not source_stopped else
+                   "Návrat na toto zařízení selhal a přehrávání se nepodařilo obnovit. Zkontroluj výstupy.")
         return {"output": None, "error": message, "sourceStopped": source_stopped,
                 "recovered": recovered, "paused": paused, "position": position}

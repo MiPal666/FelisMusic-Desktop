@@ -6,7 +6,7 @@ import test_prefetch as support
 from felismusic_gui.cast_output import CastController
 
 
-class CastOutputTests(support.AudioPlaybackTestCase):
+class CastOutputFixture(support.AudioPlaybackTestCase):
     def setUp(self):
         super().setUp();self.events=[];self.recoveries=[]
         self.remote_status=SimpleNamespace(content_id='',media_session_id=None,player_state='IDLE',idle_reason='',
@@ -44,6 +44,8 @@ class CastOutputTests(support.AudioPlaybackTestCase):
     def switch(self):
         self.assertTrue(self.b.selectCastOutput('speaker'));self.until(lambda:not self.b._output_switching)
 
+
+class CastOutputTests(CastOutputFixture):
     def test_playing_handoff_keeps_exact_occurrence_queue_repeat_and_samples_position_after_stream(self):
         self.start('A','B','A');self.b._queue.index=2;self.b._set_player_from_queue();self.b._repeat_mode='one'
         queue=self.b._queue;current=queue.current();played=list(self.played)
