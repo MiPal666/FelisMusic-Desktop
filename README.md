@@ -2,7 +2,7 @@
 
 ## Stav
 
-Horní tlačítko **Výstupy → Vyhledat zařízení** zobrazí dostupné Cast audio výstupy a skupiny. Tento první krok nabízí pouze přehled: aktuálním výstupem zůstává **Toto zařízení**. Samotné otevření dialogu hledání nespustí. Po ručním vyhledání se přehled průběžně aktualizuje do ukončení aplikace.
+Horní tlačítko **Výstupy → Vyhledat zařízení** zobrazí dostupné Cast audio výstupy a skupiny. U nalezeného Castu lze stisknout **Přepnout**: poslech přejde z notebooku na vybraný výstup se stejnou frontou, skladbou, pozicí a stavem pauzy. Ovládání přehrávače pak míří na Cast; hlasitost se načte ze zařízení. Návrat na notebook a přepínání mezi Casty přibudou v dalších krocích. Po novém spuštění aplikace je výstup opět **Toto zařízení**. Samotné otevření dialogu hledání nespustí. Po ručním vyhledání se přehled průběžně aktualizuje do ukončení aplikace.
 
 Po desktopové 1.0 jsou odloženy dvě funkce: stahování a správa stažené hudby; uložení fronty při vypnutí a její obnovení po zapnutí aplikace. Aplikace zatím při každém spuštění začíná nový poslech. **Hned po vydání desktopové 1.0 následuje port pro Sailfish OS / Silica.**
 
@@ -36,7 +36,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.78-dev** (ruční přehled Cast zařízení a skupin; Michalem otestováno a přijato)
+- Desktop GUI: **0.3.80-dev** (přenos notebook → Cast a nové přehrávání po restartu aplikace uživatelem ověřeny)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

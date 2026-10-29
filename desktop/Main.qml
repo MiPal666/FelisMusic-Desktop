@@ -176,6 +176,7 @@ ApplicationWindow {
 
     Connections {
         target: backend
+        function onOutputChanged() { castDialog.close() }
         function onLoginRequested() { loginDialog.open() }
         function onLoginChanged() {
             if (backend.loginState.phase === "closed" || backend.loginState.phase === "success")
@@ -306,7 +307,7 @@ ApplicationWindow {
             spacing: 12
             Label {
                 Layout.fillWidth: true
-                text: backend.castState.message
+                text: backend.castState.switching ? backend.status : backend.castState.message
                 color: "#bbbbbb"
                 wrapMode: Text.WordWrap
             }
@@ -320,7 +321,7 @@ ApplicationWindow {
                     required property var modelData
                     width: ListView.view.width
                     height: 48
-                    color: modelData.kind === "local" ? "#303438" : "#262626"
+                    color: modelData.id === backend.castState.currentId ? "#303438" : "#262626"
                     RowLayout {
                         anchors.fill: parent
                         anchors.margins: 10
@@ -332,16 +333,24 @@ ApplicationWindow {
                             elide: Text.ElideRight
                         }
                         Label {
-                            text: modelData.kind === "local" ? "Aktuální výstup"
+                            text: modelData.id === backend.castState.currentId ? "Aktuální výstup"
                                   : modelData.kind === "group" ? "Skupina" : "Cast audio"
-                            color: modelData.kind === "local" ? "#a6d3a6" : "#aaaaaa"
+                            visible: modelData.kind !== "local" || modelData.id === backend.castState.currentId
+                            color: modelData.id === backend.castState.currentId ? "#a6d3a6" : "#aaaaaa"
                             font.pixelSize: 12
+                        }
+                        Button {
+                            objectName: "castSelectButton"
+                            text: "Přepnout"
+                            visible: modelData.kind !== "local" && modelData.id !== backend.castState.currentId
+                            enabled: backend.castState.canSelect
+                            onClicked: backend.selectCastOutput(modelData.id)
                         }
                     }
                 }
                 ScrollBar.vertical: ScrollBar { }
             }
-            BusyIndicator { Layout.alignment: Qt.AlignHCenter; running: backend.castState.scanning; visible: running }
+            BusyIndicator { Layout.alignment: Qt.AlignHCenter; running: backend.castState.scanning || backend.castState.switching; visible: running }
             Button {
                 objectName: "castDiscoverButton"
                 Layout.fillWidth: true
@@ -3268,7 +3277,7 @@ ApplicationWindow {
                                       ? (backend.playerState === "loading"
                                          ? "Připravuji lokální audio…"
                                          : backend.playerSubtitle)
-                                      : (backend.localPlaybackAvailable
+                                      : (backend.playbackOutputAvailable
                                          ? "Klikni na skladbu"
                                          : "GStreamer není dostupný v tomto virtualenv")
                                 color: "#999999"
@@ -3467,13 +3476,13 @@ ApplicationWindow {
 
                                 PlayerTextButton {
                                     text: backend.playerMuted ? "Zapnout" : "Ztlumit"
-                                    enabled: backend.localPlaybackAvailable
+                                    enabled: backend.playbackOutputAvailable
                                     implicitWidth: 58
                                     onClicked: backend.toggleMute()
                                 }
                                 PlayerTextButton {
                                     text: "-"
-                                    enabled: backend.localPlaybackAvailable
+                                    enabled: backend.playbackOutputAvailable
                                     implicitWidth: 30
                                     onClicked: backend.changeVolume(-5)
                                 }
@@ -3484,12 +3493,12 @@ ApplicationWindow {
                                     to: 100
                                     stepSize: 1
                                     value: backend.playerVolume
-                                    enabled: backend.localPlaybackAvailable
+                                    enabled: backend.playbackOutputAvailable
                                     onMoved: backend.setVolume(Math.round(value))
                                 }
                                 PlayerTextButton {
                                     text: "+"
-                                    enabled: backend.localPlaybackAvailable
+                                    enabled: backend.playbackOutputAvailable
                                     implicitWidth: 30
                                     onClicked: backend.changeVolume(5)
                                 }
@@ -3503,8 +3512,9 @@ ApplicationWindow {
                             }
 
                             Label {
-                                text: "Výstup: Toto zařízení"
-                                color: backend.localPlaybackAvailable ? "#aaaaaa" : "#ff8a80"
+                                objectName: "outputStatusLabel"
+                                text: "Výstup: " + backend.outputName
+                                color: backend.playbackOutputAvailable ? "#aaaaaa" : "#ff8a80"
                                 font.pixelSize: 13
                                 Layout.alignment: Qt.AlignRight
                             }

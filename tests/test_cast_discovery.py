@@ -12,6 +12,18 @@ def info(uuid,name,kind='audio'):
 
 
 class DiscoveryWorkerTests(unittest.TestCase):
+    def test_only_explicit_resolve_creates_controller_for_current_uuid(self):
+        worker=discovery.CastDiscovery(Mock())
+        known=info('A','Speaker');worker.browser=Mock();worker.browser.devices={'A':known}
+        with patch.object(discovery.pychromecast,'get_chromecast_from_cast_info') as factory:
+            with self.assertRaises(RuntimeError):worker.resolve('Missing')
+            factory.assert_not_called()
+            self.assertIs(worker.resolve('A'),factory.return_value)
+            factory.assert_called_once_with(known,worker.browser.zc,tries=1,retry_wait=1,timeout=10)
+            worker.close()
+            with self.assertRaises(RuntimeError):worker.resolve('A')
+            self.assertEqual(factory.call_count,1)
+
     def test_live_inventory_filters_sorts_keeps_duplicate_names_and_closes_resources(self):
         browser=Mock();browser.devices={1:info('B','Same'),2:info('A','Same','group'),
                                       3:info('TV','TV','cast'),4:info(None,'Missing ID')}

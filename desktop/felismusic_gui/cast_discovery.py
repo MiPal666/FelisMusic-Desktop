@@ -1,8 +1,9 @@
 """Opt-in discovery metadata only: never create a Chromecast/media controller."""
-from threading import Event, Thread
+from threading import Event, Thread, Lock
 from time import monotonic
 from pychromecast.discovery import CastBrowser, SimpleCastListener
 from zeroconf import Zeroconf
+import pychromecast
 from . import legacy_core as core
 
 
@@ -25,6 +26,8 @@ class CastDiscovery:
         self.callback = callback
         self.stopped = Event()
         self.refresh_requested = Event()
+        self.lock = Lock()
+        self.browser = None
         self.thread = Thread(target=self._run, name="felismusic-cast-discovery", daemon=True)
 
     def start(self):
@@ -35,6 +38,16 @@ class CastDiscovery:
 
     def close(self):
         self.stopped.set()
+
+    def resolve(self, device_id):
+        with self.lock:
+            if self.stopped.is_set() or self.browser is None:
+                raise RuntimeError("Vyhledávání Cast zařízení není dostupné.")
+            infos = core._browser_devices_snapshot(self.browser)
+            info = next((x for x in infos if str(x.uuid) == device_id and x.cast_type in ("audio", "group")), None)
+            if info is None:
+                raise RuntimeError("Vybrané Cast zařízení už není dostupné. Obnov seznam zařízení.")
+            return pychromecast.get_chromecast_from_cast_info(info, self.browser.zc, tries=1, retry_wait=1, timeout=10)
 
     def _notify(self, rows, scanning, error=""):
         if not self.stopped.is_set():
@@ -51,6 +64,8 @@ class CastDiscovery:
             zc = Zeroconf()
             browser = CastBrowser(SimpleCastListener(), zeroconf_instance=zc)
             browser.start_discovery()
+            with self.lock:
+                self.browser = browser
             deadline = monotonic() + self.initial_settle
             previous = None
             while not self.stopped.is_set():
@@ -67,6 +82,8 @@ class CastDiscovery:
             print(f"FelisMusic hledání Cast: {type(exc).__name__}")
             self._notify([], False, "Cast zařízení se nepodařilo vyhledat. Zkontroluj síť a zkus hledání znovu.")
         finally:
+            with self.lock:
+                self.browser = None
             if browser is not None:
                 try:
                     browser.stop_discovery()

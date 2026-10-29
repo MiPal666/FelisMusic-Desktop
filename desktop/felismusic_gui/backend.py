@@ -32,6 +32,7 @@ from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
 from .cast_discovery import CastDiscovery
+from .cast_output import handoff, dispose
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -182,7 +183,9 @@ class BackendBridge(QObject):
     errorOccurred = Signal(str)
     initialized = Signal()
     castDevicesChanged = Signal()
+    outputChanged = Signal()
     _castDevicesReady = Signal(int, object, bool, str)
+    _outputSwitchReady = Signal(int, object)
     loginChanged = Signal()
     loginRequested = Signal()
     _loginResult = Signal(int, str, object)
@@ -263,6 +266,7 @@ class BackendBridge(QObject):
         self._cast_scanning = False
         self._cast_message = "Vyhledávání spustíš tlačítkem Vyhledat zařízení."
         self._castDevicesReady.connect(self._apply_cast_devices, Qt.ConnectionType.QueuedConnection)
+        self._outputSwitchReady.connect(self._apply_output_switch, Qt.ConnectionType.QueuedConnection)
         self._login_state = {"phase": "closed", "browsers": [], "message": ""}
         self._login_generation = 0
         self._login_cancel = Event()
@@ -308,6 +312,8 @@ class BackendBridge(QObject):
         self._pending_detail_parent = None
 
         self._local_output = core.create_local_output()
+        self._cast_output = None
+        self._output_switching = False
         self._queue = None
         # Source model and original row indexes used to build the current
         # playback queue.  The queue itself contains only playable rows, so we
@@ -337,9 +343,9 @@ class BackendBridge(QObject):
 
         # GStreamer playbin keeps volume/mute independently of whether a
         # track is currently loaded. Mirror that state into QML from start.
-        if self._local_output is not None:
+        if self._active_output() is not None:
             try:
-                output_status = self._local_output.status
+                output_status = self._active_output().status
                 self._player_volume = int(round(
                     max(0.0, min(1.0, float(output_status.volume_level))) * 100
                 ))
@@ -434,8 +440,85 @@ class BackendBridge(QObject):
     @Property("QVariantMap", notify=castDevicesChanged)
     def castState(self):
         return {"scanning": self._cast_scanning, "message": self._cast_message,
+                "switching": self._output_switching,
+                "currentId": str(self._cast_output.cast_info.uuid) if self._cast_output else "local",
+                "canSelect": self._cast_output is None and not self._output_switching and not self._busy
+                             and not self._playback_transitioning,
                 "devices": [{"id": "local", "name": "Toto zařízení", "kind": "local"}]
                            + [dict(row) for row in self._cast_devices]}
+
+    def _active_output(self):
+        return self._cast_output if self._cast_output is not None else self._local_output
+
+    @Property(str, notify=playerChanged)
+    def outputName(self):
+        return str(self._cast_output.cast_info.friendly_name or "Cast") if self._cast_output else "Toto zařízení"
+
+    @Property(bool, notify=playerChanged)
+    def playbackOutputAvailable(self):
+        return self._active_output() is not None
+
+    @Slot(str, result=bool)
+    def selectCastOutput(self, device_id):
+        if (self._closing.is_set() or self._busy or self._playback_transitioning or self._cast_output is not None
+                or self._cast_discovery is None or not any(row["id"] == device_id for row in self._cast_devices)):
+            return False
+        self._output_switching = self._playback_transitioning = True
+        self._playback_generation += 1
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        generation = self._playback_generation
+        scanner = self._cast_discovery
+        song = self._queue.current() if self.playerHasTrack else None
+        active = song is not None and self._player_state in ("playing", "paused")
+        self._set_busy(True)
+        self._set_status("Přepínám poslech na Cast…")
+        self.castDevicesChanged.emit()
+        self.playerChanged.emit()
+        def cancelled():
+            return self._closing.is_set() or generation != self._playback_generation
+        def work():
+            result = handoff(scanner, device_id, self._local_output, song, active, cancelled)
+            if self._closing.is_set():
+                dispose(result)
+                return
+            try:
+                self._outputSwitchReady.emit(generation, result)
+            except RuntimeError:
+                dispose(result)
+        self._playback_executor.submit(work, _diagnostic_label="audio.output_switch")
+        return True
+
+    @Slot(int, object)
+    def _apply_output_switch(self, generation, result):
+        target = result.get("output")
+        if self._closing.is_set() or generation != self._playback_generation:
+            if target:
+                # A completed handoff may have queued its result just before Stop.
+                Thread(target=dispose, args=(result,), name="felismusic-cast-cancel", daemon=True).start()
+            return
+        self._output_switching = self._playback_transitioning = False
+        self._set_busy(False)
+        if target:
+            self._cast_output = target
+            self._player_position = result["position"]
+            self._set_player_state(("paused" if result["paused"] else "playing") if result["active"] else "idle")
+            try:
+                self._player_volume = int(round(float(target.status.volume_level) * 100))
+                self._player_muted = bool(target.status.volume_muted)
+            except Exception:
+                pass
+            self._set_status(f"Výstup: {self.outputName}")
+            self.outputChanged.emit()
+        else:
+            if result.get("sourceStopped"):
+                self._set_player_state(("paused" if result["paused"] else "playing") if result["recovered"] else "idle")
+                self._player_position = result["position"]
+            self._set_status(result["error"])
+            self.errorOccurred.emit(result["error"])
+        self.castDevicesChanged.emit()
+        self.playerChanged.emit()
 
     @Slot(result=bool)
     def discoverCastDevices(self):
@@ -485,7 +568,7 @@ class BackendBridge(QObject):
 
     @Slot(result=bool)
     def logout(self):
-        if self._closing.is_set() or self._busy:
+        if self._closing.is_set() or self._busy or self._output_switching:
             return False
         if self._account_jobs_pending():
             self.errorOccurred.emit("Před odhlášením nech dokončit načítání seznamů a změny účtu.")
@@ -493,7 +576,7 @@ class BackendBridge(QObject):
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
             self.errorOccurred.emit("Před odhlášením zavři přihlašovací okno prohlížeče.")
             return False
-        if self._local_output is not None and self.playerHasTrack and self.stopPlayback() is False:
+        if self._active_output() is not None and self.playerHasTrack and self.stopPlayback() is False:
             return False
         self._login_generation += 1
         self._login_cancel.set()
@@ -769,7 +852,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerCanSeek(self):
         return (
-            self._local_output is not None
+            self._active_output() is not None
             and self._queue is not None
             and not self._queue.empty()
             and self._player_duration > 0.0
@@ -1864,8 +1947,8 @@ class BackendBridge(QObject):
         # Moving that cursor now would skip the first newly appended occurrence.
         if (direction > 0 and self._queue.index + 1 == self._queue.count()
                 and (self._queue_has_more() or self._queue.radio_active)):
-            if stop_current and self._local_output is not None:
-                self._local_output.media_controller.stop(keep_output=True)
+            if stop_current and self._active_output() is not None:
+                self._active_output().media_controller.stop(keep_output=True)
             self._set_player_state("idle")
             if self._queue_has_more():
                 self._active_queue_stream()["waiting"] = True
@@ -1879,8 +1962,8 @@ class BackendBridge(QObject):
         if moved:
             self._start_current_async(direction=direction, stop_current=stop_current)
         else:
-            if stop_current and self._local_output is not None:
-                self._local_output.media_controller.stop(keep_output=True)
+            if stop_current and self._active_output() is not None:
+                self._active_output().media_controller.stop(keep_output=True)
             self._set_player_state("idle")
 
     def _set_player_from_queue(self):
@@ -2161,6 +2244,7 @@ class BackendBridge(QObject):
             return
         self._player_state = state
         self.playerChanged.emit()
+        self.castDevicesChanged.emit()
 
     def _start_current_async(self, direction=1, stop_current=False):
         self._radio_waiting_for_tracks = None
@@ -2170,7 +2254,7 @@ class BackendBridge(QObject):
         if self._closing.is_set() or self._queue is None or self._queue.empty():
             return
 
-        if self._local_output is None:
+        if self._active_output() is None:
             self.errorOccurred.emit(
                 "Lokální GStreamer není v tomto Python prostředí dostupný.\n\n"
                 "GUI virtualenv musí být vytvořen s --system-site-packages, "
@@ -2178,7 +2262,7 @@ class BackendBridge(QObject):
             )
             return
 
-        mc = self._local_output.media_controller
+        mc = self._active_output().media_controller
         with self._transport_lock:
             self._playback_generation += 1
             if stop_current:
@@ -2209,9 +2293,11 @@ class BackendBridge(QObject):
                 if song is None:
                     break
                 try:
-                    url, content_type = core.get_local_audio_source(
-                        song["videoId"], cancelled=cancelled, diagnostics=current_trace()
-                    )
+                    if self._cast_output is None:
+                        url, content_type = core.get_local_audio_source(
+                            song["videoId"], cancelled=cancelled, diagnostics=current_trace())
+                    else:
+                        url, content_type = core.get_playback_source(song["videoId"], mc)
                     artists = core.artist_names(song)
                     trace = current_trace()
                     output_started = monotonic()
@@ -2273,7 +2359,7 @@ class BackendBridge(QObject):
         arrives while prefetch is running, playback follows it and reuses the
         finished file through get_local_audio_source's normal cache lookup.
         """
-        if self._closing.is_set() or self._queue is None or self._queue.empty():
+        if self._closing.is_set() or self._queue is None or self._queue.empty() or self._cast_output is not None:
             return
         video_id = self._next_prefetch_id()
         if not video_id:
@@ -2336,7 +2422,7 @@ class BackendBridge(QObject):
     @Slot()
     def _poll_player(self):
         if (
-            self._local_output is None
+            self._active_output() is None
             or self._queue is None
             or self._queue.empty()
             or self._playback_transitioning
@@ -2346,7 +2432,7 @@ class BackendBridge(QObject):
         self._maybe_refill_radio()
 
         try:
-            status = self._local_output.media_controller.status
+            status = self._active_output().media_controller.status
         except Exception:
             return
 
@@ -2369,7 +2455,7 @@ class BackendBridge(QObject):
 
         # Keep volume/mute in sync with the actual local output as well.
         try:
-            output_status = self._local_output.status
+            output_status = self._active_output().status
             volume = int(round(
                 max(0.0, min(1.0, float(output_status.volume_level))) * 100
             ))
@@ -2421,6 +2507,8 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
+        if self._output_switching:
+            return
         if source == "library" and self._library_section in ("songs", "upload_songs") and not self.uploadSongsComplete and (not self.uploadSongsLoading or self._busy):
             return
         if source == "detail" and not self.detailComplete and (not self.detailLoading or self._busy):
@@ -4249,12 +4337,18 @@ class BackendBridge(QObject):
     @Slot()
     def stopPlayback(self):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
+        if self._output_switching:
+            self._output_switching = False
+            self._playback_transitioning = False
+            self._playback_generation += 1
+            self._set_busy(False)
+            self.castDevicesChanged.emit()
         self._radio_refill_revision += 1
         self._radio_waiting_for_tracks = None
         stream = self._active_queue_stream()
         if stream:
             stream["waiting"] = False
-        if self._closing.is_set() or self._local_output is None or not self.playerHasTrack:
+        if self._closing.is_set() or self._active_output() is None or not self.playerHasTrack:
             return
         with self._transport_lock:
             self._playback_generation += 1
@@ -4265,7 +4359,7 @@ class BackendBridge(QObject):
             if self._prefetch_future is not None:
                 self._prefetch_future.cancel()
             try:
-                self._local_output.media_controller.stop(keep_output=True)
+                self._active_output().media_controller.stop(keep_output=True)
             except Exception as exc:
                 self.playerChanged.emit()
                 self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
@@ -4279,11 +4373,11 @@ class BackendBridge(QObject):
 
     @Slot()
     def togglePlayPause(self):
-        if self._local_output is None or self._queue is None or self._queue.empty():
+        if self._active_output() is None or self._queue is None or self._queue.empty():
             return
         if self._playback_transitioning:
             return
-        mc = self._local_output.media_controller
+        mc = self._active_output().media_controller
         try:
             if self._player_state == "playing":
                 mc.pause()
@@ -4327,7 +4421,7 @@ class BackendBridge(QObject):
             self._start_current_async(direction=-1, stop_current=True)
 
     def _seek_to(self, seconds):
-        if not self.playerCanSeek or self._local_output is None:
+        if not self.playerCanSeek or self._active_output() is None:
             return
 
         target = max(0.0, float(seconds))
@@ -4337,7 +4431,7 @@ class BackendBridge(QObject):
             target = min(target, max(0.0, self._player_duration - 0.05))
 
         try:
-            self._local_output.media_controller.seek(target, timeout=3)
+            self._active_output().media_controller.seek(target, timeout=3)
             self._player_position = target
             self.playerChanged.emit()
         except Exception as exc:
@@ -4349,12 +4443,12 @@ class BackendBridge(QObject):
 
     @Slot(float)
     def seekRelative(self, delta):
-        if not self.playerCanSeek or self._local_output is None:
+        if not self.playerCanSeek or self._active_output() is None:
             return
 
         current = self._player_position
         try:
-            status = self._local_output.media_controller.status
+            status = self._active_output().media_controller.status
             current = max(0.0, float(status.adjusted_current_time or current))
         except Exception:
             pass
@@ -4363,12 +4457,12 @@ class BackendBridge(QObject):
 
     @Slot(int)
     def setVolume(self, percent):
-        if self._local_output is None:
+        if self._active_output() is None:
             return
 
         percent = max(0, min(100, int(percent)))
         try:
-            level = self._local_output.set_volume(percent / 100.0)
+            level = self._active_output().set_volume(percent / 100.0)
             self._player_volume = int(round(float(level) * 100))
             self.playerChanged.emit()
         except Exception as exc:
@@ -4380,12 +4474,12 @@ class BackendBridge(QObject):
 
     @Slot()
     def toggleMute(self):
-        if self._local_output is None:
+        if self._active_output() is None:
             return
 
         try:
             self._player_muted = bool(
-                self._local_output.set_volume_muted(not self._player_muted)
+                self._active_output().set_volume_muted(not self._player_muted)
             )
             self.playerChanged.emit()
         except Exception as exc:
@@ -4401,6 +4495,7 @@ class BackendBridge(QObject):
             return
         self._busy = value
         self.busyChanged.emit()
+        self.castDevicesChanged.emit()
 
     def _set_status(self, value: str):
         if self._status == value:
@@ -6136,10 +6231,17 @@ class BackendBridge(QObject):
         try:
             with self._transport_lock:
                 self._playback_generation += 1
-                if self._local_output is not None:
-                    self._local_output.media_controller.stop()
+                if self._active_output() is not None:
+                    self._active_output().media_controller.stop()
         except Exception:
             pass
+        if self._cast_output is not None:
+            core._disconnect_cast_safely(self._cast_output)
+            try:
+                if self._local_output is not None:
+                    self._local_output.media_controller.stop()
+            except Exception:
+                pass
         self._library_probe_executor.shutdown(wait=False, cancel_futures=True)
         self._executor.shutdown(wait=False, cancel_futures=True)
         self._playback_executor.shutdown(wait=False, cancel_futures=True)
