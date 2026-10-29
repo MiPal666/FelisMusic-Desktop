@@ -105,6 +105,19 @@ class PlaylistPagingTests(support.AudioPlaybackTestCase):
         self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks], ['set-0', 'set-2', 'set-3'])
         self.assertEqual(self.b.detailTracksModel.count, 4)
 
+    def test_queue_move_during_paging_preserves_origins_and_appends_new_rows(self):
+        self.load(); self.play()
+        self.assertTrue(self.b.moveQueueItem(0, 1))
+        self.assertEqual(self.ids(), ['B', 'A'])
+        self.assertEqual(self.b.playerQueueIndex, 1)
+        self.finish()
+        self.assertEqual(self.ids(), ['B', 'A', 'B', 'C'])
+        self.assertEqual(self.b._queue_source_indices, [1, 0, 2, 3])
+        self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks],
+                         ['set-1', 'set-0', 'set-2', 'set-3'])
+        self.assertEqual(self.b.playerSourceIndex, 0)
+        self.assertEqual([x['videoId'] for x in self.b.detailTracksModel.snapshot()], ['A', 'B', 'B', 'C'])
+
     def test_removed_last_prefix_track_waits_and_plays_first_new_occurrence(self):
         self.load(); self.play(1)
         self.assertTrue(self.b.removeQueueItem(1))

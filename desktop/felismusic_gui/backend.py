@@ -1168,6 +1168,37 @@ class BackendBridge(QObject):
     def playerRemovalPending(self):
         return bool(self.playerHasTrack and self._queue.current().get("_guiRemoveAfterPlayback"))
 
+    @Property(bool, notify=playerChanged)
+    def playerCanMoveQueue(self):
+        return self.playerHasTrack and self.playerCanEditQueue and not self.playerWaitingForTracks
+
+    @Slot(int, int, result=bool)
+    def moveQueueItem(self, index, direction):
+        if not self.playerCanMoveQueue or direction not in (-1, 1):
+            return False
+        target = index + direction
+        queue = self._queue
+        if not (0 <= index < queue.count() and 0 <= target < queue.count()):
+            return False
+        previous_next = self._next_prefetch_id()
+        current = queue.current()
+        with self._transport_lock:
+            queue.tracks.insert(target, queue.tracks.pop(index))
+            self._queue_source_indices.insert(target, self._queue_source_indices.pop(index))
+            queue.index = next(i for i, song in enumerate(queue.tracks) if song is current)
+            queue._guiOrderEdited = True
+            self._player_track_marker = (id(queue), queue.index, self._current_video_id())
+        self._playing_tracks_model.move_item(index, target)
+        self.playerChanged.emit()
+        if previous_next != self._next_prefetch_id():
+            self._prefetch_revision += 1
+            if self._prefetch_future is not None:
+                self._prefetch_future.cancel()
+            if self._player_state in ("playing", "paused"):
+                self._prefetch_next_track()
+        self._set_status("Pořadí ve frontě změněno")
+        return True
+
     @Slot(int, result=bool)
     def removeQueueItem(self, index):
         """Remove one listening occurrence; source collections stay untouched."""
@@ -1965,7 +1996,8 @@ class BackendBridge(QObject):
         return True
 
     def _sync_playlist_queue_order(self, detail):
-        if self._queue is None or self._queue.shuffle_active:
+        if (self._queue is None or self._queue.shuffle_active
+                or getattr(self._queue, "_guiOrderEdited", False)):
             return
         playlist_id = detail["meta"]["playlistId"]
         order = {x.get("setVideoId"): i for i, x in enumerate(detail["tracks"]) if x.get("setVideoId")}

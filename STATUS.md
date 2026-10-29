@@ -1,11 +1,22 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.63-dev – přesouvání výskytů přímo ve Frontě, čeká na skutečný test
+
+- Michal potvrdil commit 76444a3 a povolil přesouvání. Nový moveQueueItem(index, direction) přesune jen konkrétní objekt fronty o jeden řádek. Kontroluje hranice/směr, closing, přechod přehrávání a čekání na nové skladby. Bez požadavků na API a bez změny zdrojového seznamu.
+- Aktuální objekt se dohledá po přesunu podle identity, současně se přesunou _queue_source_indices a nastaví track marker. Audio, pozice, metadata/hodnocení, pauza/Stop, Repeat a Shuffle/Mix pokračují. Model používá rowsMoved, nikoli přestavbu fronty. Origin kontext/index i manuální a playlistové bindingy zůstávají.
+- Při změně nástupce se zneplatní starý prefetch a připraví nový. _guiOrderEdited chrání ručně změněné pořadí před pozdější synchronizací pořadí uloženého playlistu; jednotlivé odebrání v uloženém playlistu dál synchronizuje přesné bindingy. Nezneužívá se shuffle_active.
+- QML pouze ve Frontě bez multivýběru: Posunout nahoru / Posunout dolů, na hranici neaktivní. Přesouvání načteného prefixu funguje během dalšího načítání; během EOS čekání se dočasně nepovolí, aby kurzor pokračování nezměnil význam.
+- **512 offline testů prošlo**, osm nových: přesné duplicity/aktuální objekt/historie, čas/rating/Repeat/zdroj/cover bez zápisu do API, změna prefetch a EOS/Previous, pauza/Stop/Shuffle/manuální kopie, pending odebrání aktuální, ochrana ručního pořadí proti playlist sync a zachované removal bindingy, guardy, doplnění dvoublokového playlistu po přesunu, zahození staré radio refill odpovědi a úspěšné nové doplnění.
+- **Dvě QML kontroly 900×600 a 1280×800** bez varování: skutečné nabídky, disabled hranice, přesun aktuální i duplicitní položky, správný queue index a zdrojové indexy, nezměněné audio/čas, skrytí při multivýběru a mimo Frontu. API/audio/probe/thumbnail mockované. git diff --check prošel.
+- Skutečný test: ve Frontě posunout další skladbu nahoru/dolů a ověřit nástupce. Zkusit duplicitní výskyt a aktuální skladbu během hraní/pauzy; audio nesmí přeskočit a cover vrátí původní kolekci. Uložený playlist zůstává stejný. Po přijetí samostatný commit, potom plán 3 – Info/hodnocení jiné než aktuální skladby. Zatím necommitováno.
+
+
 ## 0.3.62-dev – spuštění playlistu otevře Frontu, Michalem přijato
 
 - Michal přijal odebrání z Fronty 0.3.61-dev a výslovně požádal automaticky otevřít Frontu i po běžném spuštění skladby z playlistu. Další přesouvání není součástí této změny.
 - QML onPlaybackSourceCaptured nejdřív zachytí původní kontext pro cover, potom při zdroji detail/kind playlist přepne currentPage na Frontu a odroluje na aktuální skladbu. Dvojklik i Enter sdílejí tutéž cestu; jiné zdroje a enqueue nepřepínají stránku. Přehrávací backend se v tomto doplňku nemění.
 - Čtyři QML kontroly při 900×600 a 1280×800, dvojklik i skutečný Enter: spuštění třetího/duplicitního výskytu, Fronta, původní navigační kontext, cover zpět do playlistu na správný index bez restartu audia, enqueue bez přepnutí a regrese knihovní skladby. Bez QML varování; API/audio/thumbnail/probe mockované. git diff --check prošel. Předchozí backendové kontroly 0.3.61-dev: 504 offline testů.
-- Skutečný test: spustit skladbu z playlistu dvojklikem nebo Enterem → Fronta; klik na cover → původní playlist a správný výskyt. Michal skutečným testem potvrdil funkčnost 2026-10-29; připraven společný commit s přijatým odebráním z Fronty. Potom samostatně přesouvání výskytů přímo ve Frontě. Poslední commit 44833e6.
+- Skutečný test: spustit skladbu z playlistu dvojklikem nebo Enterem → Fronta; klik na cover → původní playlist a správný výskyt. Michal skutečným testem potvrdil funkčnost 2026-10-29; uloženo spolu s přijatým odebráním z Fronty jako 76444a3. Potom samostatně přesouvání výskytů přímo ve Frontě. Poslední commit 44833e6.
 
 
 ## 0.3.61-dev – odebrání konkrétního výskytu z Fronty, Michalem přijato

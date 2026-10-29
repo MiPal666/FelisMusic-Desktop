@@ -57,6 +57,22 @@ class RadioRefillTests(support.AudioPlaybackTestCase):
         self.assertNotIn('T9', self.ids())
         self.assertTrue(self.b._queue.radio_active)
 
+    def test_queue_move_discards_stale_refill_then_allows_fresh_refill(self):
+        self.radio(); self.near_end(8)
+        self.block_request = True
+        self.assertTrue(self.b._maybe_refill_radio())
+        self.until(self.refill_entered.is_set)
+        current = self.b._queue.current()
+        self.assertTrue(self.b.moveQueueItem(9, -1))
+        self.release.set(); self.done()
+        self.assertEqual(len(self.ids()), 10)
+        self.assertIs(self.b._queue.current(), current)
+        self.assertEqual(self.ids()[-2:], ['T9', 'T8'])
+        self.assertTrue(self.b._maybe_refill_radio()); self.done()
+        self.assertEqual(len(self.ids()), 20)
+        self.assertEqual(self.ids()[-10:], [f'N{i}' for i in range(10)])
+        self.assertTrue(self.b._queue.radio_active)
+
     def test_threshold_single_request_no_global_busy_and_append_without_audio_reset(self):
         self.radio()
         self.assertFalse(self.b._maybe_refill_radio())

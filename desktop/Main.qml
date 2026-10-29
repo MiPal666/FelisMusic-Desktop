@@ -1330,6 +1330,22 @@ ApplicationWindow {
                 }
             }
             MenuItem {
+                objectName: "queueMoveUpAction"
+                text: "Posunout nahoru"
+                visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
+                height: visible ? implicitHeight : 0
+                enabled: backend.playerCanMoveQueue && trackDelegate.index > 0
+                onTriggered: backend.moveQueueItem(trackDelegate.index, -1)
+            }
+            MenuItem {
+                objectName: "queueMoveDownAction"
+                text: "Posunout dolů"
+                visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
+                height: visible ? implicitHeight : 0
+                enabled: backend.playerCanMoveQueue && trackDelegate.index + 1 < backend.playerQueueCount
+                onTriggered: backend.moveQueueItem(trackDelegate.index, 1)
+            }
+            MenuItem {
                 objectName: "queueRemoveItemAction"
                 text: trackDelegate.currentTrack && backend.playerRemovalPending ? "Odebere se po dohrání"
                       : trackDelegate.currentTrack && (backend.playerState === "playing" || backend.playerState === "paused")
