@@ -790,10 +790,103 @@ class BackendBridge(QObject):
     def _update_album_library_views(self, browse_id, controls, albums=None):
         self._update_collection_library_views("album", browse_id, controls, albums)
 
-    def _update_collection_library_views(self, kind, target, controls, items=None):
-        section = "albums" if kind == "album" else "playlists"
-        id_key = "browseId" if kind == "album" else "playlistId"
-        state_key = "albumLibrary" if kind == "album" else "playlistLibrary"
+    @staticmethod
+    def _artist_subscription_controls(data):
+        channel = data.get("channelId")
+        if (not isinstance(channel, str) or not channel.startswith("UC")
+                or not isinstance(data.get("subscribed"), bool)):
+            return None
+        return {"channelId": channel, "subscribed": data["subscribed"]}
+
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanArtistSubscription(self):
+        return (self._detail_meta.get("kind") == "artist"
+                and str(self._detail_meta.get("browseId") or "").removeprefix("MPLA").startswith("UC")
+                and self._artist_subscription_controls(self._detail_meta.get("artistSubscription") or {}) is not None)
+
+    # Real YTM traces still returned the old state after 3–4 seconds.
+    # Allow 15 seconds of interruptible backoff, plus the read durations.
+    _artist_subscription_verify_delays = (0.0, 0.5, 1.5, 3.0, 5.0, 5.0)
+
+    @staticmethod
+    def _trace_artist_subscription(stage, **fields):
+        trace = current_trace()
+        if trace is not None:
+            trace.event("subscription." + stage, **fields)
+
+    def _verify_artist_subscription(self, api, browse_id, channel_id, wanted):
+        # A successful write can precede the updated browse response. Retry
+        # reads only; an uncertain result must never repeat the account write.
+        for attempt, delay in enumerate(self._artist_subscription_verify_delays, 1):
+            if self._closing.wait(delay):
+                self._trace_artist_subscription("cancelled", attempt=attempt)
+                break
+            try:
+                fresh = self._artist_subscription_controls(api.get_artist(browse_id))
+            except Exception as exc:
+                self._trace_artist_subscription("read_error", attempt=attempt, error=type(exc).__name__)
+                print(f"FelisMusic ověření odběru: {type(exc).__name__}")
+                continue
+            self._trace_artist_subscription("readback", attempt=attempt, wanted=wanted,
+                controls_valid=fresh is not None,
+                channel_matches=fresh["channelId"] == channel_id if fresh else None,
+                subscribed=fresh["subscribed"] if fresh else None)
+            if fresh and fresh["channelId"] != channel_id:
+                raise RuntimeError("YouTube Music vrátilo jiný kanál odběru.")
+            if fresh and fresh["subscribed"] == wanted:
+                return fresh
+        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav odběru.")
+
+    @Slot(result=bool)
+    def changeArtistSubscription(self):
+        if (self._busy or self._closing.is_set() or not self._connected
+                or self._ytmusic is None or not self.detailCanArtistSubscription):
+            return False
+        browse_id = self._detail_meta["browseId"].removeprefix("MPLA")
+        controls = dict(self._detail_meta["artistSubscription"])
+        channel_id = controls["channelId"]
+        wanted = not controls["subscribed"]
+        self._artist_subscription_target = (browse_id, channel_id)
+        api = self._ytmusic
+        def task():
+            fresh = self._artist_subscription_controls(api.get_artist(browse_id))
+            self._trace_artist_subscription("preflight", wanted=wanted,
+                controls_valid=fresh is not None,
+                channel_matches=fresh["channelId"] == channel_id if fresh else None,
+                subscribed=fresh["subscribed"] if fresh else None)
+            if not fresh or fresh["channelId"] != channel_id:
+                raise RuntimeError("Nelze ověřit kanál a stav odběru. Otevři interpreta znovu.")
+            if fresh["subscribed"] != wanted:
+                try:
+                    self._trace_artist_subscription("write_begin", wanted=wanted)
+                    response = api.subscribe_artist(channel_id) if wanted else api.unsubscribe_artists([channel_id])
+                    status = response.get("status", "missing") if isinstance(response, dict) else "not_dict"
+                    self._trace_artist_subscription("write_end", status=(status if status in (
+                        "STATUS_SUCCEEDED", "STATUS_FAILED", "missing", "not_dict") else "other"))
+                    if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
+                        raise RuntimeError("YouTube Music nepotvrdilo změnu odběru.")
+                    fresh = self._verify_artist_subscription(api, browse_id, channel_id, wanted)
+                except Exception as exc:
+                    self._trace_artist_subscription("failed", error=type(exc).__name__)
+                    raise RuntimeError("Změnu odběru se nepodařilo ověřit. Otevři interpreta znovu a zkontroluj stav. " + str(exc)) from exc
+            warning = ""
+            try:
+                items = [self._artist_item(item) for item in api.get_library_artists(
+                    limit=core.LIBRARY_LIMIT, order="recently_added") or []]
+            except Exception:
+                items = None
+                warning = " · Přehled Interpretů se nepodařilo obnovit, otevři sekci Interpreti znovu."
+            return {"browseId": browse_id, "channelId": channel_id, "controls": fresh,
+                    "items": items, "warning": warning}
+        self._submit("artist_subscription_action", "Ukládám odběr interpreta…", task)
+        return True
+
+    def _update_collection_library_views(self, kind, target, controls, items=None, channel_id=""):
+        section, id_key, state_key = {
+            "album": ("albums", "browseId", "albumLibrary"),
+            "playlist": ("playlists", "playlistId", "playlistLibrary"),
+            "artist": ("artists", "browseId", "artistSubscription"),
+        }[kind]
         if kind == "playlist" and items is not None:
             items = [item for item in items if item.get("playlistId") not in self._deleted_playlists]
             received = {item.get("playlistId") for item in items}
@@ -825,7 +918,11 @@ class BackendBridge(QObject):
                 item_id = str(value.get(id_key) or "")
                 if kind == "playlist":
                     item_id = item_id.removeprefix("VL")
-                if value.get("kind") == kind and item_id == target:
+                elif kind == "artist":
+                    item_id = item_id.removeprefix("MPLA")
+                same_channel = (kind == "artist" and bool(channel_id)
+                    and (value.get(state_key) or {}).get("channelId") == channel_id)
+                if value.get("kind") == kind and (item_id == target or same_channel):
                     value[state_key] = dict(controls) if controls else None
                 for child in value.values():
                     update_meta(child)
@@ -4242,6 +4339,11 @@ class BackendBridge(QObject):
                 self._update_collection_library_views("playlist", result["playlistId"], result["controls"], result["items"])
                 self._set_status(("Playlist přidán do knihovny" if result["controls"]["inLibrary"] else "Playlist odebrán z knihovny") + result["warning"])
 
+            elif name == "artist_subscription_action":
+                self._update_collection_library_views("artist", result["browseId"], result["controls"],
+                    result["items"], result["channelId"])
+                self._set_status(("Interpret přihlášen k odběru" if result["controls"]["subscribed"] else "Odběr interpreta zrušen") + result["warning"])
+
             elif name == "album_library_action":
                 self._update_album_library_views(result["browseId"], result["controls"], result["albums"])
                 self._set_status(("Album přidáno do knihovny" if result["controls"]["inLibrary"] else "Album odebráno z knihovny") + result["warning"])
@@ -4378,6 +4480,9 @@ class BackendBridge(QObject):
 
     @Slot(str, str)
     def _apply_error(self, name: str, message: str):
+        if name == "artist_subscription_action":
+            browse_id, channel_id = self._artist_subscription_target
+            self._update_collection_library_views("artist", browse_id, None, channel_id=channel_id)
         if name == "playlist_library_action":
             self._update_collection_library_views("playlist", self._playlist_library_target, None)
         if name == "album_library_action":
@@ -5228,6 +5333,7 @@ class BackendBridge(QObject):
                 meta = {"kind": "artist", "section": "songs", "sections": sections,
                         "pointers": pointers, "orders": {}, "thumbnail": self._thumbnail(data),
                         "browseId": browse_id, "artistName": detail_title,
+                        "artistSubscription": self._artist_subscription_controls(data),
                         "radioId": data["radioId"].strip() if isinstance(data.get("radioId"), str) else "",
                         "shuffleId": data["shuffleId"].strip() if isinstance(data.get("shuffleId"), str) else ""}
                 self._load_artist_section(ytmusic, meta, "songs")

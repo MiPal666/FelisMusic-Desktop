@@ -1637,6 +1637,15 @@ ApplicationWindow {
                 onTriggered: backend.changePlaylistLibrary()
             }
             MenuItem {
+                objectName: "artistSubscriptionAction"
+                text: backend.detailMeta.artistSubscription && backend.detailMeta.artistSubscription.subscribed
+                      ? "Zrušit odběr" : "Odebírat"
+                visible: backend.detailCanArtistSubscription
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.changeArtistSubscription()
+            }
+            MenuItem {
                 objectName: "collectionPlaylistSave"
                 text: "Přidat seznam do playlistu…"
                 visible: backend.detailCanSavePlaylist
