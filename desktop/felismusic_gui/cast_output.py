@@ -35,6 +35,7 @@ class CastController:
         ready, response = Event(), {}
         def accepted(success, data):
             response["ok"] = bool(success)
+            response["type"] = data.get("type") if isinstance(data, dict) else None
             ready.set()
         self.pending = (ready, response, url, paused)
         self.controller.play_media(url, content_type, current_time=position, autoplay=not paused,
@@ -43,13 +44,29 @@ class CastController:
     def block_until_active(self, timeout=15, cancelled=None):
         ready, response, url, paused = self.pending
         deadline = monotonic() + timeout
+        previous = None
         while monotonic() < deadline:
             if cancelled and cancelled():
                 raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+            status = self.status
+            response_type = response.get("type")
+            if response_type not in (None, "MEDIA_STATUS", "LOAD_FAILED", "LOAD_CANCELLED", "INVALID_REQUEST"):
+                response_type = "other"
+            state = {"acknowledged": ready.is_set(), "accepted": bool(response.get("ok")),
+                     "response_type": response_type, "content_matches": status.content_id == url,
+                     "has_session": bool(status.media_session_id),
+                     "player_state": status.player_state if status.player_state in
+                         ("UNKNOWN", "IDLE", "BUFFERING", "PLAYING", "PAUSED") else "other",
+                     "idle_reason": status.idle_reason if status.idle_reason in
+                         (None, "", "FINISHED", "CANCELLED", "INTERRUPTED", "ERROR") else "other"}
+            if state != previous:
+                trace = current_trace()
+                if trace:
+                    trace.event("cast.load.state", **state)
+                previous = state
             if ready.is_set():
-                if not response.get("ok"):
+                if not response.get("ok") or response_type in ("LOAD_FAILED", "LOAD_CANCELLED", "INVALID_REQUEST"):
                     raise RuntimeError("Cast odmítl načtení skladby.")
-                status = self.status
                 if (status.content_id == url and status.media_session_id
                         and status.player_state in (("PAUSED",) if paused else ("PLAYING", "BUFFERING"))):
                     return
@@ -57,6 +74,26 @@ class CastController:
                     raise RuntimeError("Cast nedokázal přehrát stream.")
             Event().wait(0.1)
         raise RuntimeError("Cast nepotvrdil spuštění skladby včas.")
+
+    def start_receiver(self, timeout=15, cancelled=None):
+        """Start an individual receiver independently of its former group app."""
+        if cancelled and cancelled():
+            raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+        ready, response = Event(), {}
+        def accepted(success, data):
+            response["ok"] = bool(success)
+            ready.set()
+        self.controller.launch(force_launch=True, callback_function=accepted)
+        deadline = monotonic() + timeout
+        while monotonic() < deadline:
+            if cancelled and cancelled():
+                raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+            if ready.is_set():
+                if not response.get("ok"):
+                    raise RuntimeError("Cast nepotvrdil samostatný přijímač.")
+                return
+            ready.wait(0.1)
+        raise RuntimeError("Cast nepotvrdil samostatný přijímač včas.")
 
     def stop(self, keep_output=False):
         # A receiver application can remain open after its media session ends.
@@ -98,8 +135,9 @@ class CastOutput:
         self.cast.disconnect(timeout=timeout)
 
 
-def handoff(scanner, device_id, local, song, active, cancelled):
+def handoff(scanner, device_id, source, song, active, cancelled):
     target = None
+    source_local = getattr(source, "is_local", True)
     source_stopped = touched = recovered = False
     position, paused = 0.0, False
     def event(stage):
@@ -117,27 +155,45 @@ def handoff(scanner, device_id, local, song, active, cancelled):
         core.prepare_output(raw)
         event("connected")
         check()
+        group_to_audio = (not source_local and source.cast_info.cast_type == "group"
+                          and target.cast_info.cast_type == "audio")
         if active:
             event("stream_begin")
             url, content_type = core.get_playback_source(song["videoId"], target.media_controller)
             event("stream_ready")
             check()
-            position = core.get_media_position(local.media_controller)
-            status = local.media_controller.status
+            position = core.get_media_position(source.media_controller)
+            status = source.media_controller.status
             if status.player_state not in ("PLAYING", "PAUSED", "BUFFERING"):
                 raise RuntimeError("Skladba mezitím dohrála. Zkus přepnutí znovu.")
             paused = status.player_state == "PAUSED"
             check()
-            local.media_controller.stop(keep_output=True)
-            event("local_stopped")
+            source.media_controller.stop(keep_output=True)
+            event("local_stopped" if source_local else "cast_stopped")
             source_stopped = True
             check()
             touched = True
+            if group_to_audio:
+                event("receiver_begin")
+                target.media_controller.start_receiver(cancelled=cancelled)
+                event("receiver_ready")
+                check()
             target.media_controller.play_media_at(url, content_type, position=position, paused=paused,
                 title=f"{core.artist_names(song)} - {song.get('title', '?')}", stream_type="BUFFERED")
             target.media_controller.block_until_active(timeout=15, cancelled=cancelled)
             event("cast_ready")
             check()
+        elif not source_local:
+            # Explicitly leave the selected Cast even with an idle GUI queue.
+            source.media_controller.stop()
+            source_stopped = True
+            check()
+            if group_to_audio:
+                touched = True
+                event("receiver_begin")
+                target.media_controller.start_receiver(cancelled=cancelled)
+                event("receiver_ready")
+                check()
         return {"output": target, "active": active, "paused": paused, "position": position, "error": ""}
     except Exception as exc:
         event("failed")
@@ -149,24 +205,26 @@ def handoff(scanner, device_id, local, song, active, cancelled):
                 stopped_target = False
         if target:
             core._disconnect_cast_safely(target)
-        if source_stopped and stopped_target and not cancelled():
+        if active and source_stopped and stopped_target and not cancelled():
             try:
-                url, content_type = core.get_local_audio_source(song["videoId"], cancelled=cancelled)
+                url, content_type = (core.get_local_audio_source(song["videoId"], cancelled=cancelled) if source_local else
+                                     core.get_playback_source(song["videoId"], source.media_controller))
                 check()
-                local.media_controller.play_media_at(url, content_type, position=position, paused=paused,
+                source.media_controller.play_media_at(url, content_type, position=position, paused=paused,
                     title=song.get("title", ""), stream_type="BUFFERED")
-                if not paused:
-                    local.media_controller.block_until_active(timeout=15, cancelled=cancelled)
+                if not paused or not source_local:
+                    source.media_controller.block_until_active(timeout=15, cancelled=cancelled)
                 check()
                 recovered = True
-                event("local_recovered")
+                event("local_recovered" if source_local else "cast_recovered")
             except Exception:
                 try:
-                    local.media_controller.stop(keep_output=True)
+                    source.media_controller.stop(keep_output=True)
                 except Exception:
                     pass
         print(f"FelisMusic přepnutí Cast: {type(exc).__name__}")
-        message = ("Přepnutí na Cast se nepodařilo. Místní poslech byl obnoven." if recovered else
+        message = (("Přepnutí na Cast se nepodařilo. Místní poslech byl obnoven." if source_local else
+                    "Přepnutí na Cast se nepodařilo. Poslech na původním Castu byl obnoven.") if recovered else
                    "Přepnutí na Cast se nepodařilo. Původní výstup zůstává vybraný." if not source_stopped else
                    "Přepnutí na Cast selhalo a přehrávání se nepodařilo obnovit. Zkontroluj výstupy.")
         return {"output": None, "error": message, "sourceStopped": source_stopped,

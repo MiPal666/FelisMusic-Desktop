@@ -443,7 +443,7 @@ class BackendBridge(QObject):
         return {"scanning": self._cast_scanning, "message": self._cast_message,
                 "switching": self._output_switching,
                 "currentId": str(self._cast_output.cast_info.uuid) if self._cast_output else "local",
-                "canSelect": self._cast_output is None and not self._output_switching and not self._busy
+                "canSelect": not self._output_switching and not self._busy
                              and not self._playback_transitioning and not self._output_result_pending,
                 "canReturn": self._cast_output is not None and self._local_output is not None
                              and not self._output_switching and not self._busy and not self._playback_transitioning
@@ -482,7 +482,8 @@ class BackendBridge(QObject):
             if self._local_output is None:
                 self.errorOccurred.emit("Místní GStreamer není dostupný. Návrat na toto zařízení není možný.")
                 return False
-        elif (self._cast_output is not None or self._cast_discovery is None
+        elif (self._cast_discovery is None
+              or (self._cast_output is not None and str(self._cast_output.cast_info.uuid) == device_id)
               or not any(row["id"] == device_id for row in self._cast_devices)):
             return False
         self._output_switching = self._playback_transitioning = True
@@ -504,7 +505,8 @@ class BackendBridge(QObject):
             return self._closing.is_set() or generation != self._playback_generation
         def work():
             result = (handoff_to_local(source, self._local_output, song, active, cancelled) if returning else
-                      handoff(scanner, device_id, self._local_output, song, active, cancelled))
+                      handoff(scanner, device_id, source if source is not None else self._local_output,
+                              song, active, cancelled))
             if self._closing.is_set():
                 dispose(result)
                 return
@@ -526,7 +528,14 @@ class BackendBridge(QObject):
                     with self._transport_lock:
                         dispose(result)
                 else:
-                    Thread(target=dispose, args=(result,), name="felismusic-cast-cancel", daemon=True).start()
+                    def cleanup():
+                        dispose(result)
+                        try:
+                            self._outputSwitchReady.emit(generation, {"output": None})
+                        except RuntimeError:
+                            pass
+                    Thread(target=cleanup, name="felismusic-cast-cancel", daemon=True).start()
+                    return
             self._output_result_pending = False
             self.castDevicesChanged.emit()
             return
@@ -536,7 +545,7 @@ class BackendBridge(QObject):
         if target:
             previous = self._cast_output
             self._cast_output = None if result.get("local") else target
-            if result.get("local") and previous is not None:
+            if previous is not None and previous is not target:
                 Thread(target=core._disconnect_cast_safely, args=(previous,),
                        name="felismusic-cast-disconnect", daemon=True).start()
             self._player_position = result["position"]

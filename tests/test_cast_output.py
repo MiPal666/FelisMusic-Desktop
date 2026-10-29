@@ -13,6 +13,7 @@ class CastOutputFixture(support.AudioPlaybackTestCase):
                                            adjusted_current_time=0,duration=180)
         self.remote=Mock();self.remote.status=self.remote_status
         self.remote.play_media.side_effect=self.load_remote
+        self.remote.launch.side_effect=lambda **kw:kw['callback_function'](True,{'type':'RECEIVER_STATUS'})
         self.remote.stop.side_effect=lambda **kw:self.stop_remote()
         self.remote.pause.side_effect=lambda:setattr(self.remote_status,'player_state','PAUSED')
         self.remote.play.side_effect=lambda:setattr(self.remote_status,'player_state','PLAYING')
@@ -60,7 +61,8 @@ class CastOutputTests(CastOutputFixture):
         self.assertEqual(self.b.playerPosition,48);self.assertEqual(self.b.playerRepeatMode,'one')
         self.assertEqual(self.played,played);self.assertEqual(self.remote.play_media.call_args.kwargs['current_time'],48)
         self.assertTrue(self.remote.play_media.call_args.kwargs['autoplay']);self.assertEqual(self.b.outputName,'Speaker')
-        self.assertEqual(self.b.castState['currentId'],'speaker');self.assertFalse(self.b.castState['canSelect'])
+        self.assertEqual(self.b.castState['currentId'],'speaker');self.assertTrue(self.b.castState['canSelect'])
+        self.assertFalse(self.b.selectCastOutput('speaker'))
         self.assertEqual(self.b.playerVolume,35);self.assertTrue(self.b.playerMuted)
 
     def test_paused_handoff_loads_without_autoplay_and_controls_route_to_cast(self):
