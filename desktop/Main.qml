@@ -1050,6 +1050,7 @@ ApplicationWindow {
         required property string duration
         required property string thumbnail
         required property string videoId
+        required property string likeStatus
         required property string setVideoId
         required property string albumId
         required property var artistLinks
@@ -1353,6 +1354,15 @@ ApplicationWindow {
                 }
             }
             MenuItem {
+                objectName: "trackRatingAction"
+                text: "Hodnocení…"
+                visible: !trackDelegate.multipleSelection && videoId.length > 0
+                         && (kind === "song" || kind === "video" || kind === "upload_song")
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.trackRatingBusy
+                onTriggered: trackRatingMenu.popup(menuButton, menuButton.width - trackRatingMenu.width, menuButton.height)
+            }
+            MenuItem {
                 objectName: "queueMoveUpAction"
                 text: "Posunout nahoru"
                 visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
@@ -1418,6 +1428,35 @@ ApplicationWindow {
                 onTriggered: backend.changeSongLibrary(trackMenu.libraryRequest)
             }
 
+        }
+
+        Menu {
+            id: trackRatingMenu
+            objectName: "trackRatingMenu"
+            popupType: Popup.Item
+            width: 240
+            palette.text: "#eeeeee"
+            palette.windowText: "#eeeeee"
+            palette.highlight: "#6757b8"
+            background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
+            MenuItem {
+                objectName: "trackRateLike"
+                text: "Oblíbená" + (trackDelegate.likeStatus === "LIKE" ? " ✓" : "")
+                enabled: backend.connected && !backend.trackRatingBusy
+                onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "LIKE")
+            }
+            MenuItem {
+                objectName: "trackRateDislike"
+                text: "Neoblíbená" + (trackDelegate.likeStatus === "DISLIKE" ? " ✓" : "")
+                enabled: backend.connected && !backend.trackRatingBusy
+                onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "DISLIKE")
+            }
+            MenuItem {
+                objectName: "trackRateClear"
+                text: "Zrušit hodnocení"
+                enabled: backend.connected && !backend.trackRatingBusy
+                onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "INDIFFERENT")
+            }
         }
 
         Menu {

@@ -302,6 +302,8 @@ class BackendBridge(QObject):
         self._player_muted = False
         self._player_like_status = "UNKNOWN"
         self._player_rating_busy = False
+        self._rating_action_pending = False
+        self._rating_action_video_id = ""
         self._rating_generation = 0
         self._playback_generation = 0
         self._playback_transitioning = False
@@ -497,7 +499,12 @@ class BackendBridge(QObject):
             and song is not None
             and song.get("videoId")
             and not self._player_rating_busy
+            and not self._rating_action_pending
         )
+
+    @Property(bool, notify=playerChanged)
+    def trackRatingBusy(self):
+        return self._rating_action_pending
 
     @Property(bool, notify=playerChanged)
     def playerCanSeek(self):
@@ -1411,6 +1418,11 @@ class BackendBridge(QObject):
         update_detail(self._detail_meta)
         update_detail(self._detail_history)
         update_detail(self._pending_detail_parent)
+        for load in (self._upload_load, self._upload_view_load, self._playlist_load):
+            update_detail(load)
+        for stream in (self._liked_stream, self._upload_stream, self._playlist_stream, self._watch_stream):
+            if stream:
+                update_detail(stream.get("load"))
         if self._queue is not None:
             for song in self._queue.tracks:
                 update_detail(song.get("_guiOrigin", {}).get("detail_state"))
@@ -1438,7 +1450,8 @@ class BackendBridge(QObject):
             return
         if self._current_video_id() != video_id:
             return
-        if self._player_rating_busy:
+        if (self._player_rating_busy
+                or (self._rating_action_pending and video_id == self._rating_action_video_id)):
             return
 
         status = core.normalize_like_status(status)
@@ -1470,38 +1483,69 @@ class BackendBridge(QObject):
         self._rating_generation += 1
         generation = self._rating_generation
         self._player_rating_busy = True
+        self._rating_action_pending = True
+        self._rating_action_video_id = video_id
         self._player_like_status = new_status
         self._propagate_like_status(video_id, new_status)
         self.playerChanged.emit()
 
-        rating = {
-            "LIKE": core.LikeStatus.LIKE,
-            "DISLIKE": core.LikeStatus.DISLIKE,
-            "INDIFFERENT": core.LikeStatus.INDIFFERENT,
-        }[new_status]
+        self._submit_rating_write(video_id, new_status, old_status, generation)
+
+    @Slot(str, int, str, result=bool)
+    def rateTrackFrom(self, source, index, wanted):
+        wanted = str(wanted or "").upper()
+        if (self._closing.is_set() or not self._connected or self._ytmusic is None
+                or self._rating_action_pending or wanted not in ("LIKE", "DISLIKE", "INDIFFERENT")):
+            return False
+        items = self._source_items(source)
+        if not 0 <= index < len(items) or not self._playlist_song_supported(items[index]):
+            return False
+        video_id = str(items[index]["videoId"])
+        self._rating_action_pending = True
+        self._rating_action_video_id = video_id
+        if self._current_video_id() == video_id:
+            self._rating_generation += 1
+        generation = self._rating_generation
+        self.playerChanged.emit()
+        self._submit_rating_write(video_id, wanted, "", generation)
+        self._set_status("Ukládám hodnocení skladby…")
+        return True
+
+    def _submit_rating_write(self, video_id, wanted, old_status, generation):
         ytmusic = self._ytmusic
+        rating = {"LIKE": core.LikeStatus.LIKE, "DISLIKE": core.LikeStatus.DISLIKE,
+                  "INDIFFERENT": core.LikeStatus.INDIFFERENT}[wanted]
 
         def work():
             error = ""
             try:
-                ytmusic.rate_song(video_id, rating)
+                response = ytmusic.rate_song(video_id, rating)
+                if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
+                    raise RuntimeError("YouTube Music nepotvrdilo změnu hodnocení.")
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"
-            self._ratingActionReady.emit(
-                generation, video_id, new_status, old_status, error
-            )
-
+            # Empty old status means no optimistic update to roll back.
+            self._ratingActionReady.emit(generation, video_id, wanted, old_status, error)
         self._executor.submit(work)
 
     @Slot(int, str, str, str, str)
     def _apply_rating_action(
         self, generation, video_id, new_status, old_status, error
     ):
+        self._rating_action_pending = False
+        self._rating_action_video_id = ""
         current_matches = self._current_video_id() == video_id
+        if current_matches:
+            # Discard rating probes started before this write completed, even
+            # when playback moved away and returned to the same video meanwhile.
+            self._rating_generation += 1
+        self._player_rating_busy = False
+        self.playerChanged.emit()
 
         if error:
-            self._propagate_like_status(video_id, old_status)
-            if current_matches and generation == self._rating_generation:
+            if old_status:
+                self._propagate_like_status(video_id, old_status)
+            if current_matches and old_status:
                 self._player_like_status = old_status
                 self._player_rating_busy = False
                 self.playerChanged.emit()
@@ -1512,16 +1556,16 @@ class BackendBridge(QObject):
             return
 
         self._propagate_like_status(video_id, new_status)
-        if current_matches and generation == self._rating_generation:
+        if current_matches:
             self._player_like_status = new_status
             self._player_rating_busy = False
             self.playerChanged.emit()
-            label = {
-                "LIKE": "Oblíbená",
-                "DISLIKE": "Neoblíbená",
-                "INDIFFERENT": "Bez hodnocení",
-            }.get(new_status, "Bez hodnocení")
-            self._set_status(f"Hodnocení · {label}")
+        label = {
+            "LIKE": "Oblíbená",
+            "DISLIKE": "Neoblíbená",
+            "INDIFFERENT": "Bez hodnocení",
+        }.get(new_status, "Bez hodnocení")
+        self._set_status(f"Hodnocení · {label}")
 
         # Změna likeStatus sama nestačí: nově oblíbená skladba ještě
         # v modelu Oblíbené hudby není a odoblibená z něj musí zmizet.

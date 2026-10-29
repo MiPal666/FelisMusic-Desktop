@@ -1,5 +1,17 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.65-dev – hodnocení vybrané skladby přes menu, Michalem přijato
+
+- Michal potvrdil commit f169537 a povolil navazující hodnocení jiné než aktuální skladby. Nový rateTrackFrom(source,index,wanted) zachytí přesné videoId před asynchronním zápisem; explicitní LIKE/DISLIKE/INDIFFERENT bez toggle a bez spuštění skladby či předchozího watch dotazu. Guardy: druh skladby/ID/zdroj/index, účet/připojení, closing, probíhající zápis.
+- QML jednotlivá skladba → ⋮ → Hodnocení… → Oblíbená / Neoblíbená / Zrušit hodnocení. Známý LIKE/DISLIKE označen ✓. Stejná dostupnost typů jako dosavadní playerCanRate (song/video/upload_song s ID), multivýběr skrytý, offline a pending write neaktivní. Neznámý stav se nevydává za známý.
+- Menu mění lokální modely až po úspěšné odpovědi YTM; chybová odpověď STATUS_FAILED nebo výjimka zachová data a odemkne další akci. Žádné automatické opakování zápisu. Horní tlačítka si ponechávají optimistický toggle a rollback, nově sdílejí _submit_rating_write a globální guard pro souběžné zápisy. Zachován současný kontrakt rate_song (odpověď nemusí mít status); explicitně neúspěšný status se odmítne.
+- _rating_action_video_id a generace chrání potvrzenou změnu před starými dotazy na stav. Po přechodu na cílovou skladbu během zápisu se aktualizuje i playerLikeStatus; nesouvisející aktuální dotaz na rating se nezahazuje. Změna audia/času/fronty/pořadí není součástí akce.
+- _propagate_like_status nově aktualizuje i aktivní load snapshoty, aby cover nebo hydratace již načteného obsahu nevrátila staré hodnocení. Duplicity se hodnotí podle videoId (hodnocení patří skladbě, ne výskytu). Známý seznam Oblíbených se obnoví stávající loadLiked cestou.
+- **525 offline testů prošlo**, `git diff --check` bez chyb. Devět nových offline integrací pro explicitní tři stavy/unknown bez lookupu, propagaci do duplicit/modelů/coveru při hraní jiného titulu, blokovaný zápis + navigaci/změnu aktuální skladby, chyby a uvolnění guardu, horní toggle/rollback a souběh, staré rating probes i neztracený nesouvisející probe, aktivní load snapshoty/Oblíbené a neplatné cíle/offline/closing. API/audio mockované, žádné změny skutečného účtu.
+- Dvě QML kontroly 900×600/1280×800: skutečné menu a rating popup, dostupnost tří akcí a známý stav, DISLIKE/Clear/LIKE, zablokování opakované akce během požadavku, nezměněné přehrávání jiné skladby a aktualizovaný znak ✓, offline a multivýběr. Bez QML varování. Screenshot 900×600 vizuálně zkontrolován.
+- Skutečný test: během hraní jiné skladby otevřít ⋮ → Hodnocení…, nastavit Oblíbená/Neoblíbená/Zrušit a znovu otevřít menu/Informace. Vyzkoušet také tentýž titul jako aktuální skladba a horní tlačítka. Michal potvrdil funkčnost 2026-10-29. Plán 3 (Informace i hodnocení) přijatý a uzavřený. Hodnocení připravené ke commitu; potom plán 4 – údaje v hlavičkách. Zatím necommitováno.
+
+
 ## 0.3.64-dev – Informace o vybrané skladbě, Michalem přijato
 
 - Michal potvrdil commit 64e4e1a a povolil první podkrok plánu 3: pouze Informace o skladbě z menu, hodnocení zvlášť. Aktuální Info se zachovává.
@@ -7,7 +19,7 @@
 - Sdílený trackInfoDialog má selectedInfo snapshot nebo živé information pro horní Info. Při přechodu na jinou skladbu se menu snapshot nemění; nové otevření horním Info resetuje na aktuální přehrávání. U zdrojů mimo Frontu nezobrazuje údaje o jiné aktuální frontě; pozice/název fronty jen u queue snapshotu. Při otevření z Fronty jsou to hodnoty k okamžiku otevření.
 - Menu ⋮ → Informace u jednotlivých online i nahraných skladeb z knihovny/detailu/hledání/historie/Oblíbených/Fronty; při multivýběru skryté. Nevyžaduje připojení ani spuštěné audio, lze i nad načteným prefixem.
 - **516 offline testů prošlo**, čtyři nové integrace: všechny zdroje/druhy bez spuštění a sítě, přesná duplicitní queue položka a aktuální runtime data, zachované audio/čas/fronta/výběr/zdroj a snapshot při změně modelu, chybějící údaje a neplatné cíle. **Dvě QML kontroly 900×600/1280×800 bez varování:** skutečné menu/otevření dialogu, duplicitní výskyt, přechod Next při otevřeném snapshotu, horní Info a jeho živá aktualizace, jiná knihovní skladba bez údajů aktuální fronty, skrytí při multivýběru. Screenshot 900×600 vizuálně zkontrolován. API/audio/thumbnail/probe mockované. git diff --check prošel.
-- Skutečný test: ⋮ → Informace u jiné než aktuální skladby v playlistu/knihovně/Frontě, zkusit i nahranou. Přehrávání má pokračovat, dialog ukazuje zvolenou skladbu; horní Info stále aktuální. Michal potvrdil funkčnost 2026-10-29. Připraveno ke commitu, potom samostatně hodnocení z menu. Dokumentace přípravy již v 79c1d59; implementace a tests/test_track_info.py dosud necommitované.
+- Skutečný test: ⋮ → Informace u jiné než aktuální skladby v playlistu/knihovně/Frontě, zkusit i nahranou. Přehrávání má pokračovat, dialog ukazuje zvolenou skladbu; horní Info stále aktuální. Michal potvrdil funkčnost 2026-10-29. Připraveno ke commitu, potom samostatně hodnocení z menu. Implementace a tests/test_track_info.py uložené v f169537.
 
 
 ## 0.3.63-dev – přesouvání výskytů přímo ve Frontě, Michalem přijato
