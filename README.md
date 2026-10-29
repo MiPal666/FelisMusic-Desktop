@@ -30,7 +30,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.63-dev** (přesouvání konkrétního výskytu přímo ve Frontě; čeká na skutečný test)
+- Desktop GUI: **0.3.63-dev** (přesouvání konkrétního výskytu přímo ve Frontě; Michalem otestováno a přijato)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

@@ -1,6 +1,6 @@
 # FelisMusic Desktop – aktuální stav
 
-## 0.3.63-dev – přesouvání výskytů přímo ve Frontě, čeká na skutečný test
+## 0.3.63-dev – přesouvání výskytů přímo ve Frontě, Michalem přijato
 
 - Michal potvrdil commit 76444a3 a povolil přesouvání. Nový moveQueueItem(index, direction) přesune jen konkrétní objekt fronty o jeden řádek. Kontroluje hranice/směr, closing, přechod přehrávání a čekání na nové skladby. Bez požadavků na API a bez změny zdrojového seznamu.
 - Aktuální objekt se dohledá po přesunu podle identity, současně se přesunou _queue_source_indices a nastaví track marker. Audio, pozice, metadata/hodnocení, pauza/Stop, Repeat a Shuffle/Mix pokračují. Model používá rowsMoved, nikoli přestavbu fronty. Origin kontext/index i manuální a playlistové bindingy zůstávají.
@@ -8,7 +8,7 @@
 - QML pouze ve Frontě bez multivýběru: Posunout nahoru / Posunout dolů, na hranici neaktivní. Přesouvání načteného prefixu funguje během dalšího načítání; během EOS čekání se dočasně nepovolí, aby kurzor pokračování nezměnil význam.
 - **512 offline testů prošlo**, osm nových: přesné duplicity/aktuální objekt/historie, čas/rating/Repeat/zdroj/cover bez zápisu do API, změna prefetch a EOS/Previous, pauza/Stop/Shuffle/manuální kopie, pending odebrání aktuální, ochrana ručního pořadí proti playlist sync a zachované removal bindingy, guardy, doplnění dvoublokového playlistu po přesunu, zahození staré radio refill odpovědi a úspěšné nové doplnění.
 - **Dvě QML kontroly 900×600 a 1280×800** bez varování: skutečné nabídky, disabled hranice, přesun aktuální i duplicitní položky, správný queue index a zdrojové indexy, nezměněné audio/čas, skrytí při multivýběru a mimo Frontu. API/audio/probe/thumbnail mockované. git diff --check prošel.
-- Skutečný test: ve Frontě posunout další skladbu nahoru/dolů a ověřit nástupce. Zkusit duplicitní výskyt a aktuální skladbu během hraní/pauzy; audio nesmí přeskočit a cover vrátí původní kolekci. Uložený playlist zůstává stejný. Po přijetí samostatný commit, potom plán 3 – Info/hodnocení jiné než aktuální skladby. Zatím necommitováno.
+- Skutečný test: ve Frontě posunout další skladbu nahoru/dolů a ověřit nástupce. Zkusit duplicitní výskyt a aktuální skladbu během hraní/pauzy; audio nesmí přeskočit a cover vrátí původní kolekci. Uložený playlist zůstává stejný. Michal skutečně potvrdil funkčnost 2026-10-29. Implementace přesouvání již uložená v cb77085 (se stejným názvem jako předchozí commit 76444a3); tests/test_queue_move.py zůstal nesledovaný. Doplnit test a tento zápis přijetí samostatným commitem. Plán 2 uzavřený, potom plán 3 – Info/hodnocení jiné než aktuální skladby.
 
 
 ## 0.3.62-dev – spuštění playlistu otevře Frontu, Michalem přijato
