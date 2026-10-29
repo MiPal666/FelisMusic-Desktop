@@ -31,6 +31,7 @@ from .album_library import load_catalog_album
 from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
+from .cast_discovery import CastDiscovery
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -180,6 +181,8 @@ class BackendBridge(QObject):
     detailTitleChanged = Signal()
     errorOccurred = Signal(str)
     initialized = Signal()
+    castDevicesChanged = Signal()
+    _castDevicesReady = Signal(int, object, bool, str)
     loginChanged = Signal()
     loginRequested = Signal()
     _loginResult = Signal(int, str, object)
@@ -254,6 +257,12 @@ class BackendBridge(QObject):
         self._account_name = "YouTube Music"
         self._busy = False
         self._connected = False
+        self._cast_discovery = None
+        self._cast_generation = 0
+        self._cast_devices = []
+        self._cast_scanning = False
+        self._cast_message = "Vyhledávání spustíš tlačítkem Vyhledat zařízení."
+        self._castDevicesReady.connect(self._apply_cast_devices, Qt.ConnectionType.QueuedConnection)
         self._login_state = {"phase": "closed", "browsers": [], "message": ""}
         self._login_generation = 0
         self._login_cancel = Event()
@@ -421,6 +430,44 @@ class BackendBridge(QObject):
     @Property(bool, notify=connectedChanged)
     def connected(self):
         return self._connected
+
+    @Property("QVariantMap", notify=castDevicesChanged)
+    def castState(self):
+        return {"scanning": self._cast_scanning, "message": self._cast_message,
+                "devices": [{"id": "local", "name": "Toto zařízení", "kind": "local"}]
+                           + [dict(row) for row in self._cast_devices]}
+
+    @Slot(result=bool)
+    def discoverCastDevices(self):
+        if self._closing.is_set() or self._cast_scanning:
+            return False
+        self._cast_scanning = True
+        self._cast_message = "Hledám Cast zařízení a skupiny…"
+        self.castDevicesChanged.emit()
+        if self._cast_discovery is not None and self._cast_discovery.thread.is_alive():
+            self._cast_discovery.refresh()
+        else:
+            self._cast_generation += 1
+            generation = self._cast_generation
+            try:
+                self._cast_discovery = CastDiscovery(
+                    lambda rows, scanning, error: self._castDevicesReady.emit(generation, rows, scanning, error))
+                self._cast_discovery.start()
+            except Exception:
+                self._apply_cast_devices(generation, [], False, "Cast zařízení se nepodařilo vyhledat. Zkus hledání znovu.")
+        return True
+
+    @Slot(int, object, bool, str)
+    def _apply_cast_devices(self, generation, rows, scanning, error):
+        if self._closing.is_set() or generation != self._cast_generation:
+            return
+        self._cast_devices = rows
+        self._cast_scanning = scanning
+        if error:
+            self._cast_discovery = None
+        self._cast_message = error or ("Hledám Cast zařízení a skupiny…" if scanning else
+            f"Nalezeno Cast zařízení a skupin: {len(rows)}" if rows else "Žádná Cast zařízení ani skupiny nebyly nalezeny.")
+        self.castDevicesChanged.emit()
 
     @Property("QVariantMap", notify=loginChanged)
     def loginState(self):
@@ -6083,6 +6130,8 @@ class BackendBridge(QObject):
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
             self._login_process.kill()
         self._closing.set()
+        if self._cast_discovery is not None:
+            self._cast_discovery.close()
         self._player_timer.stop()
         try:
             with self._transport_lock:

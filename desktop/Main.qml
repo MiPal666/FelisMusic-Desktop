@@ -294,6 +294,71 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: castDialog
+        objectName: "castDevicesDialog"
+        title: "Zvukové výstupy"
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(520, root.width - 40)
+        background: Rectangle { color: "#202020"; border.color: "#555555"; radius: 6 }
+        header: Label { text: castDialog.title; color: "#eeeeee"; font.bold: true; padding: 14 }
+        contentItem: ColumnLayout {
+            spacing: 12
+            Label {
+                Layout.fillWidth: true
+                text: backend.castState.message
+                color: "#bbbbbb"
+                wrapMode: Text.WordWrap
+            }
+            ListView {
+                objectName: "castDevicesList"
+                Layout.fillWidth: true
+                Layout.preferredHeight: Math.min(240, count * 48)
+                clip: true
+                model: backend.castState.devices
+                delegate: Rectangle {
+                    required property var modelData
+                    width: ListView.view.width
+                    height: 48
+                    color: modelData.kind === "local" ? "#303438" : "#262626"
+                    RowLayout {
+                        anchors.fill: parent
+                        anchors.margins: 10
+                        Label {
+                            Layout.fillWidth: true
+                            Layout.minimumWidth: 0
+                            text: modelData.name
+                            color: "#eeeeee"
+                            elide: Text.ElideRight
+                        }
+                        Label {
+                            text: modelData.kind === "local" ? "Aktuální výstup"
+                                  : modelData.kind === "group" ? "Skupina" : "Cast audio"
+                            color: modelData.kind === "local" ? "#a6d3a6" : "#aaaaaa"
+                            font.pixelSize: 12
+                        }
+                    }
+                }
+                ScrollBar.vertical: ScrollBar { }
+            }
+            BusyIndicator { Layout.alignment: Qt.AlignHCenter; running: backend.castState.scanning; visible: running }
+            Button {
+                objectName: "castDiscoverButton"
+                Layout.fillWidth: true
+                text: "Vyhledat zařízení"
+                enabled: !backend.castState.scanning
+                onClicked: backend.discoverCastDevices()
+            }
+            Button {
+                objectName: "castCloseButton"
+                Layout.fillWidth: true
+                text: "Zavřít"
+                onClicked: castDialog.close()
+            }
+        }
+    }
+
+    Dialog {
         id: logoutDialog
         objectName: "logoutDialog"
         title: "Odhlásit FelisMusic?"
@@ -2529,6 +2594,12 @@ ApplicationWindow {
                                      : backend.status)
                             color: backend.status.indexOf("Chyba") >= 0 ? "#ff8a80" : "#999999"
                             font.pixelSize: 13
+                        }
+                        PlayerTextButton {
+                            objectName: "outputDevicesButton"
+                            text: "Výstupy"
+                            implicitWidth: 78
+                            onClicked: castDialog.open()
                         }
                         PlayerTextButton {
                             objectName: "accountButton"
