@@ -1,5 +1,13 @@
 # FelisMusic Desktop – aktuální stav
 
+## Rozhodnutí 2026-10-29 – obnova přehrávání odložena po 1.0
+
+- Michal obvykle začíná poslech znovu a výslovně odložil celý bod 6: ukládání/obnovení fronty, skladby/pozice, Shuffle, Repeat, Mixu a zdrojového kontextu. Nejde o podmínku desktopové 1.0.
+- Odstraněny pouze vlastní rozpracované necommitované změny obnovy: dialog a backend vráceny přesně na HEAD 384c9fc, nové resume.py a test_resume.py odstraněny. Rozpracovaná funkce nebyla přijata ani commitována. Verze aplikace zůstává 0.3.75-dev; mění se jen dokumentace.
+- Odkazy 0.3.75-dev jsou přijaté a uložené v 384c9fc. Dále přihlášení z GUI → Cast → MPRIS → kontrola, vzhled, instalace/spouštěč a příprava vydání. Přihlášení účtu se neodkládá.
+- Michal upřesnil seznam odložených funkcí: (1) stahování a správa stažené hudby, (2) uložení fronty při vypnutí a její obnovení po zapnutí aplikace.
+- Port pro Sailfish OS / Silica je první navazující projekt hned po desktopové 1.0, před odloženými rozšířeními. Přetahování myší zůstává námětem; další cache seznamů se podle rozhodnutí 2026-10-28 nyní neřeší.
+
 ## 0.3.75-dev – kopírování a otevírání odkazů, Michalem přijato
 
 - Michal potvrdil commit 3e299c8 a povolil plán 5d. public_links.py sestavuje pouze https://music.youtube.com: song/video → watch?v=videoId, album/single/EP → browse/MPRE…, artist → channel/UC… (normalizace knihovního MPLA aliasu), konečný PL/OLAK5uy playlist → playlist?list=… (normalizace VL aliasu). Bez API dotazu a bez odvození kolekce z první skladby nebo jejího playlistu.
@@ -7,7 +15,7 @@
 - copyPublicLink zapisuje do systémové QGuiApplication.clipboard; openPublicLink předává QUrl přes QDesktopServices.openUrl do výchozího prohlížeče. Při chybě otevření či chybějící schránce nezobrazuje úspěch. Akce nezávisí na connected, při shutdown jsou blokovány. Neprovádějí zápis do účtu ani nemění soukromí playlistu.
 - QML: ⋮ jednotlivé skladby/videa a horní ⋮ kolekce má dvě nové položky. Cílová URL zachycena při otevření menu, takže pozdější změna modelu nebo navigace nezamění cíl; multivýběr odkazy nenabízí. Kolekční menu dostupné pro známý odkaz i offline/busy, síťové akce zůstávají guardované; collectionPlaylistSave má nyní explicitně connected i při offline otevření menu. Žádné nové akce u Nahraných.
 - Pět nových offline testů: druhy/aliasy/přesná ID, nepodporované/privátní/malformed položky a URL, všechny zdroje/výskyty a zachycený cíl offline při hraní se zachováním fronty/času/výběru/účtu, návrat metadat historie i prázdná kolekce, chyby prohlížeče/schránky a shutdown. Prošlo všech 580 offline testů a git diff --check. Dvě QML kontroly 900×600/1280×800 bez varování: skutečná schránka, mockovaný prohlížeč, offline nabídky skladby/alba/interpreta/playlistu, zachycený cíl po navigaci a skrytí u upload_song. Bez síťových dotazů a skutečného otevírání prohlížeče.
-- Michal skutečným testem 2026-10-29 potvrdil kopírování i otevření odkazů pro album, interpreta, playlist a následně také jednotlivou skladbu. Plán 5d i celý bod 5 přijatý a hotový. Nabídku skladby nejprve přehlédl kvůli jiné pozici; po nalezení potvrdil funkčnost, změnu umístění nepožadoval. Aplikace při úpravách kódu neběžela. Zatím necommitováno nad 3e299c8.
+- Michal skutečným testem 2026-10-29 potvrdil kopírování i otevření odkazů pro album, interpreta, playlist a následně také jednotlivou skladbu. Plán 5d i celý bod 5 přijatý a hotový. Nabídku skladby nejprve přehlédl kvůli jiné pozici; po nalezení potvrdil funkčnost, změnu umístění nepožadoval. Aplikace při úpravách kódu neběžela. Uloženo v commitu 384c9fc.
 
 ## 0.3.74-dev – delší ověřování odběrů, Michalem přijato
 

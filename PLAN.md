@@ -1,5 +1,9 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
+**Upřesnění pořadí po 1.0 (2026-10-29):** odložené funkce jsou (1) stahování a správa stažené hudby, (2) uložení fronty při vypnutí a obnovení po zapnutí aplikace. Port pro Sailfish OS / Silica bude první navazující projekt hned po desktopové 1.0, před těmito rozšířeními.
+
+**Rozhodnutí 2026-10-29 – obnova přehrávání až po 1.0:** Michal obvykle začíná nový poslech a odložil celý bod 6 (fronta, skladba, pozice, Shuffle/Repeat/Mix i zdrojový kontext). Rozpracované necommitované změny byly odstraněny; kód zůstává v přijaté 0.3.75-dev, commit 384c9fc. Další krok do 1.0 je přihlášení z GUI, potom Cast, MPRIS a dokončení vydání.
+
 **0.3.75-dev / Plán 5d – odkazy:** ⋮ skladby/videa a ⋮ otevřeného online alba, interpreta či playlistu nabízí Kopírovat odkaz / Otevřít v prohlížeči. Odkaz z již známého přesného ID bez API, menu zachytí cíl při otevření. Kopírování i otevření dostupné offline, bez změn účtu, fronty nebo audia. Nahrané položky, profily/podcasty, dynamické Mixy a systémové LM/SE bez akcí; soukromý playlist nezveřejňujeme. 580 offline testů a dvě QML kontroly prošly. Michal skutečným testem 2026-10-29 přijal odkazy pro skladbu, album, interpreta i playlist; plán 5d a celý bod 5 hotový. Odběry přijaté a uložené v 3e299c8.
 
 **0.3.74-dev – delší ověření odběru podle skutečného logu:** log (7) potvrzuje správný kanál a opakovaně starý boolean po úspěšné změně. Jedno přidání uspělo až třetím čtením 3,548 s po odpovědi zápisu, ostatní končily stále starým stavem po 3–4 s. Kontrola má nyní nejvýše šest čtení s celkem 15 s přerušitelných prodlev plus čas požadavků; končí ihned při potvrzení. Stále jediný zápis a stejná přísná identita/stav. 575 offline testů prošlo. Michal potvrdil funkční přidání i zrušení odběru včetně ověření 2026-10-29; plán 5c přijatý. Po commitu následuje plán 5d – kopírování a otevírání veřejných odkazů.
@@ -46,7 +50,7 @@ Tento přehled nahrazuje starší pořadí níže. Dokončené čtyři Michalovy
 | 3. Info a hodnocení jiné skladby | Přes ⋮ zjistit údaje nebo dát líbí/nelíbí i skladbě, která právě nehraje. | 3a Info vybrané skladby; 3b dostupné hodnocení s ověřením výsledku. |
 | 4. Údaje u alba/playlistu/interpreta | Doplnit do kompaktní hlavičky to, co YTM skutečně vrací, například autora, rok nebo délku. | 4a prověřit současné údaje a navrhnout jen chybějící; 4b doplnit a zkontrolovat malé okno. Žádné odhadované údaje. |
 | 5. Knihovna, odběry a odkazy | Uložit/odebrat album či playlist, sledovat interpreta, zkopírovat nebo otevřít veřejný odkaz. | 5a alba v knihovně; 5b playlisty v knihovně (jiná věc než smazat vlastní playlist); 5c odběr interpreta; 5d odkazy. Každá část zvlášť. |
-| 6. Pokračovat po restartu | Po novém spuštění nabídnout návrat ke skladbě, její pozici a frontě. | 6a uložení/obnova běžné fronty a odmítnutí nabídky; 6b Shuffle, Repeat, Mix a zdrojový kontext. Bez automatického přehrání či připojení Castu. |
+| 6. Pokračovat po restartu – odloženo po 1.0 | Michal obvykle začíná nový poslech; nyní není podmínkou vydání. | Později: fronta, skladba/pozice, Shuffle/Repeat/Mix a kontext, s nabídkou obnovení a bez automatického přehrání/Castu. |
 | 7. Přihlášení z aplikace | Přihlásit účet nebo obnovit neplatné přihlášení bez práce v terminálu. | 7a první přihlášení existujícím mechanismem CLI; 7b obnovení, zrušení a chyby. |
 | 8. Cast – přednost před MPRIS | Vybrat Kočičku/jiné zařízení/skupinu a přenášet na ně poslech. | 8a najít a zobrazit zařízení na pokyn; 8b notebook → Cast; 8c Cast → notebook; 8d Cast1 → Cast2/skupina; 8e výpadky, odpojení a celý přehrávací provoz. Každý přechod zvlášť, využít funkční CLI. |
 | 9. MPRIS – poslední nová funkce | Ovládat FelisMusic z přehrávacího panelu KDE, multimediálních kláves a sluchátek. | 9a lokální přehrávání; 9b stejná integrace pro vybraný Cast výstup; 9c skutečný test kláves a sluchátek. |
@@ -162,7 +166,7 @@ Rozpracováno **0.3.26-dev / B3**: **⋮ v hlavičce alba/playlistu → Spustit 
 
 ## Rozsah a pracovní domluva
 
-- Cíl: desktopová 1.0 pro Linux s přehráváním, YTM Shuffle, frontou, průběžným rádiem, knihovnou a playlisty, session, MPRIS a Castem.
+- Cíl: desktopová 1.0 pro Linux s přehráváním, YTM Shuffle, frontou, průběžným rádiem, knihovnou a playlisty, přihlášením z GUI, MPRIS a Castem. Obnova přehrávání po restartu je odložena po 1.0.
 - Hotové datové a přehrávací mechanismy CLI znovu nevymýšlet. Převzít je a adaptovat na asynchronní GUI, jeho metadata, přesné výskyty skladeb a ochranu proti opožděným výsledkům. Textová menu a blokující smyčku CLI nepouštět jako GUI přehrávač.
 - Start vždy na lokálním výstupu. Cast hledat/připojit až na ruční pokyn, i po obnovení session.
 - Jeden samostatně testovatelný podkrok: úprava → kontroly Kláry → skutečný test Michala → opravy → přijetí/dokumentace → commit. Potom další podkrok.
@@ -181,7 +185,7 @@ Rozpracováno **0.3.26-dev / B3**: **⋮ v hlavičce alba/playlistu → Spustit 
 | **5. Rádio / Mix** | **5a hotovo:** mix z jedné skladby, první blok doporučení. Mixy pro vás lze načíst a otevřít. | **5b / B1 hotovo:** uživatelsky přijato v 0.3.24-dev. **5c / B2:** Mix/Náhodně interpreta přijaté v 0.3.25. **B3:** Mix alba/playlistu přes ⋮ skutečně ověřený 2026-10-27; doplnění Oblíbené hudby v 0.3.29 čeká na test. |
 | **6. Knihovna a odběry** | Přímé přidání/odebrání podporované skladby v knihovně hotové. | **6a zbytek:** alba/playlisty. **6b:** odběry interpretů. **6c:** kopírování/otevírání odkazů. |
 | **7. Správa playlistů** | **7a–7d hotové, uživatelsky přijaté a commitnuté.** | Hromadné odebrání hotové v c0c5ccf; další námět přetahování; nezpochybňují dokončení domluveného rozsahu 7a–7d. |
-| **8. Session a přihlášení** | GUI používá existující FCM přihlášení. | **8a:** uložit/obnovit přehrávání. **8b:** přihlásit/obnovit přihlášení z GUI. |
+| **8. Session a přihlášení** | GUI používá existující FCM přihlášení. | **8a odloženo po 1.0:** uložit/obnovit přehrávání. **8b do 1.0:** přihlásit/obnovit přihlášení z GUI. |
 | **9. MPRIS** | Nezapojeno. | Systémové ovládání KDE, multimediální klávesy a Bluetooth sluchátka. |
 | **10. Cast** | GUI má lokální výstup. Ověřený Cast existuje v CLI. | Discovery, výběr výstupu, Local ↔ Cast ↔ Cast, odpojení/ztráta zařízení a integrace ostatních funkcí. |
 | **11. Desktop 1.0** | Vývojový základ průběžně ověřovaný. | Kontrola celku, vzhled/použitelnost, instalace, ikona/spouštěč, dokumentace a příprava vydání. |
@@ -220,7 +224,7 @@ Uživatel zdůraznil časté používání Mix/Rádia. Proto se po bodu 7 nepost
 
 ### D. Session a přihlášení (8)
 
-1. **8a – Obnova přehrávání.** Uchovat frontu, přesné výskyty, aktuální skladbu/pozici, repeat/shuffle/radio a potřebný zdrojový kontext. Nabídnout pokračování nebo odmítnutí; nic automaticky nepřehrávat ani nepřipojovat Cast. Využít `save_resume_session` / `load_resume_session`, ověřit kompatibilitu/oddělení CLI a GUI uloženého stavu a neukládat zbytečně rozkopírované snapshoty modelů u každé skladby.
+1. **8a – Obnova přehrávání – odloženo po 1.0 rozhodnutím 2026-10-29.** Uchovat frontu, přesné výskyty, aktuální skladbu/pozici, repeat/shuffle/radio a potřebný zdrojový kontext. Nabídnout pokračování nebo odmítnutí; nic automaticky nepřehrávat ani nepřipojovat Cast. Využít `save_resume_session` / `load_resume_session`, ověřit kompatibilitu/oddělení CLI a GUI uloženého stavu a neukládat zbytečně rozkopírované snapshoty modelů u každé skladby.
 2. **8b – Přihlášení z GUI.** Zapojit existující izolovaný login `AuthManager`; odstranit závislost uživatelského postupu na textovém `input`/CLI menu. Nabídnout obnovu přihlášení při neplatné session, průběh, chybu a zrušení. Přihlašovací data ponechat mimo Git.
 
 Autentizační session a obnovení přehrávání jsou dvě různé věci. Přihlášené GUI dnes neznamená uloženou frontu po restartu.
@@ -258,8 +262,13 @@ Multivýběr, dvojklik/Enter, dávkové vkládání/ukládání, lišta od dvou 
 
 Hromadné odebrání z playlistu a přetahování myší jsou **další rozšíření**, nikoli nedodělky původního přijatého rozsahu bodu 7. Hromadné odebrání bylo mezitím implementované, skutečně přijaté a uložené v c0c5ccf. Přetahování myší zůstává námětem.
 
-## Mimo desktopovou 1.0
+## Odloženo po desktopové 1.0
 
-- Trvalé offline stahování, správa stažené knihovny a přehrávání bez sítě. Ani referenční CLI nemá hotovou takovou offline knihovnu; dočasné stažení/cache pro přehrání je jiná funkce.
-- Sailfish OS / Silica port s vlastní ergonomií, audio a systémovou integrací; použít stabilní datovou logiku desktopu.
-- Vyřazené nápady zůstávají vyřazené: připínání do „Poslouchejte znovu“, poděkování u skladby a podobné nepoužívané doplňky. Počty přehrání nejsou podmínkou 1.0.
+1. Stahování a správa stažené hudby, včetně trvalé offline knihovny a přehrávání bez sítě. Dočasná audio cache je samostatná již existující funkce.
+2. Uložení fronty při vypnutí a její obnovení po zapnutí aplikace, včetně skladby/pozice, Shuffle/Repeat/Mix a zdrojového kontextu. Rozpracovaný necommitovaný kód odstraněn.
+
+## Hned po desktopové 1.0
+
+**Port pro Sailfish OS / Silica je první navazující projekt hned po vydání desktopové 1.0.** Vlastní ergonomie, audio a systémová integrace, se stabilní datovou logikou desktopu. Není součástí neurčitého seznamu odložených funkcí; má přednost před výše odloženými rozšířeními.
+
+Vyřazené nápady zůstávají vyřazené: připínání do „Poslouchejte znovu“, poděkování u skladby a podobné nepoužívané doplňky. Počty přehrání nejsou podmínkou 1.0. Přetahování myší zůstává námětem a další cache seznamů se nyní neřeší.

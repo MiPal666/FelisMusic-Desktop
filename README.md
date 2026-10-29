@@ -2,6 +2,8 @@
 
 ## Stav
 
+Po desktopové 1.0 jsou odloženy dvě funkce: stahování a správa stažené hudby; uložení fronty při vypnutí a její obnovení po zapnutí aplikace. Aplikace zatím při každém spuštění začíná nový poslech. **Hned po vydání desktopové 1.0 následuje port pro Sailfish OS / Silica.**
+
 V menu ⋮ online skladby/videa a v horním ⋮ otevřeného alba, interpreta nebo playlistu jsou **Kopírovat odkaz** a **Otevřít v prohlížeči**. Používají již načtené ID, fungují i bez připojení aplikace a nemění přehrávání. Nahraný obsah a systémové seznamy veřejný odkaz nenabízejí; odkaz na soukromý playlist nemění jeho přístupnost.
 
 V menu ⋮ otevřeného online alba jsou také **Přehrát jako další** a **Přidat na konec fronty**. Vloží celé album v původním pořadí bez přerušení současné skladby. Prázdnou frontu připraví bez automatického spuštění.
