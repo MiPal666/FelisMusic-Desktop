@@ -1496,6 +1496,15 @@ ApplicationWindow {
             enabled: !backend.busy
             onClicked: parent.goBack()
         }
+        Image {
+            objectName: "collectionHeaderCover"
+            source: backend.detailMeta.header ? backend.detailMeta.header.thumbnail || "" : ""
+            visible: source.toString().length > 0 && status !== Image.Error
+            Layout.preferredWidth: 44
+            Layout.preferredHeight: 44
+            fillMode: Image.PreserveAspectFit
+            asynchronous: true
+        }
         ColumnLayout {
             Layout.fillWidth: true
             Layout.minimumWidth: 0
@@ -1511,9 +1520,16 @@ ApplicationWindow {
                 elide: Text.ElideRight
             }
             Label {
-                text: backend.detailTracksModel.count +
+                objectName: "collectionHeaderSummary"
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                text: backend.detailHeaderSummary || backend.detailTracksModel.count +
                       (backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs"
                        ? " položek" : " skladeb")
+                elide: Text.ElideRight
+                HoverHandler { id: headerSummaryHover }
+                ToolTip.visible: headerSummaryHover.hovered
+                ToolTip.text: text
                 color: "#999999"
                 font.pixelSize: 12
             }

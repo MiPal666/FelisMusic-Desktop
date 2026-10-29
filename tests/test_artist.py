@@ -30,7 +30,8 @@ class ArtistTests(support.AudioPlaybackTestCase):
         self.b.selectArtistSection('albums'); self.until(lambda: not self.b.busy)
         self.b.openDetailItem(0)
         self.until(lambda: not self.b.busy)
-        self.assertEqual(self.b.detailMeta, {'kind': 'album', 'browseId': 'album', 'shufflePlaylistId': ''})
+        self.assertEqual({key: self.b.detailMeta[key] for key in ('kind', 'browseId', 'shufflePlaylistId')},
+                         {'kind': 'album', 'browseId': 'album', 'shufflePlaylistId': ''})
         self.assertEqual(self.b.detailTracksModel.snapshot()[0]['videoId'], 'T')
         self.b.backDetail()
         self.assertEqual(self.b.detailMeta['section'], 'albums')

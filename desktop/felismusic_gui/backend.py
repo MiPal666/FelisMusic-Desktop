@@ -693,6 +693,52 @@ class BackendBridge(QObject):
     def detailMeta(self):
         return self._detail_meta
 
+    @classmethod
+    def _collection_header(cls, data, album=False):
+        author = data.get("author") or ""
+        if isinstance(author, dict):
+            author = author.get("name") or ""
+        creator = cls._artists(data) if album else author
+        year = data.get("year")
+        year = str(year).strip() if isinstance(year, (str, int)) and not isinstance(year, bool) else ""
+        if len(year) != 4 or not year.isdigit():
+            year = ""
+        total = data.get("trackCount")
+        if isinstance(total, str) and total.isdigit():
+            total = int(total)
+        if isinstance(total, bool) or not isinstance(total, int) or total < 0:
+            total = None
+        return {"creator": creator if isinstance(creator, str) else "", "year": year,
+                "total": total, "duration": data.get("duration") if isinstance(data.get("duration"), str) else "",
+                "thumbnail": cls._thumbnail(data, allow_video_fallback=False)}
+
+    @Property(str, notify=detailTitleChanged)
+    def detailHeaderSummary(self):
+        meta = self._detail_meta
+        if meta.get("kind") not in ("album", "upload_album", "playlist"):
+            return ""
+        header = meta.get("header") or {}
+        rows = self._detail_tracks_model.snapshot()
+        count, total = len(rows), header.get("total")
+        count_text = f"{count} " + ("skladba" if count == 1 else "skladby" if 2 <= count <= 4 else "skladeb")
+        parts = [value for value in (header.get("creator"), header.get("year")) if value]
+        if not self.detailComplete:
+            parts.append(f"Načteno {count} z {total} skladeb" if total is not None and total >= count else "Načteno " + count_text)
+        elif total is not None and total > count:
+            parts.append(f"Dostupné: {count} z {total} skladeb")
+        else:
+            parts.append(count_text)
+        duration = header.get("duration") or ""
+        if self.detailComplete and rows:
+            lengths = [core.song_duration_seconds(row) for row in rows]
+            if all(value is not None and value > 0 for value in lengths):
+                duration = core.format_seconds(sum(lengths))
+                if total is not None and total > count:
+                    duration = "dostupných " + duration
+        if duration:
+            parts.append("Délka " + duration)
+        return " · ".join(parts)
+
     def _detail_state(self):
         return deepcopy({"title": self._detail_title,
                          "tracks": self._detail_tracks_model.snapshot(),
@@ -2048,7 +2094,8 @@ class BackendBridge(QObject):
                 return {"ok": True, "playlistId": playlist_id, "move": (set_video_id, before),
                         "moveOrder": [x.get("setVideoId") for x in tracks],
                         "detail": {"title": data.get("title") or "Playlist",
-                                   "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True},
+                                   "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True,
+                                            "header": self._collection_header(data)},
                                    "tracks": [self._track(x) for x in core.usable_tracks(tracks)
                                               if x.get("setVideoId") not in removed]},
                         "message": "Pořadí skladby uloženo."}
@@ -2180,7 +2227,8 @@ class BackendBridge(QObject):
                         "selectionRevision": selection_revision,
                         "card": self._playlist(dict(data, playlistId=playlist_id, count=len(remaining))),
                         "detail": {"title": data.get("title") or "Playlist",
-                                   "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True},
+                                   "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": True,
+                                            "header": self._collection_header(dict(data, trackCount=len(remaining), duration=""))},
                                    "tracks": [self._track(x) for x in core.usable_tracks(remaining)]},
                         "message": message}
             except Exception as exc:
@@ -4992,6 +5040,7 @@ class BackendBridge(QObject):
                 detail_title = data.get("title") or title
                 tracks = core.usable_tracks(data.get("tracks") or [])
                 meta = {"kind": "album", "browseId": browse_id,
+                        "header": self._collection_header(data, album=True),
                         "shufflePlaylistId": data.get("audioPlaylistId") or ""}
 
             elif kind == "artist":
@@ -5056,7 +5105,7 @@ class BackendBridge(QObject):
                 album_thumbnail = self._thumbnail(data, allow_video_fallback=False)
                 album_artist_links = self._track(data, upload=True)["artistLinks"]
                 tracks = core.usable_tracks(data.get("tracks") or [])
-                meta = {"kind": kind, "browseId": browse_id}
+                meta = {"kind": kind, "browseId": browse_id, "header": self._collection_header(data, album=True)}
 
             elif kind == "upload_artist":
                 if not browse_id:
@@ -5314,6 +5363,7 @@ class BackendBridge(QObject):
                 load["items"] = [self._track(x) for x in core.usable_tracks(tracks)
                                  if x.get("setVideoId") not in removed]
                 load["meta"] = {"kind": "dynamic_mix" if dynamic else "playlist", "playlistId": playlist_id,
+                    "header": self._collection_header(data),
                     "owned": data.get("owned") is True, "playlistLoadRevision": load["revision"],
                     "playlistLoadState": "loading" if more else "complete"}
                 if dynamic:
@@ -5336,7 +5386,8 @@ class BackendBridge(QObject):
             return {
                 "playlistMovesCaughtUp": ([x.get("setVideoId") for x in raw] == [x.get("setVideoId") for x in projected]),
                 "title": data.get("title") or title,
-                "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": data.get("owned") is True},
+                "meta": {"kind": "playlist", "playlistId": playlist_id, "owned": data.get("owned") is True,
+                         "header": self._collection_header(data)},
                 "playlistOccurrenceIds": [x.get("setVideoId") for x in data.get("tracks") or []],
                 "tracks": [self._track(x) for x in tracks],
             }

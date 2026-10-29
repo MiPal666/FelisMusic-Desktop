@@ -16,7 +16,7 @@ class PlaylistPagingTests(support.AudioPlaybackTestCase):
         class Pages:
             def __init__(self, api, pid, **kwargs):
                 self.pid = pid; self.index = 0
-                self.metadata = dict(title=pid, owned=True)
+                self.metadata = dict(title=pid, owned=True, **getattr(owner, 'header_metadata', {}))
             def next_page(self):
                 owner.calls.append((self.pid, self.index))
                 if self.index:
@@ -117,6 +117,17 @@ class PlaylistPagingTests(support.AudioPlaybackTestCase):
                          ['set-1', 'set-0', 'set-2', 'set-3'])
         self.assertEqual(self.b.playerSourceIndex, 0)
         self.assertEqual([x['videoId'] for x in self.b.detailTracksModel.snapshot()], ['A', 'B', 'B', 'C'])
+
+    def test_header_metadata_and_total_are_preserved_while_only_complete_lengths_are_summed(self):
+        self.header_metadata = dict(author=dict(name='Owner'), year='2024', trackCount=4, duration_seconds=180)
+        for i, song in enumerate([song for rows, more in self.pages for song in rows]):
+            song['duration'] = f'{i+1}:00'
+        self.load()
+        self.assertEqual(self.b.detailHeaderSummary, 'Owner · 2024 · Načteno 2 z 4 skladeb')
+        self.play(); played=list(self.played)
+        self.finish()
+        self.assertEqual(self.b.detailHeaderSummary, 'Owner · 2024 · 4 skladby · Délka 10:00')
+        self.assertEqual(self.played, played)
 
     def test_removed_last_prefix_track_waits_and_plays_first_new_occurrence(self):
         self.load(); self.play(1)

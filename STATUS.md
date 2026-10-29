@@ -1,5 +1,17 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.66-dev – metadata hlaviček alb a playlistů, Michalem přijato
+
+- Michal potvrdil commit 06577cf a povolil plán 4. Rozsah: katalogová alba, online playlisty a dostupná metadata nahraných alb; jiné typy detailů zachovávají původní hlavičku. Žádné nové API požadavky ani zásahy do přehrávání/účtu.
+- _collection_header uchová z již načtené odpovědi skutečného interpreta alba / autora playlistu, čtyřmístný rok, celkový počet, textovou délku a obal bez video fallbacku. Chybějící údaje se neodvozují z první skladby ani z jiného objektu. detailHeaderSummary rozlišuje plný seznam, načtený prefix a dostupné výskyty oproti celkovému počtu (včetně duplicit).
+- Délka se přesně sečte jen u úplného seznamu se známými kladnými délkami všech přehratelných řádků. Chybějící délka není nula. Jinak se použije pouze původní textová délka od YTM, pokud je dostupná; parserem spočítané duration_seconds se ignoruje, protože u prvního bloku je jen součtem prefixu. Při odfiltrovaných nepřehratelných řádcích je lokální součet označen jako délka dostupných skladeb.
+- Kompaktní CollectionHeader doplněn o dostupný obal 44×44 a jednu metadatovou řádku pod názvem. Obě textové řádky elidují dlouhý obsah, metadata lze přečíst tooltipem. Nezvětšuje se hlavička do velkého banneru, nabídka ⋮ zůstává dostupná.
+- Hlavičková data jsou v detailMeta/header a tím i v navigačních/přehrávacích snapshotech. Doplněné také při obnově přes pending playlist moves, úspěšném přesunu nebo odebrání; odebrání aktualizuje celkový počet a zahodí starou serverovou textovou délku.
+- **533 offline testů prošlo**, osm nových kontrol: alba/metadata/obal/přesný součet/duplicity, autor playlistu a cover návrat, neúplné délky vs serverový text, nedostupné skladby/počty a označení délky, upload album s chybějícím rokem/umělcem, neplatné údaje/prázdný detail/oddělení interpreta a dynamického Mixu, přesun+odebrání a přepočet metadat; navíc dvoublokový playlist s průběžným počtem a délka až po dokončení. Existující artist navigační test rozšířen tak, aby nové header pole neporušovalo jeho kontrolu identity alba.
+- **Čtyři QML kontroly 900×600/1280×800:** album/playlist s obalem a metadaty, dlouhý název bez překrytí ⋮, nerušené audio, cover z duplicitního playlistového výskytu, načtený prefix a doplnění správného celku/délky. Bez QML varování, screenshot 900×600 vizuálně zkontrolován. API/audio/thumbnail mockované, obal testován lokálním SVG. git diff --check prošel.
+- Skutečný test: otevřít album, playlist i nahrané album, porovnat dostupného autora/rok/počet/délku a obal. U dlouhého playlistu sledovat načteno/celkem a délku po dokončení. Ověřit cover a případně odebrání z vlastního playlistu. Michal potvrdil funkčnost 2026-10-29; plán 4 přijatý a hotový. Připraveno ke commitu, potom plán 5 – knihovna a odběry po samostatných funkcích. Zatím necommitováno.
+
+
 ## 0.3.65-dev – hodnocení vybrané skladby přes menu, Michalem přijato
 
 - Michal potvrdil commit f169537 a povolil navazující hodnocení jiné než aktuální skladby. Nový rateTrackFrom(source,index,wanted) zachytí přesné videoId před asynchronním zápisem; explicitní LIKE/DISLIKE/INDIFFERENT bez toggle a bez spuštění skladby či předchozího watch dotazu. Guardy: druh skladby/ID/zdroj/index, účet/připojení, closing, probíhající zápis.
@@ -9,7 +21,7 @@
 - _propagate_like_status nově aktualizuje i aktivní load snapshoty, aby cover nebo hydratace již načteného obsahu nevrátila staré hodnocení. Duplicity se hodnotí podle videoId (hodnocení patří skladbě, ne výskytu). Známý seznam Oblíbených se obnoví stávající loadLiked cestou.
 - **525 offline testů prošlo**, `git diff --check` bez chyb. Devět nových offline integrací pro explicitní tři stavy/unknown bez lookupu, propagaci do duplicit/modelů/coveru při hraní jiného titulu, blokovaný zápis + navigaci/změnu aktuální skladby, chyby a uvolnění guardu, horní toggle/rollback a souběh, staré rating probes i neztracený nesouvisející probe, aktivní load snapshoty/Oblíbené a neplatné cíle/offline/closing. API/audio mockované, žádné změny skutečného účtu.
 - Dvě QML kontroly 900×600/1280×800: skutečné menu a rating popup, dostupnost tří akcí a známý stav, DISLIKE/Clear/LIKE, zablokování opakované akce během požadavku, nezměněné přehrávání jiné skladby a aktualizovaný znak ✓, offline a multivýběr. Bez QML varování. Screenshot 900×600 vizuálně zkontrolován.
-- Skutečný test: během hraní jiné skladby otevřít ⋮ → Hodnocení…, nastavit Oblíbená/Neoblíbená/Zrušit a znovu otevřít menu/Informace. Vyzkoušet také tentýž titul jako aktuální skladba a horní tlačítka. Michal potvrdil funkčnost 2026-10-29. Plán 3 (Informace i hodnocení) přijatý a uzavřený. Hodnocení připravené ke commitu; potom plán 4 – údaje v hlavičkách. Zatím necommitováno.
+- Skutečný test: během hraní jiné skladby otevřít ⋮ → Hodnocení…, nastavit Oblíbená/Neoblíbená/Zrušit a znovu otevřít menu/Informace. Vyzkoušet také tentýž titul jako aktuální skladba a horní tlačítka. Michal potvrdil funkčnost 2026-10-29. Plán 3 (Informace i hodnocení) přijatý a uzavřený. Hodnocení uložené v 06577cf; potom plán 4 – údaje v hlavičkách.
 
 
 ## 0.3.64-dev – Informace o vybrané skladbě, Michalem přijato
