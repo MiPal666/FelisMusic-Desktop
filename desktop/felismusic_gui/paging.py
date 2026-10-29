@@ -7,6 +7,7 @@ PlaylistPages covers playlist shelves; WatchPages covers watch continuations.
 """
 from copy import copy
 from .diagnostics import current_trace
+from .playlist_library import playlist_library_controls
 from ytmusicapi.continuations import get_continuation_token
 from ytmusicapi.navigation import nav
 from ytmusicapi.mixins.playlists import (
@@ -46,6 +47,7 @@ class PlaylistPages:
             self.metadata = {key: value for key, value in data.items() if key != 'tracks'}
             if len(responses) != 1:
                 raise RuntimeError('Neočekávaný průběh stránkování playlistu.')
+            self.metadata['_playlistLibraryControls'] = playlist_library_controls(responses[0], self.playlist_id, data)
             contents = nav(responses[0], [*TWO_COLUMN_RENDERER, 'secondaryContents',
                 *SECTION, *CONTENT, 'musicPlaylistShelfRenderer', 'contents'])
             self.collaborative = 'collaborators' in data

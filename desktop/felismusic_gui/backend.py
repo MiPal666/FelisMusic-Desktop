@@ -25,6 +25,7 @@ from . import legacy_core as core
 from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages, LibraryArtistSongPages
 from .uploads import load_upload_album
 from .album_library import load_catalog_album
+from .playlist_library import load_library_playlist
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -740,31 +741,92 @@ class BackendBridge(QObject):
         self._submit("album_library_action", "Ukládám album v knihovně…", task)
         return True
 
-    def _update_album_library_views(self, browse_id, controls, albums=None):
-        def update_cards(items, order):
-            return self._sort_normalized([dict(item) for item in albums], order)
+    @Property(bool, notify=detailTitleChanged)
+    def detailCanPlaylistLibrary(self):
+        meta = self._detail_meta
+        controls = meta.get("playlistLibrary") or {}
+        playlist_id = str(meta.get("playlistId") or "").removeprefix("VL")
+        return (meta.get("kind") == "playlist" and not meta.get("owned") and not meta.get("dynamicMix")
+                and bool(playlist_id) and playlist_id not in ("LM", "SE", "HL")
+                and not playlist_id.startswith(("RD", "OLAK", "ML"))
+                and controls.get("playlistId") == playlist_id
+                and isinstance(controls.get("inLibrary"), bool))
 
-        if albums is not None and self._library_section == "albums":
-            self._library_items_model.set_items(update_cards(self._library_items_model.snapshot(), self._library_order))
+    @Slot(result=bool)
+    def changePlaylistLibrary(self):
+        if (self._busy or self._closing.is_set() or not self._connected
+                or self._ytmusic is None or not self.detailCanPlaylistLibrary):
+            return False
+        playlist_id = self._detail_meta["playlistId"].removeprefix("VL")
+        self._playlist_library_target = playlist_id
+        wanted = not self._detail_meta["playlistLibrary"]["inLibrary"]
+        api = self._ytmusic
+        def task():
+            data = load_library_playlist(api, playlist_id)
+            fresh = data.get("_playlistLibraryControls")
+            if not fresh:
+                raise RuntimeError("Nelze ověřit ovládání knihovny tohoto playlistu. Otevři playlist znovu.")
+            if fresh["inLibrary"] != wanted:
+                try:
+                    response = api.rate_playlist(playlist_id,
+                        core.LikeStatus.LIKE if wanted else core.LikeStatus.INDIFFERENT)
+                    if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
+                        raise RuntimeError("YouTube Music nepotvrdilo změnu.")
+                    fresh = load_library_playlist(api, playlist_id).get("_playlistLibraryControls")
+                    if not fresh or fresh["inLibrary"] != wanted:
+                        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav.")
+                except Exception as exc:
+                    raise RuntimeError("Změnu knihovny se nepodařilo ověřit. Otevři playlist znovu a zkontroluj stav. " + str(exc)) from exc
+            warning = ""
+            try:
+                items = [self._playlist(item) for item in api.get_library_playlists(limit=500) or []]
+            except Exception:
+                items = None
+                warning = " · Přehled Playlistů se nepodařilo obnovit, otevři sekci Playlisty znovu."
+            return {"playlistId": playlist_id, "controls": fresh, "items": items, "warning": warning}
+        self._submit("playlist_library_action", "Ukládám playlist v knihovně…", task)
+        return True
+
+    def _update_album_library_views(self, browse_id, controls, albums=None):
+        self._update_collection_library_views("album", browse_id, controls, albums)
+
+    def _update_collection_library_views(self, kind, target, controls, items=None):
+        section = "albums" if kind == "album" else "playlists"
+        id_key = "browseId" if kind == "album" else "playlistId"
+        state_key = "albumLibrary" if kind == "album" else "playlistLibrary"
+        if kind == "playlist" and items is not None:
+            items = [item for item in items if item.get("playlistId") not in self._deleted_playlists]
+            received = {item.get("playlistId") for item in items}
+            for playlist_id in received:
+                self._pending_created_playlists.pop(playlist_id, None)
+            items = list(reversed(list(self._pending_created_playlists.values()))) + items
+            self._playlists_model.set_items(items)
+        def ordered(order):
+            return self._sort_normalized([dict(item) for item in items], order)
+        if items is not None and self._library_section == section:
+            self._library_items_model.set_items(ordered(self._library_order))
         origins = [song.get("_guiOrigin", {}) for song in self._queue.tracks] if self._queue else []
         snapshots = [(self._playing_browse_snapshots, self._current_origin())] + [
             (origin.get("snapshots", {}), origin) for origin in origins]
         seen_lists = set()
         for snapshot, origin in snapshots:
-            items = snapshot.get("library")
-            is_albums = origin.get("library_snapshot_section") == "albums"
-            if (albums is not None and isinstance(items, list) and id(items) not in seen_lists
-                    and (is_albums or (items and all(item.get("kind") == "album" for item in items)))):
-                seen_lists.add(id(items))
-                items[:] = update_cards(items, origin.get("context", {}).get("libraryOrder", self._library_order))
+            rows = snapshot.get("library")
+            matching_section = origin.get("library_snapshot_section") == section
+            if (items is not None and isinstance(rows, list) and id(rows) not in seen_lists
+                    and (matching_section or (rows and all(item.get("kind") == kind for item in rows)))):
+                seen_lists.add(id(rows))
+                rows[:] = ordered(origin.get("context", {}).get("libraryOrder", self._library_order))
         seen = set()
         def update_meta(value):
             if not isinstance(value, (dict, list)) or id(value) in seen:
                 return
             seen.add(id(value))
             if isinstance(value, dict):
-                if value.get("kind") == "album" and value.get("browseId") == browse_id:
-                    value["albumLibrary"] = dict(controls) if controls else None
+                item_id = str(value.get(id_key) or "")
+                if kind == "playlist":
+                    item_id = item_id.removeprefix("VL")
+                if value.get("kind") == kind and item_id == target:
+                    value[state_key] = dict(controls) if controls else None
                 for child in value.values():
                     update_meta(child)
             else:
@@ -773,6 +835,10 @@ class BackendBridge(QObject):
         update_meta(self._detail_meta)
         update_meta(self._detail_history)
         update_meta(self._pending_detail_parent)
+        if kind == "playlist":
+            update_meta(self._playlist_load)
+            if self._playlist_stream:
+                update_meta(self._playlist_stream.get("load"))
         for origin in origins:
             update_meta(origin.get("detail_state"))
         self.detailTitleChanged.emit()
@@ -4172,6 +4238,10 @@ class BackendBridge(QObject):
                         self._detail_tracks_model.set_items([self._track(x) for x in core.usable_tracks(result["detail"].get("tracks", []))])
                         self.detailTitleChanged.emit()
 
+            elif name == "playlist_library_action":
+                self._update_collection_library_views("playlist", result["playlistId"], result["controls"], result["items"])
+                self._set_status(("Playlist přidán do knihovny" if result["controls"]["inLibrary"] else "Playlist odebrán z knihovny") + result["warning"])
+
             elif name == "album_library_action":
                 self._update_album_library_views(result["browseId"], result["controls"], result["albums"])
                 self._set_status(("Album přidáno do knihovny" if result["controls"]["inLibrary"] else "Album odebráno z knihovny") + result["warning"])
@@ -4308,6 +4378,8 @@ class BackendBridge(QObject):
 
     @Slot(str, str)
     def _apply_error(self, name: str, message: str):
+        if name == "playlist_library_action":
+            self._update_collection_library_views("playlist", self._playlist_library_target, None)
         if name == "album_library_action":
             self._update_album_library_views(self._album_library_target, None)
         if name.startswith("playlist_save_"):
@@ -5325,6 +5397,11 @@ class BackendBridge(QObject):
         if not query:
             return
 
+        # Library search exposes only these shelves. Other catalog filters
+        # return a reload-only section that ytmusicapi cannot parse.
+        if scope == "library" and mode not in ("all", "songs", "albums", "artists"):
+            mode = "all"
+
         self.clearDetail()
 
         modes = {
@@ -5458,6 +5535,7 @@ class BackendBridge(QObject):
                 load["meta"] = {"kind": "dynamic_mix" if dynamic else "playlist", "playlistId": playlist_id,
                     "header": self._collection_header(data),
                     "owned": data.get("owned") is True, "playlistLoadRevision": load["revision"],
+                    "playlistLibrary": data.get("_playlistLibraryControls"),
                     "playlistLoadState": "loading" if more else "complete"}
                 if dynamic:
                     load["meta"].update(dynamicMix=True, dynamicFetching=False)

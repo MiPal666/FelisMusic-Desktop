@@ -134,6 +134,8 @@ ApplicationWindow {
     function searchModeLabels() {
         if (currentSearchScope === "uploads")
             return ["Vše"]
+        if (currentSearchScope === "library")
+            return ["Vše", "Skladby", "Alba", "Interpreti"]
         return [
             "Vše", "Skladby", "Videa", "Alba", "Interpreti",
             "Playlisty", "Profily", "Podcasty", "Epizody"
@@ -143,6 +145,8 @@ ApplicationWindow {
     function searchModeValues() {
         if (currentSearchScope === "uploads")
             return ["all"]
+        if (currentSearchScope === "library")
+            return ["all", "songs", "albums", "artists"]
         return [
             "all", "songs", "videos", "albums", "artists",
             "playlists", "profiles", "podcasts", "episodes"
@@ -1541,6 +1545,7 @@ ApplicationWindow {
             Layout.preferredHeight: 36
             visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
                      || backend.detailCanAlbumLibrary
+                     || backend.detailCanPlaylistLibrary
                      || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
             enabled: !backend.busy && backend.connected
             hoverEnabled: true
@@ -1621,6 +1626,15 @@ ApplicationWindow {
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
                 onTriggered: backend.changeAlbumLibrary()
+            }
+            MenuItem {
+                objectName: "playlistLibraryAction"
+                text: backend.detailMeta.playlistLibrary && backend.detailMeta.playlistLibrary.inLibrary
+                      ? "Odebrat playlist z knihovny" : "Přidat playlist do knihovny"
+                visible: backend.detailCanPlaylistLibrary
+                height: visible ? implicitHeight : 0
+                enabled: backend.connected && !backend.busy
+                onTriggered: backend.changePlaylistLibrary()
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"
@@ -2394,18 +2408,21 @@ ApplicationWindow {
                                 spacing: 8
 
                                 Button {
+                                    objectName: "searchCatalogScope"
                                     text: "YT Music"
                                     checkable: true
                                     checked: root.currentSearchScope === "catalog"
                                     onClicked: root.selectSearchScope("catalog")
                                 }
                                 Button {
+                                    objectName: "searchLibraryScope"
                                     text: "Knihovna"
                                     checkable: true
                                     checked: root.currentSearchScope === "library"
                                     onClicked: root.selectSearchScope("library")
                                 }
                                 Button {
+                                    objectName: "searchUploadsScope"
                                     text: "Nahrané soubory"
                                     checkable: true
                                     checked: root.currentSearchScope === "uploads"
@@ -2420,6 +2437,7 @@ ApplicationWindow {
 
                                 ComboBox {
                                     id: searchMode
+                                    objectName: "searchTypeCombo"
                                     visible: root.currentSearchScope !== "uploads"
                                     enabled: visible
                                     Layout.preferredWidth: visible ? 175 : 0
@@ -2443,6 +2461,7 @@ ApplicationWindow {
 
                                 TextField {
                                     id: searchField
+                                    objectName: "searchInput"
                                     Layout.fillWidth: true
                                     placeholderText: root.currentSearchScope === "uploads"
                                                      ? "Hledat v nahraných souborech…"

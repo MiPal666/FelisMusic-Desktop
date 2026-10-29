@@ -108,6 +108,24 @@ class PlaylistPagesTests(TestCase):
         self.assertNotIn('tracks', pages.metadata)
         api._send_request.assert_called_once_with('browse', {'browseId': 'VLLM'}, '')
 
+    def test_foreign_playlist_library_control_is_captured_with_first_page_and_preserved(self):
+        from test_album_library import response as header_response
+        raw = initial([song('A'), token('next')])
+        raw['contents']['twoColumnBrowseResultsRenderer']['tabs'] = header_response(
+            'INDIFFERENT', target='PLtest')['contents']['twoColumnBrowseResultsRenderer']['tabs']
+        raw['contents']['twoColumnBrowseResultsRenderer']['tabs'][0]['tabRenderer']['content'][
+            'sectionListRenderer']['contents'][0]['musicResponsiveHeaderRenderer']['subtitle'] = {'runs': []}
+        api = YTMusic.__new__(YTMusic)
+        api._send_request = Mock(side_effect=[raw, continuation([song('B')])])
+        pages = PlaylistPages(api, 'PLtest')
+        with patch('ytmusicapi.mixins.playlists.parse_playlist_header_meta', return_value={'title': 'Foreign'}):
+            self.assertTrue(pages.next_page()[1])
+        self.assertEqual(pages.metadata['_playlistLibraryControls'], dict(playlistId='PLtest', inLibrary=True))
+        self.assertEqual(api._send_request.call_count, 1)
+        self.assertFalse(pages.next_page()[1])
+        self.assertTrue(pages.metadata['_playlistLibraryControls']['inLibrary'])
+        self.assertEqual(api._send_request.call_count, 2)
+
 
 class WatchPagesTests(TestCase):
     @staticmethod
