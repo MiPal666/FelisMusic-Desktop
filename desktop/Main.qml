@@ -173,7 +173,13 @@ ApplicationWindow {
     Connections {
         target: backend
         function onDetailTitleChanged() { backend.clearTrackSelection() }
-        function onPlaybackSourceCaptured() { root.capturePlaybackContext() }
+        function onPlaybackSourceCaptured() {
+            root.capturePlaybackContext()
+            if (backend.playerQueueSource === "detail" && backend.detailMeta.kind === "playlist") {
+                root.currentPage = 5
+                Qt.callLater(root.revealQueueRow)
+            }
+        }
         function onPlaylistBatchRemoveRequested(count, title) {
             playlistBatchRemove.itemCount = count
             playlistBatchRemove.playlistTitle = title
@@ -1322,6 +1328,16 @@ ApplicationWindow {
                     else
                         uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
                 }
+            }
+            MenuItem {
+                objectName: "queueRemoveItemAction"
+                text: trackDelegate.currentTrack && backend.playerRemovalPending ? "Odebere se po dohrání"
+                      : trackDelegate.currentTrack && (backend.playerState === "playing" || backend.playerState === "paused")
+                        ? "Odebrat z fronty po dohrání" : "Odebrat z fronty"
+                visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
+                height: visible ? implicitHeight : 0
+                enabled: backend.playerCanEditQueue && !(trackDelegate.currentTrack && backend.playerRemovalPending)
+                onTriggered: backend.removeQueueItem(trackDelegate.index)
             }
             MenuItem {
                 objectName: "playlistMoveUpAction"

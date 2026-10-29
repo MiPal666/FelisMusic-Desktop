@@ -45,6 +45,18 @@ class RadioRefillTests(support.AudioPlaybackTestCase):
     def ids(self):
         return [x['videoId'] for x in self.b._queue.tracks]
 
+    def test_removed_last_radio_track_waits_for_refill_without_replaying_it(self):
+        self.radio(); self.near_end(9)
+        self.block_request = True
+        self.assertTrue(self.b.removeQueueItem(9))
+        self.eos()
+        self.assertIs(self.b._radio_waiting_for_tracks, self.b._queue)
+        self.release.set(); self.done()
+        self.until(lambda: self.b.playerState == 'playing')
+        self.assertEqual(self.b.playerTitle, 'N0')
+        self.assertNotIn('T9', self.ids())
+        self.assertTrue(self.b._queue.radio_active)
+
     def test_threshold_single_request_no_global_busy_and_append_without_audio_reset(self):
         self.radio()
         self.assertFalse(self.b._maybe_refill_radio())

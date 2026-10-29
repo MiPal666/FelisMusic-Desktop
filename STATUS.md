@@ -1,8 +1,26 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.62-dev – spuštění playlistu otevře Frontu, Michalem přijato
+
+- Michal přijal odebrání z Fronty 0.3.61-dev a výslovně požádal automaticky otevřít Frontu i po běžném spuštění skladby z playlistu. Další přesouvání není součástí této změny.
+- QML onPlaybackSourceCaptured nejdřív zachytí původní kontext pro cover, potom při zdroji detail/kind playlist přepne currentPage na Frontu a odroluje na aktuální skladbu. Dvojklik i Enter sdílejí tutéž cestu; jiné zdroje a enqueue nepřepínají stránku. Přehrávací backend se v tomto doplňku nemění.
+- Čtyři QML kontroly při 900×600 a 1280×800, dvojklik i skutečný Enter: spuštění třetího/duplicitního výskytu, Fronta, původní navigační kontext, cover zpět do playlistu na správný index bez restartu audia, enqueue bez přepnutí a regrese knihovní skladby. Bez QML varování; API/audio/thumbnail/probe mockované. git diff --check prošel. Předchozí backendové kontroly 0.3.61-dev: 504 offline testů.
+- Skutečný test: spustit skladbu z playlistu dvojklikem nebo Enterem → Fronta; klik na cover → původní playlist a správný výskyt. Michal skutečným testem potvrdil funkčnost 2026-10-29; připraven společný commit s přijatým odebráním z Fronty. Potom samostatně přesouvání výskytů přímo ve Frontě. Poslední commit 44833e6.
+
+
+## 0.3.61-dev – odebrání konkrétního výskytu z Fronty, Michalem přijato
+
+- Michal potvrdil commit 44833e6 a povolil další podkrok: pouze jednotlivé odebrání, přesouvání zvlášť. removeQueueItem cílí na přesný index skutečné fronty, kontroluje rozsah, closing a přechod přehrávání. Žádný API požadavek, změna zdrojového playlistu, snapshotu ani jeho pořadí.
+- QML akce pouze ve Frontě a bez multivýběru. U hrající/pozastavené aktuální skladby text Odebrat z fronty po dohrání; po označení neaktivní Odebere se po dohrání. Používá existující _guiRemoveAfterPlayback a prune mechanismus. Ostatní výskyty ihned odstraněny, zachovaný aktuální objekt, audio/čas/pauza/Repeat/Mix, origin index a cover. Zastavená aktuální položka odstraněna ihned bez spuštění nástupce. Poslední odebraný výskyt může nechat prázdnou frontu, lze znovu vložit a spustit.
+- Poslední označený výskyt načteného prefixu při EOS čeká na další blok; jeho první nová skladba se nepřeskočí. Stejná cesta uchovává čekání na radio refill. Stop ruší čekání a odstraní označený výskyt.
+- **504 offline testů prošlo**, `git diff --check` bez chyb. Nové testy: duplicity/historie/nástupce, audio/čas a zdroj bez změn/API zápisu, deferred current a Repeat one, pauza/Stop, jiná odebraná položka během čekajícího odstranění aktuální, prázdná fronta a opětovné vložení, Next/Previous/Repeat all, ruční kopie/Mix, guardy. Dvě integrace playlistového pageru ověřují další bloky a EOS odstraněného posledního výskytu prefixu; radio integrace čekání na refill a spuštění jeho prvního nového výskytu.
+- QML 900×600 a 1280×800: skutečné menu/aktivace odebrání jiné položky, označení aktuální/disabled text, skrytí v knihovně a Stop. Bez QML varování, API/audio/thumbnail/probe mockované.
+- Skutečný test: ve Frontě přes ⋮ odebrat jeden duplicitní výskyt, ověřit pokračující audio a původní playlist přes cover. U aktuální skladby Odebrat z fronty po dohrání a ověřit Next/Stop, případně dohrání. Michal potvrdil funkčnost; navazující úprava 0.3.62-dev před společným commitem, přesouvání až následně. Zatím necommitováno.
+
+
 ## 0.3.60-dev – celý online playlist do fronty, Michalem přijato
 
-- Michal potvrdil funkčnost alba 0.3.59-dev i navazujícího playlistu 0.3.60-dev (2026-10-29). Plán 1 je přijatý, oba podkroky připravené ke společnému commitu; poslední commit 443cfa1.
+- Michal potvrdil funkčnost alba 0.3.59-dev i navazujícího playlistu 0.3.60-dev (2026-10-29). Plán 1 je přijatý, oba podkroky uložené jako 44833e6.
 - Menu ⋮ konečného online playlistu má Přehrát jako další / Přidat na konec fronty. Nový enqueuePlaylistCollection sdílí stávající _enqueue_items, validuje kind, úplnost, busy/closing a přechod přehrávání. Původní pořadí i duplicitní výskyty, žádné nové načítání nebo zápisy do YTM. Průběžný dynamicMix je výslovně vyloučený; jeho preview není celý playlist.
 - Akce se zpřístupní až po dokončení všech bloků; při chybě načítání se neprovede vložení prefixu. Audio/pozice/pauza/Stop/Repeat/radio beze změny; prázdná fronta pouze připravena. Zdrojové snapshoty a indexy zachovají návrat coverem na konkrétní výskyt.
 - **493 offline testů prošlo**, `git diff --check` bez chyb. Nové offline integrace pro next/append za nenulovou pozici, duplicity, návrat coverem bez reloadu, prázdnou frontu, pauzu/Stop, opakované vložení, guardy a skutečný dvoublokový mock pager. Dva QML scénáře 900×600/1280×800 ověřily skutečné nabídky/aktivaci obou akcí, pořadí fronty, nepřerušené audio, neúplný detail a skrytí u Mixu, bez QML varování. API/audio mockované.

@@ -94,6 +94,29 @@ class PlaylistPagingTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.calls, calls)
         self.assertEqual(self.played, played)
 
+    def test_queue_removal_during_paging_does_not_return_removed_occurrence(self):
+        self.load(); self.play()
+        source = deepcopy(self.b.detailTracksModel.snapshot())
+        self.assertTrue(self.b.removeQueueItem(1))
+        self.assertEqual(self.ids(), ['A'])
+        self.assertEqual(self.b.detailTracksModel.snapshot(), source)
+        self.finish()
+        self.assertEqual(self.ids(), ['A', 'B', 'C'])
+        self.assertEqual([x['setVideoId'] for x in self.b._queue.tracks], ['set-0', 'set-2', 'set-3'])
+        self.assertEqual(self.b.detailTracksModel.count, 4)
+
+    def test_removed_last_prefix_track_waits_and_plays_first_new_occurrence(self):
+        self.load(); self.play(1)
+        self.assertTrue(self.b.removeQueueItem(1))
+        self.eos()
+        self.assertTrue(self.b.playerWaitingForTracks)
+        self.finish()
+        self.until(lambda: self.b.playerState == 'playing')
+        self.assertEqual(self.ids(), ['A', 'B', 'C'])
+        self.assertEqual(self.b._queue.current()['setVideoId'], 'set-2')
+        self.assertTrue(self.b.restorePlayingSource(1))
+        self.assertEqual(self.b.detailTracksModel.count, 4)
+
     def test_eos_waits_and_continues_when_more_arrives(self):
         self.load(); self.play(1); self.eos()
         self.assertTrue(self.b.playerWaitingForTracks)

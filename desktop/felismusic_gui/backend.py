@@ -1164,6 +1164,34 @@ class BackendBridge(QObject):
     def _sync_removed_playlist_queue_item(self, playlist_id, set_video_id):
         self._sync_removed_playlist_queue_items(playlist_id, {set_video_id})
 
+    @Property(bool, notify=playerChanged)
+    def playerRemovalPending(self):
+        return bool(self.playerHasTrack and self._queue.current().get("_guiRemoveAfterPlayback"))
+
+    @Slot(int, result=bool)
+    def removeQueueItem(self, index):
+        """Remove one listening occurrence; source collections stay untouched."""
+        if (not self.playerCanEditQueue or self._queue is None
+                or not 0 <= index < self._queue.count()):
+            return False
+        song = self._queue.tracks[index]
+        if song.get("_guiRemoveAfterPlayback"):
+            return False
+        current = song is self._queue.current()
+        keep_current = current and self._player_state in ("playing", "paused")
+        song["_guiRemoveAfterPlayback"] = True
+        self._prune_removed_queue_tracks(drop_current=current and not keep_current, preserve_audio=True)
+        if current and not keep_current:
+            self._set_player_from_queue()
+        self._prefetch_revision += 1
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        if self._player_state in ("playing", "paused"):
+            self._prefetch_next_track()
+        self.playerChanged.emit()
+        self._set_status("Skladba bude odebrána po dohrání" if keep_current else "Skladba odebrána z fronty")
+        return True
+
     def _sync_removed_playlist_queue_items(self, playlist_id, set_video_ids):
         if self._queue is None:
             return
@@ -1190,6 +1218,20 @@ class BackendBridge(QObject):
         self.playerChanged.emit()
 
     def _leave_removed_current(self, direction, stop_current=False):
+        # Keep the finished row as the cursor until a streaming successor arrives.
+        # Moving that cursor now would skip the first newly appended occurrence.
+        if (direction > 0 and self._queue.index + 1 == self._queue.count()
+                and (self._queue_has_more() or self._queue.radio_active)):
+            if stop_current and self._local_output is not None:
+                self._local_output.media_controller.stop(keep_output=True)
+            self._set_player_state("idle")
+            if self._queue_has_more():
+                self._active_queue_stream()["waiting"] = True
+            if self._queue.radio_active:
+                self._radio_waiting_for_tracks = self._queue
+            self._set_status("Čekám na další skladby…")
+            self.playerChanged.emit()
+            return
         moved = self._prune_removed_queue_tracks(drop_current=True, direction=direction)
         self._set_player_from_queue()
         if moved:
@@ -4688,6 +4730,8 @@ class BackendBridge(QObject):
             if queue.next():
                 self._set_player_from_queue()
                 self._start_current_async(direction=1)
+            elif not more and self.playerRemovalPending:
+                self._leave_removed_current(1)
             elif not more and self._repeat_mode == "all":
                 queue.index = 0
                 self._set_player_from_queue()
