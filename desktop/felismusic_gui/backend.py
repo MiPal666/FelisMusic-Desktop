@@ -313,6 +313,7 @@ class BackendBridge(QObject):
 
         self._local_output = core.create_local_output()
         self._cast_output = None
+        self._cast_lost = False
         self._output_switching = False
         self._output_result_pending = False
         self._queue = None
@@ -440,23 +441,67 @@ class BackendBridge(QObject):
 
     @Property("QVariantMap", notify=castDevicesChanged)
     def castState(self):
-        return {"scanning": self._cast_scanning, "message": self._cast_message,
+        rows = [dict(row) for row in self._cast_devices]
+        current_id = str(self._cast_output.cast_info.uuid) if self._cast_output else "local"
+        if self._cast_output and not any(row["id"] == current_id for row in rows):
+            rows.append({"id": current_id, "name": self._cast_output.cast_info.friendly_name or "Cast",
+                         "kind": self._cast_output.cast_info.cast_type})
+        return {"scanning": self._cast_scanning,
+                "message": "Spojení s Castem bylo přerušeno. Vyber výstup a potom spusť přehrávání."
+                           if self._cast_lost else self._cast_message,
+                "disconnected": self._cast_lost,
+                "canReconnect": self._cast_lost and any(row["id"] == current_id for row in self._cast_devices),
                 "switching": self._output_switching,
-                "currentId": str(self._cast_output.cast_info.uuid) if self._cast_output else "local",
+                "currentId": current_id,
                 "canSelect": not self._output_switching and not self._busy
                              and not self._playback_transitioning and not self._output_result_pending,
                 "canReturn": self._cast_output is not None and self._local_output is not None
                              and not self._output_switching and not self._busy and not self._playback_transitioning
                              and not self._output_result_pending,
                 "devices": [{"id": "local", "name": "Toto zařízení", "kind": "local"}]
-                           + [dict(row) for row in self._cast_devices]}
+                           + rows}
 
     def _active_output(self):
-        return self._cast_output if self._cast_output is not None else self._local_output
+        if self._cast_output is not None:
+            return None if self._cast_lost else self._cast_output
+        return self._local_output
+
+    def _check_output_connection(self):
+        if self._closing.is_set():
+            return False
+        if self._cast_output is None:
+            return True
+        if self._cast_lost:
+            return False
+        if not self._cast_output.connection_lost.is_set():
+            return True
+        self._cast_lost = True
+        was_switching = self._output_switching
+        self._output_switching = self._playback_transitioning = False
+        self._playback_generation += 1
+        self._prefetch_revision += 1
+        self._radio_refill_revision += 1
+        self._radio_waiting_for_tracks = None
+        stream = self._active_queue_stream()
+        if stream:
+            stream["waiting"] = False
+        if self._prefetch_future is not None:
+            self._prefetch_future.cancel()
+        if was_switching:
+            self._set_busy(False)
+        self._set_player_state("idle")
+        self._set_status("Spojení s Castem bylo přerušeno · vyber výstup v nabídce Výstupy")
+        self.playerChanged.emit()
+        self.castDevicesChanged.emit()
+        Thread(target=core._disconnect_cast_safely, args=(self._cast_output,),
+               name="felismusic-cast-lost", daemon=True).start()
+        return False
 
     @Property(str, notify=playerChanged)
     def outputName(self):
-        return str(self._cast_output.cast_info.friendly_name or "Cast") if self._cast_output else "Toto zařízení"
+        if self._cast_output:
+            return str(self._cast_output.cast_info.friendly_name or "Cast") + (" · odpojeno" if self._cast_lost else "")
+        return "Toto zařízení"
 
     @Property(bool, notify=playerChanged)
     def playbackOutputAvailable(self):
@@ -473,6 +518,7 @@ class BackendBridge(QObject):
         return self._select_output("local")
 
     def _select_output(self, device_id):
+        self._check_output_connection()
         returning = device_id == "local"
         if self._closing.is_set() or self._busy or self._playback_transitioning or self._output_result_pending:
             return False
@@ -483,7 +529,8 @@ class BackendBridge(QObject):
                 self.errorOccurred.emit("Místní GStreamer není dostupný. Návrat na toto zařízení není možný.")
                 return False
         elif (self._cast_discovery is None
-              or (self._cast_output is not None and str(self._cast_output.cast_info.uuid) == device_id)
+              or (self._cast_output is not None and not self._cast_lost
+                  and str(self._cast_output.cast_info.uuid) == device_id)
               or not any(row["id"] == device_id for row in self._cast_devices)):
             return False
         self._output_switching = self._playback_transitioning = True
@@ -495,8 +542,10 @@ class BackendBridge(QObject):
         generation = self._playback_generation
         scanner = self._cast_discovery
         source = self._cast_output
+        lost = self._cast_lost
         song = self._queue.current() if self.playerHasTrack else None
-        active = song is not None and self._player_state in ("playing", "paused")
+        active = not lost and song is not None and self._player_state in ("playing", "paused")
+        position = self._player_position
         self._set_busy(True)
         self._set_status("Přepínám poslech na toto zařízení…" if returning else "Přepínám poslech na Cast…")
         self.castDevicesChanged.emit()
@@ -504,8 +553,10 @@ class BackendBridge(QObject):
         def cancelled():
             return self._closing.is_set() or generation != self._playback_generation
         def work():
-            result = (handoff_to_local(source, self._local_output, song, active, cancelled) if returning else
-                      handoff(scanner, device_id, source if source is not None else self._local_output,
+            result = ({"output": self._local_output, "local": True, "active": False, "paused": False,
+                       "position": position, "error": ""} if lost and returning else
+                      handoff_to_local(source, self._local_output, song, active, cancelled) if returning else
+                      handoff(scanner, device_id, source if source is not None and not lost else self._local_output,
                               song, active, cancelled))
             if self._closing.is_set():
                 dispose(result)
@@ -519,6 +570,7 @@ class BackendBridge(QObject):
 
     @Slot(int, object)
     def _apply_output_switch(self, generation, result):
+        self._check_output_connection()
         target = result.get("output")
         if self._closing.is_set() or generation != self._playback_generation:
             if target:
@@ -543,8 +595,17 @@ class BackendBridge(QObject):
         self._output_switching = self._playback_transitioning = False
         self._set_busy(False)
         if target:
+            if not result.get("local") and target.connection_lost.is_set():
+                Thread(target=dispose, args=(result,), name="felismusic-cast-rejected", daemon=True).start()
+                self._set_player_state("idle")
+                self._set_status("Vybraný Cast ztratil spojení. Zkus výběr znovu.")
+                self.errorOccurred.emit(self._status)
+                self.castDevicesChanged.emit()
+                self.playerChanged.emit()
+                return
             previous = self._cast_output
             self._cast_output = None if result.get("local") else target
+            self._cast_lost = False
             if previous is not None and previous is not target:
                 Thread(target=core._disconnect_cast_safely, args=(previous,),
                        name="felismusic-cast-disconnect", daemon=True).start()
@@ -1057,7 +1118,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerCanPrevious(self):
         return (
-            self._queue is not None
+            self.playbackOutputAvailable and self._queue is not None
             and not self._queue.empty()
             and (self._queue.index > 0 or (self._repeat_mode == "all" and not self._queue_has_more()))
             and not self._playback_transitioning
@@ -1066,7 +1127,7 @@ class BackendBridge(QObject):
     @Property(bool, notify=playerChanged)
     def playerCanNext(self):
         return (
-            self._queue is not None
+            self.playbackOutputAvailable and self._queue is not None
             and not self._queue.empty()
             and (self._queue.index + 1 < self._queue.count() or (self._repeat_mode == "all" and not self._queue_has_more()))
             and not self._playback_transitioning
@@ -2295,6 +2356,8 @@ class BackendBridge(QObject):
         self.castDevicesChanged.emit()
 
     def _start_current_async(self, direction=1, stop_current=False):
+        if not self._check_output_connection():
+            return
         self._radio_waiting_for_tracks = None
         stream = self._active_queue_stream()
         if stream:
@@ -2310,7 +2373,8 @@ class BackendBridge(QObject):
             )
             return
 
-        mc = self._active_output().media_controller
+        output = self._active_output()
+        mc = output.media_controller
         with self._transport_lock:
             self._playback_generation += 1
             if stop_current:
@@ -2331,7 +2395,8 @@ class BackendBridge(QObject):
         queue = self._queue
 
         def cancelled():
-            return self._closing.is_set() or generation != self._playback_generation
+            return (self._closing.is_set() or generation != self._playback_generation
+                    or (not getattr(output, "is_local", True) and output.connection_lost.is_set()))
 
         def work():
             last_error = None
@@ -2367,7 +2432,7 @@ class BackendBridge(QObject):
                         self._playbackReady.emit(generation)
                     return
                 except Exception as exc:
-                    if self._closing.is_set() or generation != self._playback_generation:
+                    if cancelled():
                         return
                     last_error = exc
                     with self._transport_lock:
@@ -2442,6 +2507,8 @@ class BackendBridge(QObject):
 
     @Slot(int)
     def _apply_playback_ready(self, generation):
+        if not self._check_output_connection():
+            return
         if self._closing.is_set() or generation != self._playback_generation:
             return
         self._playback_transitioning = False
@@ -2455,6 +2522,8 @@ class BackendBridge(QObject):
 
     @Slot(int, str)
     def _apply_playback_failed(self, generation, message):
+        if not self._check_output_connection():
+            return
         if generation != self._playback_generation:
             return
         self._playback_transitioning = False
@@ -2469,6 +2538,8 @@ class BackendBridge(QObject):
 
     @Slot()
     def _poll_player(self):
+        if self._closing.is_set() or not self._check_output_connection():
+            return
         if (
             self._active_output() is None
             or self._queue is None
@@ -2555,7 +2626,7 @@ class BackendBridge(QObject):
 
     @Slot(str, int)
     def playFrom(self, source, index):
-        if self._output_switching:
+        if self._output_switching or not self._check_output_connection():
             return
         if source == "library" and self._library_section in ("songs", "upload_songs") and not self.uploadSongsComplete and (not self.uploadSongsLoading or self._busy):
             return
@@ -4385,6 +4456,8 @@ class BackendBridge(QObject):
     @Slot()
     def stopPlayback(self):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
+        if not self._check_output_connection():
+            return True
         if self._output_switching:
             self._output_switching = False
             self._playback_transitioning = False
@@ -4421,6 +4494,8 @@ class BackendBridge(QObject):
 
     @Slot()
     def togglePlayPause(self):
+        if not self._check_output_connection():
+            return
         if self._active_output() is None or self._queue is None or self._queue.empty():
             return
         if self._playback_transitioning:
@@ -4440,7 +4515,7 @@ class BackendBridge(QObject):
 
     @Slot()
     def nextTrack(self):
-        if self._queue is None or self._playback_transitioning:
+        if not self._check_output_connection() or self._queue is None or self._playback_transitioning:
             return
         if self._queue.current() and self._queue.current().get("_guiRemoveAfterPlayback"):
             self._leave_removed_current(1, stop_current=True)
@@ -4455,7 +4530,7 @@ class BackendBridge(QObject):
 
     @Slot()
     def previousTrack(self):
-        if self._queue is None or self._playback_transitioning:
+        if not self._check_output_connection() or self._queue is None or self._playback_transitioning:
             return
         if self._queue.current() and self._queue.current().get("_guiRemoveAfterPlayback"):
             self._leave_removed_current(-1, stop_current=True)

@@ -333,16 +333,18 @@ ApplicationWindow {
                             elide: Text.ElideRight
                         }
                         Label {
-                            text: modelData.id === backend.castState.currentId ? "Aktuální výstup"
+                            text: modelData.id === backend.castState.currentId
+                                  ? (backend.castState.disconnected ? "Odpojeno" : "Aktuální výstup")
                                   : modelData.kind === "group" ? "Skupina" : "Cast audio"
                             visible: modelData.kind !== "local" || modelData.id === backend.castState.currentId
-                            color: modelData.id === backend.castState.currentId ? "#a6d3a6" : "#aaaaaa"
+                            color: modelData.id === backend.castState.currentId
+                                   ? (backend.castState.disconnected ? "#ff8a80" : "#a6d3a6") : "#aaaaaa"
                             font.pixelSize: 12
                         }
                         Button {
                             objectName: "castSelectButton"
-                            text: "Přepnout"
-                            visible: modelData.id !== backend.castState.currentId
+                            text: modelData.id === backend.castState.currentId ? "Znovu připojit" : "Přepnout"
+                            visible: modelData.id !== backend.castState.currentId || backend.castState.canReconnect
                             enabled: modelData.kind === "local" ? backend.castState.canReturn : backend.castState.canSelect
                             onClicked: modelData.kind === "local" ? backend.selectLocalOutput() : backend.selectCastOutput(modelData.id)
                         }
@@ -3273,7 +3275,8 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: backend.playerHasTrack
+                                text: backend.castState.disconnected ? "Cast odpojený · vyber jiný výstup"
+                                      : backend.playerHasTrack
                                       ? (backend.playerState === "loading"
                                          ? "Připravuji lokální audio…"
                                          : backend.playerSubtitle)
@@ -3344,7 +3347,7 @@ ApplicationWindow {
                                 TransportButton {
                                     visible: backend.playerState !== "loading"
                                     iconKind: backend.playerState === "playing" ? "pause" : "play"
-                                    enabled: backend.playerHasTrack
+                                    enabled: backend.playerHasTrack && backend.playbackOutputAvailable
                                     onClicked: backend.togglePlayPause()
                                 }
                                 TransportButton {

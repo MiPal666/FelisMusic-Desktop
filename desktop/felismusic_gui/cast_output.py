@@ -1,5 +1,5 @@
 """Cast transport adapter and explicit Local / Cast handoffs."""
-from threading import Event
+from threading import Event, Lock
 from time import monotonic
 from . import legacy_core as core
 from .diagnostics import current_trace
@@ -17,21 +17,28 @@ def dispose(result):
 class CastController:
     is_local = False
 
-    def __init__(self, controller):
+    def __init__(self, controller, connection_lost=None):
         self.controller = controller
+        self.connection_lost = connection_lost
         self.pending = None
+
+    def check_connection(self):
+        if self.connection_lost is not None and self.connection_lost.is_set():
+            raise RuntimeError("Spojení s Castem bylo přerušeno.")
 
     @property
     def status(self):
         return self.controller.status
 
     def update_status(self):
+        self.check_connection()
         self.controller.update_status()
 
     def play_media(self, url, content_type, **kwargs):
         self.play_media_at(url, content_type, **kwargs)
 
     def play_media_at(self, url, content_type, position=0.0, paused=False, **kwargs):
+        self.check_connection()
         ready, response = Event(), {}
         def accepted(success, data):
             response["ok"] = bool(success)
@@ -48,6 +55,7 @@ class CastController:
         while monotonic() < deadline:
             if cancelled and cancelled():
                 raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+            self.check_connection()
             status = self.status
             response_type = response.get("type")
             if response_type not in (None, "MEDIA_STATUS", "LOAD_FAILED", "LOAD_CANCELLED", "INVALID_REQUEST"):
@@ -79,6 +87,7 @@ class CastController:
         """Start an individual receiver independently of its former group app."""
         if cancelled and cancelled():
             raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+        self.check_connection()
         ready, response = Event(), {}
         def accepted(success, data):
             response["ok"] = bool(success)
@@ -88,6 +97,7 @@ class CastController:
         while monotonic() < deadline:
             if cancelled and cancelled():
                 raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+            self.check_connection()
             if ready.is_set():
                 if not response.get("ok"):
                     raise RuntimeError("Cast nepotvrdil samostatný přijímač.")
@@ -96,6 +106,7 @@ class CastController:
         raise RuntimeError("Cast nepotvrdil samostatný přijímač včas.")
 
     def stop(self, keep_output=False):
+        self.check_connection()
         # A receiver application can remain open after its media session ends.
         # PyChromecast rejects STOP without a session, preventing the next LOAD.
         if self.status is None or self.status.media_session_id is None:
@@ -103,12 +114,15 @@ class CastController:
         self.controller.stop(timeout=3)
 
     def pause(self):
+        self.check_connection()
         self.controller.pause()
 
     def play(self):
+        self.check_connection()
         self.controller.play()
 
     def seek(self, position, timeout=3):
+        self.check_connection()
         self.controller.seek(position, timeout=timeout)
 
 
@@ -118,20 +132,40 @@ class CastOutput:
     def __init__(self, cast):
         self.cast = cast
         self.cast_info = cast.cast_info
-        self.media_controller = CastController(cast.media_controller)
+        self.connection_lost = Event()
+        self._connected_once = False
+        self._disconnected = Event()
+        self._disconnect_lock = Lock()
+        self.media_controller = CastController(cast.media_controller, self.connection_lost)
+        cast.register_connection_listener(self)
+
+    def new_connection_status(self, status):
+        # Socket thread: retain only a latch, never mutate Qt/backend state here.
+        if status.status == "CONNECTED":
+            self._connected_once = True
+        elif status.status == "LOST" or (self._connected_once and status.status in
+                                          ("DISCONNECTED", "FAILED", "FAILED_RESOLVE")):
+            self.connection_lost.set()
 
     @property
     def status(self):
         return self.cast.status
 
     def set_volume(self, level):
+        self.media_controller.check_connection()
         return self.cast.set_volume(level)
 
     def set_volume_muted(self, muted):
+        self.media_controller.check_connection()
         self.cast.set_volume_muted(muted)
         return bool(muted)
 
     def disconnect(self, timeout=1):
+        with self._disconnect_lock:
+            if self._disconnected.is_set():
+                return
+            self._disconnected.set()
+        self.connection_lost.set()
         self.cast.disconnect(timeout=timeout)
 
 
