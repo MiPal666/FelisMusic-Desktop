@@ -1,13 +1,13 @@
 # FelisMusic Desktop – aktuální stav
 
-## 0.3.64-dev – Informace o vybrané skladbě, čeká na skutečný test
+## 0.3.64-dev – Informace o vybrané skladbě, Michalem přijato
 
 - Michal potvrdil commit 64e4e1a a povolil první podkrok plánu 3: pouze Informace o skladbě z menu, hodnocení zvlášť. Aktuální Info se zachovává.
 - Nový trackInfoFrom(source, index) vrací oddělený snapshot dostupných metadat z modelu. Validuje zdroj/index a druh song/video/upload_song s videoId. Bez API požadavku, přehrání, změny audia/času/fronty/výběru/zdroje. Dostupná metadata: název, interpret, album, délka, thumbnail a známé hodnocení; chybějící hodnoty Nezjištěno/Neuvedeno/Neznámá. U právě aktuálního řádku Fronty využije známou playerDuration a playerLikeStatus.
 - Sdílený trackInfoDialog má selectedInfo snapshot nebo živé information pro horní Info. Při přechodu na jinou skladbu se menu snapshot nemění; nové otevření horním Info resetuje na aktuální přehrávání. U zdrojů mimo Frontu nezobrazuje údaje o jiné aktuální frontě; pozice/název fronty jen u queue snapshotu. Při otevření z Fronty jsou to hodnoty k okamžiku otevření.
 - Menu ⋮ → Informace u jednotlivých online i nahraných skladeb z knihovny/detailu/hledání/historie/Oblíbených/Fronty; při multivýběru skryté. Nevyžaduje připojení ani spuštěné audio, lze i nad načteným prefixem.
 - **516 offline testů prošlo**, čtyři nové integrace: všechny zdroje/druhy bez spuštění a sítě, přesná duplicitní queue položka a aktuální runtime data, zachované audio/čas/fronta/výběr/zdroj a snapshot při změně modelu, chybějící údaje a neplatné cíle. **Dvě QML kontroly 900×600/1280×800 bez varování:** skutečné menu/otevření dialogu, duplicitní výskyt, přechod Next při otevřeném snapshotu, horní Info a jeho živá aktualizace, jiná knihovní skladba bez údajů aktuální fronty, skrytí při multivýběru. Screenshot 900×600 vizuálně zkontrolován. API/audio/thumbnail/probe mockované. git diff --check prošel.
-- Skutečný test: ⋮ → Informace u jiné než aktuální skladby v playlistu/knihovně/Frontě, zkusit i nahranou. Přehrávání má pokračovat, dialog ukazuje zvolenou skladbu; horní Info stále aktuální. Po přijetí commit, potom samostatně hodnocení z menu. Zatím necommitováno.
+- Skutečný test: ⋮ → Informace u jiné než aktuální skladby v playlistu/knihovně/Frontě, zkusit i nahranou. Přehrávání má pokračovat, dialog ukazuje zvolenou skladbu; horní Info stále aktuální. Michal potvrdil funkčnost 2026-10-29. Připraveno ke commitu, potom samostatně hodnocení z menu. Dokumentace přípravy již v 79c1d59; implementace a tests/test_track_info.py dosud necommitované.
 
 
 ## 0.3.63-dev – přesouvání výskytů přímo ve Frontě, Michalem přijato

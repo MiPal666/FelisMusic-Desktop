@@ -689,6 +689,14 @@ ApplicationWindow {
     Dialog {
         id: trackInfo
         objectName: "trackInfoDialog"
+        property var selectedInfo: null
+        property var information: selectedInfo || ({
+            title: backend.playerTitle, artist: backend.playerArtist, album: backend.playerAlbum,
+            thumbnail: backend.playerThumbnail, duration: backend.playerDuration,
+            likeStatus: backend.playerLikeStatus, inQueue: true,
+            queueIndex: backend.playerQueueIndex, queueCount: backend.playerQueueCount,
+            queueTitle: backend.playingListTitle
+        })
         title: "Informace o skladbě"
         modal: true
         padding: 18
@@ -729,23 +737,24 @@ ApplicationWindow {
                 Image {
                     Layout.preferredWidth: 96
                     Layout.preferredHeight: 96
-                    source: backend.playerThumbnail
+                    source: trackInfo.information.thumbnail
                     visible: source.toString().length > 0
                     fillMode: Image.PreserveAspectFit
                     asynchronous: true
                 }
                 Repeater {
                     model: [
-                        {label: "Název", value: backend.playerTitle},
-                        {label: "Interpret", value: backend.playerArtist},
-                        {label: "Album", value: backend.playerAlbum},
-                        {label: "Délka", value: backend.playerDuration > 0 ? root.formatTime(backend.playerDuration) : "Neznámá"},
-                        {label: "Hodnocení", value: backend.playerLikeStatus === "LIKE" ? "Oblíbená"
-                                                   : (backend.playerLikeStatus === "DISLIKE" ? "Neoblíbená"
-                                                      : (backend.playerLikeStatus === "INDIFFERENT" ? "Bez hodnocení" : "Nezjištěno"))},
-                        {label: "Pozice ve frontě", value: backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "Prázdná fronta"},
-                        {label: "Název fronty", value: backend.playingListTitle}
-                    ]
+                        {label: "Název", value: trackInfo.information.title},
+                        {label: "Interpret", value: trackInfo.information.artist},
+                        {label: "Album", value: trackInfo.information.album},
+                        {label: "Délka", value: trackInfo.information.duration > 0 ? root.formatTime(trackInfo.information.duration) : "Neznámá"},
+                        {label: "Hodnocení", value: trackInfo.information.likeStatus === "LIKE" ? "Oblíbená"
+                                                   : (trackInfo.information.likeStatus === "DISLIKE" ? "Neoblíbená"
+                                                      : (trackInfo.information.likeStatus === "INDIFFERENT" ? "Bez hodnocení" : "Nezjištěno"))}
+                    ].concat(trackInfo.information.inQueue ? [
+                        {label: "Pozice ve frontě", value: trackInfo.information.queueIndex >= 0 ? (trackInfo.information.queueIndex + 1) + " / " + trackInfo.information.queueCount : "Prázdná fronta"},
+                        {label: "Název fronty", value: trackInfo.information.queueTitle}
+                    ] : [])
                     delegate: ColumnLayout {
                         required property var modelData
                         Layout.fillWidth: true
@@ -1327,6 +1336,20 @@ ApplicationWindow {
                         backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "artist", artistLinks[0].id, root.navigationContext())
                     else
                         uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
+                }
+            }
+            MenuItem {
+                objectName: "trackInfoAction"
+                text: "Informace"
+                visible: !trackDelegate.multipleSelection && videoId.length > 0
+                         && (kind === "song" || kind === "video" || kind === "upload_song")
+                height: visible ? implicitHeight : 0
+                onTriggered: {
+                    var info = backend.trackInfoFrom(trackDelegate.sourceKey, trackDelegate.index)
+                    if (info.title !== undefined) {
+                        trackInfo.selectedInfo = info
+                        trackInfo.open()
+                    }
                 }
             }
             MenuItem {
@@ -2277,7 +2300,7 @@ ApplicationWindow {
                             objectName: "infoButton"
                             text: "Info"
                             enabled: backend.playerHasTrack
-                            onClicked: trackInfo.open()
+                            onClicked: { trackInfo.selectedInfo = null; trackInfo.open() }
                         }
                     }
                 }

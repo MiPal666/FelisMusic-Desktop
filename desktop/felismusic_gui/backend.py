@@ -944,6 +944,27 @@ class BackendBridge(QObject):
         model = self._source_model(source)
         return model.snapshot() if model is not None else []
 
+    @Slot(str, int, result="QVariantMap")
+    def trackInfoFrom(self, source, index):
+        items = self._source_items(source)
+        if not 0 <= index < len(items):
+            return {}
+        item = items[index]
+        if not self._playlist_song_supported(item):
+            return {}
+        current = source == "playing" and index == self.playerQueueIndex
+        return {
+            "title": str(item.get("title") or "Bez názvu"),
+            "artist": self._artists(item), "album": self._album(item),
+            "thumbnail": str(item.get("thumbnail") or ""),
+            "duration": self.playerDuration if current else float(core.song_duration_seconds(item) or 0),
+            "likeStatus": self.playerLikeStatus if current else str(item.get("likeStatus") or "UNKNOWN"),
+            "inQueue": source == "playing",
+            "queueIndex": index if source == "playing" else -1,
+            "queueCount": self.playerQueueCount if source == "playing" else 0,
+            "queueTitle": self.playingListTitle if source == "playing" else "",
+        }
+
     @Property(str, notify=trackSelectionChanged)
     def selectionSource(self):
         return self._selection_source
