@@ -11,7 +11,7 @@ from felismusic_gui.backend import BackendBridge
 from felismusic_gui.diagnostics import configure_debug
 
 
-VERSION = "0.3.84-dev"
+VERSION = "0.3.86-dev"
 
 
 def main():
@@ -33,6 +33,16 @@ def main():
     if not engine.rootObjects():
         return 1
 
+    # MPRIS is optional: missing desktop D-Bus must not prevent playback.
+    try:
+        from felismusic_gui.mpris import start_mpris
+        app._felismusic_mpris = start_mpris(bridge, app, engine.rootObjects()[0])
+    except ImportError:
+        import logging
+        logging.getLogger(__name__).warning("MPRIS requires dbus-python and PyGObject")
+        app._felismusic_mpris = None
+    if app._felismusic_mpris is not None:
+        app.aboutToQuit.connect(app._felismusic_mpris.close)
     app.aboutToQuit.connect(bridge.shutdown)
     QTimer.singleShot(0, bridge.initialize)
 

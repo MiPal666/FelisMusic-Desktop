@@ -52,7 +52,7 @@ class CastSwitchTests(CastOutputFixture):
         self.stream_call.side_effect=stream
         with patch.object(backend.core,'get_local_audio_source',side_effect=AssertionError('local download')):
             self.switch_target()
-        self.assertEqual(self.events,['target-ready','stream','cast-stop','target-load'])
+        self.assertEqual(self.events[:4],['target-ready','stream','cast-stop','target-load'])
         self.assertIs(self.b._queue,queue);self.assertIs(queue.current(),current)
         self.assertEqual(queue.index,2);self.assertEqual(self.b.playerRepeatMode,'one')
         self.assertEqual(self.b.playerPosition,72);self.assertEqual(self.played,played)

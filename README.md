@@ -4,6 +4,8 @@
 
 Horní tlačítko **Výstupy → Vyhledat zařízení** zobrazí dostupné Cast audio výstupy a skupiny. U nalezeného Castu lze stisknout **Přepnout**: poslech přejde z notebooku na vybraný výstup se stejnou frontou, skladbou, pozicí a stavem pauzy. Ovládání přehrávače pak míří na Cast; hlasitost se načte ze zařízení. Z Castu se lze přes **Výstupy → Toto zařízení → Přepnout** vrátit na notebook se zachováním skladby, pozice a pauzy. Přímo přepínat lze také mezi nalezenými Casty a skupinami, se zachováním skladby, pozice a pauzy. Při ztrátě spojení se Cast označí jako odpojený a fronta zůstane zachovaná. V nabídce Výstupy ručně vyber jiný výstup nebo znovu připoj nalezené zařízení; přehrávání pak spusť tlačítkem Play od začátku vybrané skladby. Automatický návrat ani nové přehrávání po výpadku neproběhnou. Po novém spuštění aplikace je výstup opět **Toto zařízení**. Samotné otevření dialogu hledání nespustí. Po ručním vyhledání se přehled průběžně aktualizuje do ukončení aplikace.
 
+Při souvislém poslechu na Castu aplikace experimentálně připravuje odkaz jedné další skladby předem. Audio si stále stahuje přímo Cast; do notebooku se pro něj nestahuje. Příprava může zkrátit čekání mezi skladbami, nezaručuje však přehrávání bez mezer. Při neplatném připraveném odkazu se jednou získá nový.
+
 Známá omezení Castu přijatá pro 1.0: při výpadku člena může aplikace ztratit spojení s celou skupinou; pokračování ostatních členů bez přerušení není zaručené. Ruční návrat přes notebook na Music byl ověřen i se zbývajícím funkčním členem. Vypnutý Cast může dočasně zůstat v seznamu zařízení; neúspěšný pokus o připojení zobrazí chybu.
 
 Po desktopové 1.0 jsou odloženy dvě funkce: stahování a správa stažené hudby; uložení fronty při vypnutí a její obnovení po zapnutí aplikace. Aplikace zatím při každém spuštění začíná nový poslech. **Hned po vydání desktopové 1.0 následuje port pro Sailfish OS / Silica.**
@@ -38,7 +40,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.84-dev** (přepínání výstupů a výpadky Castu/skupiny uživatelem přijaty; známá omezení níže)
+- Desktop GUI: **0.3.85-dev** (experiment s přípravou následujícího Cast odkazu; dosavadní přehrávání a Cast přijaty)
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).
@@ -463,3 +465,9 @@ Při hlášce „Seznam není úplný“ v náhodné frontě spusť aplikaci s `
 ### Porovnání původního a postupného Shuffle
 
 `env/bin/python tools/compare_shuffle.py --limit 1635` nabídne výběr playlistu z knihovny. Zvol stejný playlist jako při chybě a počet uprav podle zdroje v GUI. Nástroj provede původní načtení a potom jeho odpovědi porovná s novým adaptérem pouze v paměti; druhé náhodné serverové pořadí se nevytváří. Vypíše souhrn položek/různých skladeb a shodu společného začátku. Nepřehrává audio ani nemění playlisty; odpovědi a pokračovací tokeny neukládá na disk. Pro nynější diagnostiku neposuzovat úplnost jen podle celkového počtu položek.
+
+### MPRIS (0.3.86-dev, uživatelsky přijato)
+
+FelisMusic se při startu registruje jako `org.mpris.MediaPlayer2.felismusic`. KDE a multimediální klávesy mohou řídit právě zvolený výstup (notebook i Cast): Play/Pause, Stop, další/předchozí skladbu, hlasitost, Repeat a posun v dostupné skladbě. Zveřejňuje název, interpreta, album, cover, délku a pozici. Vyžaduje dbus-python a stávající PyGObject; v openSUSE systémový balíček `python3-dbus-python` a virtuální prostředí se `--system-site-packages`. Chybějící D-Bus nebrání spuštění GUI. Skutečné klávesy, KDE a Bluetooth se ověřují ručně; jednorázové YTM Shuffle není přepínač MPRIS.
+
+Tlačítka hlasitosti Bluetooth sluchátek standardně mění systémovou hlasitost notebooku. Hlasitost vybraného Castu se ovládá ve FelisMusic; automatické přesměrování těchto tlačítek na Cast není součástí integrace. Michal přednačítání Castu a MPRIS přijal 2026-10-30.

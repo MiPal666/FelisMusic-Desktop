@@ -97,6 +97,8 @@ class CastDisconnectTests(CastOutputFixture):
 
     def test_loss_during_audio_preparation_never_skips_the_remaining_queue(self):
         self.start('A','B','C');self.switch();entered=Event()
+        self.b._playback_executor.submit(lambda:None).result(timeout=4)
+        self.b._cast_streams.clear()
         def blocked(vid,mc):entered.set();self.release.wait(3);return self.stream(vid,mc)
         self.stream_call.side_effect=blocked;loads=self.remote.play_media.call_count
         self.b.nextTrack();self.until(entered.is_set);self.lose();self.release.set()

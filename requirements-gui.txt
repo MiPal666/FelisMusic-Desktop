@@ -2,3 +2,4 @@ PySide6
 ytmusicapi
 yt-dlp
 PyChromecast
+dbus-python

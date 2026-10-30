@@ -33,6 +33,7 @@ from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
 from .cast_discovery import CastDiscovery
 from .cast_output import handoff, handoff_to_local, dispose
+from .cast_streams import CastStreamCache
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -191,6 +192,7 @@ class BackendBridge(QObject):
     _loginResult = Signal(int, str, object)
     playerChanged = Signal()
     playerTrackChanged = Signal()
+    playerSeeked = Signal(float)
     playingSourceViewChanged = Signal()
     uploadSongsLoadChanged = Signal()
     _uploadSongsPageReady = Signal(object)
@@ -243,6 +245,7 @@ class BackendBridge(QObject):
         self._transport_lock = Lock()
         self._prefetch_future = None
         self._prefetch_revision = 0
+        self._cast_streams = CastStreamCache()
         self._radio_refill_pending = False
         self._radio_refill_revision = 0
         self._radio_waiting_for_tracks = None
@@ -476,6 +479,7 @@ class BackendBridge(QObject):
         if not self._cast_output.connection_lost.is_set():
             return True
         self._cast_lost = True
+        self._cast_streams.clear()
         was_switching = self._output_switching
         self._output_switching = self._playback_transitioning = False
         self._playback_generation += 1
@@ -534,6 +538,7 @@ class BackendBridge(QObject):
               or not any(row["id"] == device_id for row in self._cast_devices)):
             return False
         self._output_switching = self._playback_transitioning = True
+        self._cast_streams.clear()
         self._output_result_pending = True
         self._playback_generation += 1
         self._prefetch_revision += 1
@@ -618,7 +623,7 @@ class BackendBridge(QObject):
                 pass
             self._set_status(f"Výstup: {self.outputName}")
             self.outputChanged.emit()
-            if result.get("local") and result["active"]:
+            if result["active"]:
                 self._prefetch_next_track()
         else:
             if result.get("sourceStopped"):
@@ -822,6 +827,7 @@ class BackendBridge(QObject):
             self._apply_result("initialize", data)
 
     def _reset_account_views(self):
+        self._cast_streams.clear()
         self._playback_generation += 1
         self._prefetch_revision += 1
         if self._prefetch_future is not None:
@@ -2400,34 +2406,52 @@ class BackendBridge(QObject):
 
         def work():
             last_error = None
+            def load(source, song, prepared):
+                url, content_type = source
+                trace = current_trace()
+                output_started = monotonic()
+                if trace:
+                    trace.event("audio.output_begin", prepared=prepared)
+                with self._transport_lock:
+                    if cancelled():
+                        raise core.AudioPreparationCancelled("Přehrávání zrušeno")
+                    mc.play_media(url, content_type,
+                                  title=f"{core.artist_names(song)} - {song.get('title', '?')}",
+                                  stream_type="BUFFERED")
+                mc.block_until_active(timeout=15, cancelled=cancelled)
+                if trace:
+                    trace.event("audio.output_ready", seconds=round(monotonic() - output_started, 3),
+                                prepared=prepared)
             while generation == self._playback_generation:
                 with self._transport_lock:
                     song = queue.current()
                 if song is None:
                     break
                 try:
-                    if self._cast_output is None:
-                        url, content_type = core.get_local_audio_source(
+                    if getattr(output, "is_local", True):
+                        source = core.get_local_audio_source(
                             song["videoId"], cancelled=cancelled, diagnostics=current_trace())
+                        prepared = False
                     else:
-                        url, content_type = core.get_playback_source(song["videoId"], mc)
-                    artists = core.artist_names(song)
-                    trace = current_trace()
-                    output_started = monotonic()
-                    if trace:
-                        trace.event("audio.output_begin")
-                    with self._transport_lock:
-                        if cancelled():
-                            return
-                        mc.play_media(
-                            url,
-                            content_type,
-                            title=f"{artists} - {song.get('title', '?')}",
-                            stream_type="BUFFERED",
-                        )
-                    mc.block_until_active(timeout=15, cancelled=cancelled)
-                    if trace:
-                        trace.event("audio.output_ready", seconds=round(monotonic() - output_started, 3))
+                        source = self._cast_streams.take((queue, output, song["videoId"]))
+                        prepared = source is not None
+                        trace = current_trace()
+                        if trace:
+                            trace.event("cast.url.hit" if prepared else "cast.url.miss")
+                        if not prepared:
+                            source = core.get_playback_source(song["videoId"], mc)
+                    try:
+                        load(source, song, prepared)
+                    except Exception:
+                        if not prepared or cancelled():
+                            raise
+                        trace = current_trace()
+                        if trace:
+                            trace.event("cast.url.retry")
+                        # Retry this occurrence once with a fresh URL before
+                        # the existing unplayable-track handling may advance.
+                        source = core.get_playback_source(song["videoId"], mc)
+                        load(source, song, False)
                     if not cancelled():
                         self._playbackReady.emit(generation)
                     return
@@ -2472,7 +2496,10 @@ class BackendBridge(QObject):
         arrives while prefetch is running, playback follows it and reuses the
         finished file through get_local_audio_source's normal cache lookup.
         """
-        if self._closing.is_set() or self._queue is None or self._queue.empty() or self._cast_output is not None:
+        if self._closing.is_set() or self._queue is None or self._queue.empty():
+            return
+        if self._cast_output is not None:
+            self._prefetch_cast_stream()
             return
         video_id = self._next_prefetch_id()
         if not video_id:
@@ -2504,6 +2531,55 @@ class BackendBridge(QObject):
                     print(f"FelisMusic přednačítání selhalo ({video_id}): {type(exc).__name__}")
 
         self._prefetch_future = self._playback_executor.submit(work, _diagnostic_label="audio.prefetch", _diagnostic_video=video_id)
+
+    def _next_cast_prefetch_id(self):
+        if (self.playerHasTrack and self._repeat_mode == "one"
+                and not self._queue.current().get("_guiRemoveAfterPlayback")):
+            return self._current_video_id()
+        return self._next_prefetch_id()
+
+    def _prefetch_cast_stream(self):
+        output, queue = self._cast_output, self._queue
+        if (output is None or self._cast_lost or output.connection_lost.is_set()
+                or self._closing.is_set() or self._player_state not in ("playing", "paused")):
+            return
+        video_id = self._next_cast_prefetch_id()
+        if not video_id:
+            self._cast_streams.clear()
+            return
+        ticket = self._cast_streams.reserve((queue, output, video_id))
+        if ticket is None:
+            return
+        generation, revision = self._playback_generation, self._prefetch_revision
+
+        def cancelled():
+            return (self._closing.is_set() or self._queue is not queue or self._cast_output is not output
+                    or self._cast_lost or output.connection_lost.is_set() or self._player_state == "idle"
+                    or ((generation != self._playback_generation or revision != self._prefetch_revision)
+                        and self._current_video_id() != video_id and self._next_cast_prefetch_id() != video_id))
+
+        def work():
+            trace = current_trace()
+            try:
+                if cancelled():
+                    self._cast_streams.complete(ticket)
+                    return
+                if trace:
+                    trace.event("cast.url.prefetch_begin")
+                source = core.get_playback_source(video_id, output.media_controller)
+                stored = self._cast_streams.complete(ticket, None if cancelled() else source)
+                if trace:
+                    trace.event("cast.url.prefetch_ready" if stored else "cast.url.prefetch_discarded")
+            except Exception as exc:
+                self._cast_streams.complete(ticket)
+                if trace:
+                    trace.event("cast.url.prefetch_failed", error=type(exc).__name__)
+
+        # The serial worker also owns playback extraction and cookie-file access.
+        self._prefetch_future = self._playback_executor.submit(
+            work, _diagnostic_label="audio.prefetch_cast", _diagnostic_video=video_id)
+        self._prefetch_future.add_done_callback(
+            lambda future: self._cast_streams.complete(ticket) if future.cancelled() else None)
 
     @Slot(int)
     def _apply_playback_ready(self, generation):
@@ -4456,6 +4532,7 @@ class BackendBridge(QObject):
     @Slot()
     def stopPlayback(self):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
+        self._cast_streams.clear()
         if not self._check_output_connection():
             return True
         if self._output_switching:
@@ -4556,6 +4633,7 @@ class BackendBridge(QObject):
         try:
             self._active_output().media_controller.seek(target, timeout=3)
             self._player_position = target
+            self.playerSeeked.emit(target)
             self.playerChanged.emit()
         except Exception as exc:
             self.errorOccurred.emit(f"Posun ve skladbě selhal: {exc}")
@@ -6348,6 +6426,7 @@ class BackendBridge(QObject):
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
             self._login_process.kill()
         self._closing.set()
+        self._cast_streams.clear()
         if self._cast_discovery is not None:
             self._cast_discovery.close()
         self._player_timer.stop()
