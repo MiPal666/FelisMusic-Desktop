@@ -274,6 +274,8 @@ MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
 ### G. Desktop 1.0 (11)
 
+**2026-10-30 – checklist, bod 1:** kontrola kódu dokončena nad c4977e3; 0.3.87 opravuje reprodukovaný souběh neúspěšné přípravy se změnou skladby/Stop/shutdown. 691 testů prošlo, 2 D-Bus přeskočeny; QML startup/shutdown bez varování. Michal potvrdil tři skutečné scénáře a bod 1 přijal; Next/Previous z pauzy spouští novou skladbu podle odsouhlaseného chování. Připraveno k commitu, další bloky checklistu dosud neuzavírat. Podrobnosti v STATUS.md.
+
 1. **11a – Kontrola celku.** Velké kolekce, nedostupné skladby, duplicity, chyby sítě/účtu, opakované akce, opožděné výsledky, ukončení během práce, kombinace všech přijatých funkcí a reálný Cast.
 2. **11b – Vzhled a instalace.** Celková revize menu/rozložení a klávesnice, texty a chyby, ikona, desktopový spouštěč a ověřený instalační postup se závislostmi. Formu distribučního balíčku zvolit před touto etapou.
 3. **11c – Příprava vydání.** README, známá omezení, přijatý kandidát, čistý Git, release commit/tag a instalační výstup. Publikace až na samostatný pokyn.

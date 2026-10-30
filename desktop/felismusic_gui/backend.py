@@ -2424,6 +2424,8 @@ class BackendBridge(QObject):
                                 prepared=prepared)
             while generation == self._playback_generation:
                 with self._transport_lock:
+                    if cancelled():
+                        return
                     song = queue.current()
                 if song is None:
                     break
@@ -2460,6 +2462,11 @@ class BackendBridge(QObject):
                         return
                     last_error = exc
                     with self._transport_lock:
+                        # Stop/manual selection/shutdown can win while this
+                        # worker waits for the lock after extraction failed.
+                        # Recheck here before touching the shared queue cursor.
+                        if cancelled():
+                            return
                         moved = queue.next() if direction >= 0 else queue.previous()
                     if not moved:
                         break
