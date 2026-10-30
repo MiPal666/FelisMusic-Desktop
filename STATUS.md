@@ -1,5 +1,13 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.89-dev – otevření prázdného playlistu, Michalem přijato
+
+- Ve scénáři 3–1 vytvoření playlistu a obnovení přehledu funguje, ale otevření prázdného detailu skončilo chybou. Michal zavřel aplikaci a povolil opravu nad 276f282; bod 3–1 tehdy zůstal otevřený.
+- Skutečné čtecí ověření playlistu FelisMusic test potvrdilo musicPlaylistShelfRenderer bez pole contents. Instalovaný get_playlist vrací správně prázdné tracks a metadata, naše stránkování následně vyžadovalo neexistující contents. Nyní vyžaduje platný shelf a jeho chybějící contents přijímá jako prázdný seznam. Chybějící shelf zůstává chybou.
+- Nové regrese používají skutečný instalovaný parser, syntetickou odpověď ve zjištěném tvaru a skutečný PlaylistPages také přes backend: prázdný vlastní soukromý detail, dokončené načítání, jediný požadavek a zachování přehrávání/fronty. Backendová regrese před opravou selhala, po opravě prochází. Opravený adaptér ověřen i skutečným čtením: 0 skladeb, žádné pokračování, owned=True; účet ani playlist se neměnily.
+- Celá sada: 709 testů, 707 prošlo, 2 D-Bus testy přeskočené jako dříve. git diff --check bez chyb. QML se neměnilo.
+- Michal potvrdil opakovaný skutečný test: otevření prázdného playlistu funguje. Oprava 0.3.89 a bod 3–1 přijaty; připraveno k commitu nad 276f282.
+
 ## 0.3.88-dev – skutečné YTM Profily, Michalem přijato
 
 - Michal v průběhu scénáře 2–2 potvrdil správné přehrávání/frontu při procházení všech kolekcí a nahlásil neodpovídající Profily. Potvrdil zavření aplikace a povolil samostatnou opravu. Základ 93dd3a7, dosavadní necommitované poznámky pro blok 6 zachované.

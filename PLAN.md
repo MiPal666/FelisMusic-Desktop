@@ -274,6 +274,8 @@ MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
 ### G. Desktop 1.0 (11)
 
+**Checklist, blok 3 – 3–1, 2026-10-30:** vytvoření prázdného playlistu a obnova přehledu fungují; otevření prázdného detailu selhalo. Oprava 0.3.89 přijímá shelf bez contents podle skutečné odpovědi YTM, zachovává validaci přítomnosti shelf a přehrávání/frontu. Regresní testy se skutečným parserem a čtecí ověření účtu prošly; Michal potvrdil opakovaný test GUI bez problémů. Oprava 0.3.89 a bod 3–1 přijaty.
+
 **Checklist, blok 6 – odznačení výběru (odsouhlaseno 2026-10-30):** zpřístupnit malé Zrušit výběr × už při jedné vybrané skladbě. Plná lišta hromadných akcí zůstane až od dvou. Escape ruší celý výběr, Ctrl+klik přepíná jednotlivou skladbu; doplnit zrušení výběru klikem do prázdného místa seznamu. Obyčejný opakovaný klik na řádek nebude přepínačem výběru, aby zůstalo předvídatelné chování dvojkliku pro přehrání. Modrý výběr a fialový stav Hraje zůstávají nezávislé. Při realizaci ověřit klávesové zkratky i odznačování napříč seznamy. Zatím pouze plán, aplikace nezměněná.
 
 **Checklist, blok 2 – 2026-10-30:** všech šest scénářů 2–1 až 2–6 prošlo, blok 2 je přijatý. Během procházení nalezen chybný zdroj Profilů; samostatná oprava 0.3.88 používá skutečný serverový filtr Profiles a uživatelský detail Videa/Playlisty. 704 testů prošlo, 2 D-Bus přeskočené, QML ověřeno; skutečné čtení vrací shodné dva profily jako web. Michal opravu Profilů 0.3.88 přijal bez problémů a potvrdil návrat přes cover; oprava Profilů uložena v e6d169e. Přidávání, přesun/odebrání, zamíchání fronty a všechny režimy Repeat potvrzeny bez problémů. Dále blok 3 Knihovna a playlisty.

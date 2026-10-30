@@ -48,8 +48,11 @@ class PlaylistPages:
             if len(responses) != 1:
                 raise RuntimeError('Neočekávaný průběh stránkování playlistu.')
             self.metadata['_playlistLibraryControls'] = playlist_library_controls(responses[0], self.playlist_id, data)
-            contents = nav(responses[0], [*TWO_COLUMN_RENDERER, 'secondaryContents',
-                *SECTION, *CONTENT, 'musicPlaylistShelfRenderer', 'contents'])
+            shelf = nav(responses[0], [*TWO_COLUMN_RENDERER, 'secondaryContents',
+                *SECTION, *CONTENT, 'musicPlaylistShelfRenderer'])
+            # Empty playlists have an emptyState instead of a contents field;
+            # get_playlist already accepts this shape. Still require the shelf.
+            contents = shelf.get('contents', [])
             self.collaborative = 'collaborators' in data
             tracks = data.get('tracks') or []
             token = get_continuation_token(contents) if contents else None

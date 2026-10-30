@@ -1,6 +1,6 @@
 """Creating an empty private playlist must never use playback/selection tracks."""
 from threading import Event
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 import test_prefetch as support
 
 
@@ -92,6 +92,23 @@ class EmptyPlaylistTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.detailTitle, 'Empty')
         self.assertEqual(self.b.detailTracksModel.count, 0)
         self.assertEqual(self.b.detailMeta['playlistId'], 'new-id')
+        self.assertIs(self.b._queue, queue)
+        self.assertEqual(self.played, ['A'])
+
+    def test_real_page_adapter_opens_empty_shelf_without_affecting_playback(self):
+        from ytmusicapi import YTMusic
+        from felismusic_gui.paging import PlaylistPages
+        from test_paging import empty_owned_playlist
+        self.start('A', 'B'); queue = self.b._queue
+        api = YTMusic.__new__(YTMusic)
+        api._send_request = Mock(return_value=empty_owned_playlist())
+        self.b._ytmusic = api
+        with patch.object(support.backend, 'PlaylistPages', PlaylistPages):
+            self.b.loadPlaylistTracks('PLempty', 'Empty'); self.ready()
+        self.assertEqual(self.b.detailTitle, 'Empty')
+        self.assertEqual(self.b.detailTracksModel.count, 0)
+        self.assertTrue(self.b.detailMeta['owned'])
+        self.assertEqual(self.b.detailMeta['playlistLoadState'], 'complete')
         self.assertIs(self.b._queue, queue)
         self.assertEqual(self.played, ['A'])
 

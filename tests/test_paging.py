@@ -29,6 +29,22 @@ def continuation(contents):
     return {'onResponseReceivedActions': [{'appendContinuationItemsAction': {'continuationItems': contents}}]}
 
 
+def empty_owned_playlist():
+    """Empty YTM shelves omit contents entirely (observed on a real playlist)."""
+    response = initial([])
+    renderer = response['contents']['twoColumnBrowseResultsRenderer']
+    renderer['secondaryContents']['sectionListRenderer']['contents'] = [
+        {'musicPlaylistShelfRenderer': {'playlistId': 'PLempty', 'emptyState': {}}}]
+    renderer['tabs'] = [{'tabRenderer': {'content': {'sectionListRenderer': {'contents': [{
+        'musicEditablePlaylistDetailHeaderRenderer': {
+            'playlistId': 'PLempty',
+            'editHeader': {'musicPlaylistEditHeaderRenderer': {'privacy': 'PRIVATE'}},
+            'header': {'musicResponsiveHeaderRenderer': {
+                'title': {'runs': [{'text': 'Empty'}]}, 'subtitle': {'runs': []},
+                'secondSubtitle': {'runs': [{'text': '0 songs'}]}}}}}]}}}}]
+    return response
+
+
 class Client:
     def __init__(self, responses):
         self._send_request = Mock(side_effect=deepcopy(responses))
@@ -44,6 +60,27 @@ class Client:
 
 
 class PlaylistPagesTests(TestCase):
+    def test_installed_parser_empty_owned_shelf_without_contents(self):
+        api = YTMusic.__new__(YTMusic)
+        api._send_request = Mock(return_value=empty_owned_playlist())
+        pages = PlaylistPages(api, 'PLempty')
+        self.assertEqual(pages.next_page(), ([], False))
+        self.assertEqual(pages.metadata['title'], 'Empty')
+        self.assertTrue(pages.metadata['owned'])
+        self.assertEqual(pages.metadata['privacy'], 'PRIVATE')
+        self.assertEqual(pages.metadata['trackCount'], 0)
+        self.assertEqual(pages.next_page(), ([], False))
+        api._send_request.assert_called_once_with('browse', {'browseId': 'VLPLempty'}, '')
+
+    def test_missing_shelf_still_fails(self):
+        response = empty_owned_playlist()
+        response['contents']['twoColumnBrowseResultsRenderer']['secondaryContents'][
+            'sectionListRenderer']['contents'] = []
+        api = YTMusic.__new__(YTMusic)
+        api._send_request = Mock(return_value=response)
+        with self.assertRaises(Exception):
+            PlaylistPages(api, 'PLempty').next_page()
+
     def test_exact_cursors_one_request_per_page_and_shared_client_unchanged(self):
         api = Client([initial([song('A'), token('one')]),
                       continuation([song('B'), token('two')]), continuation([song('A')])])
