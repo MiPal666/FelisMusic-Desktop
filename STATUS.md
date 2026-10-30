@@ -1,5 +1,27 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.88-dev – skutečné YTM Profily, Michalem přijato
+
+- Michal v průběhu scénáře 2–2 potvrdil správné přehrávání/frontu při procházení všech kolekcí a nahlásil neodpovídající Profily. Potvrdil zavření aplikace a povolil samostatnou opravu. Základ 93dd3a7, dosavadní necommitované poznámky pro blok 6 zachované.
+- Příčina seznamu: get_library_channels používá FEmusic_library_non_music_audio_channels_list, tedy podcastové kanály, nikoli Profiles. Nový profiles.py načte FEmusic_library_landing a z konkrétního filtračního čipu převezme přesný browseId FEmusic_library_user_profile_channels_list i serverem vydané params. Z obalu commandExecutorCommand se použije pouze browse čtení, žádné persistentní ani zapisující příkazy. Výběr podle ID, nezávislý na textu/jazyce čipu. Pokračování se čtou do konce, opakovaný token je chyba; chybějící/nejednoznačný renderer či jiný typ položky se nesmí vydávat za prázdný seznam. Z–A/A–Z řadí celý načtený seznam místně, Nedávno přidané zachová výchozí serverové pořadí.
+- Skutečné čtecí ověření účtu během práce vrátilo přesně Napalm Records a Rock & Roar, shodně se screenshotem webového YTM. Oba mají hlavičku musicVisualHeaderRenderer. Napalm: videa 180 a playlisty 76 v načtených sekcích; Rock & Roar: videa 90 a jeden playlist. Tyto počty jsou aktuální odpověď YTM, nikoli trvalá konstanta ani tvrzení o všech videích veřejného YouTube kanálu. Žádné změny účtu ani spuštění skutečného audia.
+- Detail profilu nyní čte uživatelský profil a obsah Videa / Playlisty, nikoli get_channel určené pro podcasty. Záložky jsou v detailu z knihovny i hledání. Serverem vydaný ukazatel sekce se použije pro první stránku; případná pokračování přes Načíst další bez stahování celé historie předem. Popisek výslovně říká, že přehrávání používá načtená videa. Načtení další stránky ani procházení profilu nemění již běžící frontu. Otevření playlistu jedním klikem a Zpět obnoví profil, záložku a kontext hledání/knihovny. Prázdná sekce má vysvětlení.
+- Čtecí chyby seznamu Profilů a detailů mají stručný text bez těla odpovědi; debug ponechá jen třídu výjimky. Generace profilu vyřazuje opožděné výsledky po opuštění detailu, při zavírání nebo po jiné navigaci. Žádná záměna interpreta za profil ani odhad podle jména nebo seznamu konkrétních kapel.
+- 13 nových offline testů v tests/test_profiles.py: přesný vydaný filtr/params, pokračování a deduplikace, chybějící filtr/renderer, explicitně prázdný seznam, nepovolený artist typ, opakovaný token, uživatelská hlavička, stránkování sekcí, neznámé renderery, řazení, videa/playlist/Zpět a zachování poslechu, chyba/retry další stránky, stručné chyby a hledání, odchod během čtení. Celá sada: 706 testů, 704 prošlo, 2 D-Bus testy přeskočené jako dříve. QML 900×600 a 1280×800 prošlo skutečnými simulovanými kliky na záložky, playlist a Zpět, dále Načíst další a prázdná sekce; bez QML varování. Nová navigace vizuálně zkontrolovaná, git diff --check a Python kompilace bez chyb.
+- Michal potvrdil skutečný test 0.3.88 bez problémů a opravu Profilů přijal. Následně potvrdil scénář 2–3: návrat přes cover funguje. Scénáře 2–1, 2–2 a 2–3 prošly; dále 2–4 (přidání jako další a na konec fronty). Připraveno k commitu nad 93dd3a7. Blok 2 celkově zůstává rozpracovaný; připomínka navigačních akcí z menu skladeb nadále patří do bloku 6.
+- Podklad pro rozlišení endpointů: instalovaný ytmusicapi a jeho upstream LibraryMixin; serverem vydaná čtení ověřená na účtu. Doplňková implementační dokumentace klienta Kaset: https://github.com/sozercan/kaset/blob/4c59ff259d853f1cc328597f5adccf2a291c2fa7/docs/api-discovery.md .
+
+
+## Checklist – běžný poslech, rozpracováno 2026-10-30
+
+- Scénář 2–2 potvrzen: Michal prošel všechny kolekce a audio/fronta pokračovaly správně. Nalezen samostatný problém Profilů: aplikace ukazuje Spiritbox, Butcher Babies, Nuclear Blast Records a KEXP, web YTM Napalm Records a Rock & Roar. Nesedí identita ani počet, nejde pouze o dvě položky navíc. Při otevření Butcher Babies KeyError pro musicVisualHeaderRenderer a nepřiměřeně dlouhá syrová odpověď v dialogu. Lokální kontrola: loadLibrarySection(channels) používá get_library_channels (FEmusic_library_non_music_audio_channels_list), ale otevření volá get_channel určené pro podcastový kanál. Vrácený musicImmersiveHeaderRenderer je s tímto parserem nekompatibilní. Správný zdroj skutečných YTM Profilů zatím neověřen; bez změny aplikace, čeká na zavření před opravou.
+
+- Bod 1 checklistu (kontrola kódu a oprava 0.3.87) přijatý a uložený v 93dd3a7.
+- V bloku 2 Běžný poslech Michal potvrdil první scénář: hledání a otevření/přehrávání výsledku funguje. Následně potvrdil také 2–2 (procházení při poslechu) a 2–3 (návrat přes cover). Celý blok 2 zatím neuzavírat; dále scénář 2–4.
+- Odsouhlasená připomínka pro blok 6 Vzhled a ovládání: do menu jednotlivé skladby doplnit Otevřít interpreta / Otevřít album napříč seznamy, kde jsou dostupné příslušné údaje; u více interpretů nabídnout výběr. V hledání tyto akce chybějí. Implementaci řešit až v bloku 6, zatím žádná změna aplikace.
+- Zachovat odsouhlasené rozlišení klikání: skladba = jednoklik výběr, dvojklik přehrání; album/interpret/playlist = jednoklik otevření detailu. Otevření kolekce samo nepřeruší poslech, dvojklik pro navigaci se nezavádí.
+
+
 ## 0.3.87-dev – kontrola před 1.0, bod 1; Michalem přijato
 
 - Michal povolil bod 1 checklistu a potvrdil zavřenou aplikaci. Výchozí commit c4977e3 byl čistý a obsahuje přijaté přednačítání Castu a MPRIS.

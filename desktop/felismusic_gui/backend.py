@@ -34,6 +34,7 @@ from .login import LoginCandidate, remove_login
 from .cast_discovery import CastDiscovery
 from .cast_output import handoff, handoff_to_local, dispose
 from .cast_streams import CastStreamCache
+from .profiles import load_library_profiles, load_profile, load_profile_page
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -310,6 +311,7 @@ class BackendBridge(QObject):
         self._library_order = ""
         self._detail_title = ""
         self._detail_meta = {}
+        self._profile_revision = 0
         self._upload_artist_radio_ids = {}
         self._detail_history = []
         self._pending_detail_parent = None
@@ -1553,6 +1555,13 @@ class BackendBridge(QObject):
         if self._busy or not 0 <= index < len(items):
             return
         item = items[index]
+        if self._detail_meta.get("kind") == "profile" and item.get("kind") == "playlist" and item.get("playlistId"):
+            self._pending_detail_parent = self._detail_state()
+            if context is not None:
+                self._pending_detail_parent["returnContext"] = dict(context)
+                self._pending_detail_parent["uploadNavigationContext"] = dict(context)
+            self.openLibraryItem("playlist", "", item["playlistId"], item["title"])
+            return
         if item.get("kind") != "album" or not item.get("browseId"):
             return
         self._pending_detail_parent = self._detail_state()
@@ -1637,6 +1646,58 @@ class BackendBridge(QObject):
         self._detail_meta.setdefault("orders", {})[section] = order
         self._detail_tracks_model.set_items(self._artist_sorted_items(self._detail_meta))
         self.detailTitleChanged.emit()
+
+    def _load_profile_section(self, api, meta, section):
+        state = meta["profilePages"][section]
+        if state.get("complete"):
+            return
+        rows, next_state = load_profile_page(api, meta["browseId"], section, state)
+        rows = ([self._track(x) for x in rows if x.get("videoId")] if section == "videos" else
+                [self._playlist(x) for x in rows if x.get("playlistId")])
+        previous = meta["sections"][section] if state.get("started") else []
+        key = "videoId" if section == "videos" else "playlistId"
+        known = {x.get(key) for x in previous}
+        for row in rows:
+            if row.get(key) not in known:
+                previous.append(row)
+                known.add(row[key])
+        meta["sections"][section] = previous
+        meta["profilePages"][section] = next_state
+
+    @Slot(str)
+    def selectProfileSection(self, section):
+        if (self._closing.is_set() or self._busy or self._detail_meta.get("kind") != "profile"
+                or section not in ("videos", "playlists")):
+            return
+        meta = deepcopy(self._detail_meta)
+        revision = self._profile_revision
+        meta["section"] = section
+        state = meta["profilePages"][section]
+        if not state.get("started") and not state.get("complete"):
+            title = self._detail_title
+            def task():
+                self._load_profile_section(self._require_ytmusic(), meta, section)
+                return {"title": title, "meta": meta, "tracks": meta["sections"][section], "profileRevision": revision}
+            self._submit("detail", "Načítám profil…", task)
+        else:
+            self._detail_meta = meta
+            self._detail_tracks_model.set_items(meta["sections"][section])
+            self.detailTitleChanged.emit()
+
+    @Slot()
+    def loadMoreProfile(self):
+        if self._closing.is_set() or self._busy or self._detail_meta.get("kind") != "profile":
+            return
+        meta = deepcopy(self._detail_meta)
+        revision = self._profile_revision
+        section = meta["section"]
+        if meta["profilePages"][section].get("complete"):
+            return
+        title = self._detail_title
+        def task():
+            self._load_profile_section(self._require_ytmusic(), meta, section)
+            return {"title": title, "meta": meta, "tracks": meta["sections"][section], "profileRevision": revision}
+        self._submit("detail", "Načítám další položky profilu…", task)
 
     # ------------------------------------------------------------------
     # Local playback
@@ -4732,10 +4793,13 @@ class BackendBridge(QObject):
                 trace = current_trace()
                 if trace:
                     trace.event("api.error", error=type(exc).__name__)
-                self._errorReady.emit(
-                    name,
-                    f"{type(exc).__name__}: {exc}",
-                )
+                # Parser exceptions can embed an entire server response.
+                # These read-only views need a concise error, never its body.
+                message = ("Profily se nepodařilo načíst. Zkus to prosím znovu."
+                           if name == "library:channels" else
+                           "Detail se nepodařilo načíst. Zkus to prosím znovu."
+                           if name == "detail" else f"{type(exc).__name__}: {exc}")
+                self._errorReady.emit(name, message)
                 return
             self._resultReady.emit(name, result)
 
@@ -5019,6 +5083,9 @@ class BackendBridge(QObject):
                 self._set_status(f"Výsledků hledání · {len(result)}")
 
             elif name == "detail":
+                if "profileRevision" in result and (
+                        self._closing.is_set() or result["profileRevision"] != self._profile_revision):
+                    return
                 playlist_id = result.get("meta", {}).get("playlistId")
                 if playlist_id and "playlistOccurrenceIds" in result:
                     if result.get("playlistMovesCaughtUp"):
@@ -5041,7 +5108,7 @@ class BackendBridge(QObject):
                 self._upload_artist_radio_ids.update(result.get("uploadArtistRadioIds", {}))
                 self._detail_tracks_model.set_items(tracks)
                 self.detailTitleChanged.emit()
-                label = "položek" if self._detail_meta.get("section") in ("albums", "singles") else "skladeb"
+                label = "položek" if self._detail_meta.get("section") in ("albums", "singles", "videos", "playlists") else "skladeb"
                 self._set_status(f"{title} · {len(tracks)} {label}")
                 if result.get("playlistLoad"):
                     load = result["playlistLoad"]
@@ -5840,11 +5907,8 @@ class BackendBridge(QObject):
                 return [self._artist_item(x) for x in items]
 
             if section == "channels":
-                items = ytmusic.get_library_channels(
-                    limit=core.LIBRARY_LIMIT,
-                    order=order,
-                ) or []
-                return [self._artist_item(x, "channel") for x in items]
+                items = load_library_profiles(ytmusic)
+                return self._sort_normalized([self._artist_item(x, "profile") for x in items], order)
 
             if section == "podcasts":
                 items = ytmusic.get_library_podcasts(
@@ -5880,10 +5944,16 @@ class BackendBridge(QObject):
 
     @Slot(str, str, str, str)
     def openLibraryItem(self, kind, browse_id, playlist_id, title):
+        if self._busy or self._closing.is_set():
+            return
+        self._profile_revision += 1
+        profile_revision = self._profile_revision
         kind = (kind or "").strip()
         browse_id = (browse_id or "").strip()
         playlist_id = (playlist_id or "").strip()
         title = (title or "Knihovna").strip()
+        if kind == "channel":
+            kind = "profile"
         upload_radio_ids = dict(self._upload_artist_radio_ids)
         if kind == "upload_artist":
             for source in ("library", "search"):
@@ -5953,14 +6023,23 @@ class BackendBridge(QObject):
                     meta["sections"]["songs"] = library
 
 
-            elif kind == "channel":
+            elif kind == "profile":
                 if not browse_id:
                     raise RuntimeError("Profil nemá browseId.")
-                data = ytmusic.get_channel(browse_id)
-                detail_title = data.get("title") or title
-                tracks = core.usable_tracks(
-                    (data.get("episodes") or {}).get("results") or []
-                )
+                data = load_profile(ytmusic, browse_id)
+                detail_title = data["name"]
+                sections = {
+                    "videos": [self._track(x) for x in (data.get("videos") or {}).get("results", []) if x.get("videoId")],
+                    "playlists": [self._playlist(x) for x in (data.get("playlists") or {}).get("results", []) if x.get("playlistId")],
+                }
+                pages = {key: {"params": (data.get(key) or {}).get("params"),
+                               "started": False, "complete": not (data.get(key) or {}).get("params")}
+                         for key in sections}
+                section = "videos" if sections["videos"] or pages["videos"]["params"] else "playlists"
+                meta = {"kind": "profile", "browseId": browse_id, "section": section,
+                        "sections": sections, "profilePages": pages}
+                self._load_profile_section(ytmusic, meta, section)
+                tracks = meta["sections"][section]
 
             elif kind == "podcast":
                 podcast_id = playlist_id or browse_id
@@ -6015,8 +6094,9 @@ class BackendBridge(QObject):
             return {
                 "title": detail_title,
                 "meta": meta,
+                **({"profileRevision": profile_revision} if kind == "profile" else {}),
                 "uploadArtistRadioIds": upload_radio_ids if kind == "upload_artist" else {},
-                "tracks": self._artist_sorted_items(meta) if kind in ("artist", "upload_artist") else [
+                "tracks": (tracks if kind == "profile" else self._artist_sorted_items(meta)) if kind in ("artist", "upload_artist", "profile") else [
                     self._track(
                         x,
                         upload=kind.startswith("upload_"),
@@ -6423,6 +6503,7 @@ class BackendBridge(QObject):
 
     @Slot()
     def clearDetail(self):
+        self._profile_revision += 1
         self._restore_detail_state({})
 
     @Slot()

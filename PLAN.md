@@ -274,6 +274,10 @@ MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
 ### G. Desktop 1.0 (11)
 
+**Checklist, blok 2 – 2026-10-30:** scénáře 2–1, 2–2 a 2–3 prošly. Během procházení nalezen chybný zdroj Profilů; samostatná oprava 0.3.88 používá skutečný serverový filtr Profiles a uživatelský detail Videa/Playlisty. 704 testů prošlo, 2 D-Bus přeskočené, QML ověřeno; skutečné čtení vrací shodné dva profily jako web. Michal opravu Profilů 0.3.88 přijal bez problémů a potvrdil návrat přes cover; dále scénář 2–4 (přidávání do fronty). Připraveno k commitu. Celý blok 2 dosud neuzavírat.
+
+**Připomínka pro checklist, blok 6 (odsouhlaseno 2026-10-30):** doplnit do menu jednotlivých skladeb Otevřít interpreta / Otevřít album ve všech seznamech podle dostupných metadat, u více interpretů s výběrem. Zachovat jednoklik pro navigaci do alba/interpreta/playlistu a jednoklik výběr / dvojklik přehrání skladby. Zatím pouze plán, implementace až v bloku 6.
+
 **2026-10-30 – checklist, bod 1:** kontrola kódu dokončena nad c4977e3; 0.3.87 opravuje reprodukovaný souběh neúspěšné přípravy se změnou skladby/Stop/shutdown. 691 testů prošlo, 2 D-Bus přeskočeny; QML startup/shutdown bez varování. Michal potvrdil tři skutečné scénáře a bod 1 přijal; Next/Previous z pauzy spouští novou skladbu podle odsouhlaseného chování. Připraveno k commitu, další bloky checklistu dosud neuzavírat. Podrobnosti v STATUS.md.
 
 1. **11a – Kontrola celku.** Velké kolekce, nedostupné skladby, duplicity, chyby sítě/účtu, opakované akce, opožděné výsledky, ukončení během práce, kombinace všech přijatých funkcí a reálný Cast.

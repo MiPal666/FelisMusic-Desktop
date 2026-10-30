@@ -471,3 +471,7 @@ Při hlášce „Seznam není úplný“ v náhodné frontě spusť aplikaci s `
 FelisMusic se při startu registruje jako `org.mpris.MediaPlayer2.felismusic`. KDE a multimediální klávesy mohou řídit právě zvolený výstup (notebook i Cast): Play/Pause, Stop, další/předchozí skladbu, hlasitost, Repeat a posun v dostupné skladbě. Zveřejňuje název, interpreta, album, cover, délku a pozici. Vyžaduje dbus-python a stávající PyGObject; v openSUSE systémový balíček `python3-dbus-python` a virtuální prostředí se `--system-site-packages`. Chybějící D-Bus nebrání spuštění GUI. Skutečné klávesy, KDE a Bluetooth se ověřují ručně; jednorázové YTM Shuffle není přepínač MPRIS.
 
 Tlačítka hlasitosti Bluetooth sluchátek standardně mění systémovou hlasitost notebooku. Hlasitost vybraného Castu se ovládá ve FelisMusic; automatické přesměrování těchto tlačítek na Cast není součástí integrace. Michal přednačítání Castu a MPRIS přijal 2026-10-30.
+
+### Profily v knihovně (0.3.88-dev)
+
+Profily odpovídají filtru Profily ve webovém YouTube Music. Jejich detail nabízí Videa a Playlisty; playlist otevřeš jedním klikem a Zpět tě vrátí do profilu. Pokud server poskytuje další stránku, použij Načíst další. Fronta při spuštění videa obsahuje právě načtená videa; samotné procházení nebo doplnění stránky běžící poslech nemění. Chyby načítání se zobrazují stručně. Michal skutečný test opravy potvrdil bez problémů.

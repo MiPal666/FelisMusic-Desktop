@@ -1369,7 +1369,8 @@ ApplicationWindow {
             cursorShape: {
                 if (sourceKey === "search")
                     return actionable ? Qt.PointingHandCursor : Qt.ArrowCursor
-                return videoId.length > 0 || (sourceKey === "detail" && kind === "album") ? Qt.PointingHandCursor : Qt.ArrowCursor
+                return videoId.length > 0 || (sourceKey === "detail" && (kind === "album" ||
+                       (backend.detailMeta.kind === "profile" && kind === "playlist"))) ? Qt.PointingHandCursor : Qt.ArrowCursor
             }
             onClicked: function(event) {
                 if (videoId.length > 0) {
@@ -1386,7 +1387,8 @@ ApplicationWindow {
                 backend.clearTrackSelection()
                 if (sourceKey === "search" && actionable)
                     backend.openSearchResult(index)
-                else if (sourceKey === "detail" && kind === "album")
+                else if (sourceKey === "detail" && (kind === "album" ||
+                         (backend.detailMeta.kind === "profile" && kind === "playlist")))
                     backend.openDetailItem(index, root.navigationContext())
             }
             onDoubleClicked: function(event) {
@@ -1733,7 +1735,8 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 text: backend.detailHeaderSummary || backend.detailTracksModel.count +
-                      (backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs"
+                      ((backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs")
+                       || backend.detailMeta.kind === "profile"
                        ? " položek" : " skladeb")
                 elide: Text.ElideRight
                 HoverHandler { id: headerSummaryHover }
@@ -2003,6 +2006,43 @@ ApplicationWindow {
                     color: "#bbbbbb"
                 }
             }
+        }
+    }
+
+    component ProfileNavigation: ColumnLayout {
+        visible: backend.detailMeta.kind === "profile"
+        spacing: 6
+        RowLayout {
+            Repeater {
+                model: [{key: "videos", label: "Videa"}, {key: "playlists", label: "Playlisty"}]
+                Button {
+                    required property var modelData
+                    objectName: "profileSection-" + modelData.key
+                    text: modelData.label
+                    checkable: true
+                    checked: backend.detailMeta.section === modelData.key
+                    enabled: !backend.busy
+                    onClicked: backend.selectProfileSection(modelData.key)
+                }
+            }
+            Button {
+                objectName: "profileLoadMore"
+                text: "Načíst další"
+                visible: {
+                    var meta = backend.detailMeta
+                    var state = meta.profilePages && meta.profilePages[meta.section]
+                    return !!state && !state.complete
+                }
+                enabled: !backend.busy
+                onClicked: backend.loadMoreProfile()
+            }
+        }
+        Label {
+            Layout.fillWidth: true
+            wrapMode: Text.WordWrap
+            color: "#aaaaaa"
+            text: backend.detailTracksModel.count === 0 ? "V této části nejsou dostupné žádné položky."
+                  : "Načteno " + backend.detailTracksModel.count + " položek. Přehrávání používá načtená videa."
         }
     }
 
@@ -2784,6 +2824,7 @@ ApplicationWindow {
                                     }
                                     PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
+                                    ProfileNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: searchDetailList
                                         Layout.fillWidth: true
@@ -2861,6 +2902,7 @@ ApplicationWindow {
                                     }
                                     PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
+                                    ProfileNavigation { Layout.fillWidth: true }
                                     ListView {
                                         id: libraryDetailList
                                         Layout.fillWidth: true
