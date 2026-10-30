@@ -274,6 +274,8 @@ MPRIS není hotová funkce referenční CLI; jde o novou systémovou integraci.
 
 ### G. Desktop 1.0 (11)
 
+**Checklist, blok 3 – dokončeno 2026-10-30:** Michal přijal všech sedm scénářů 3–1 až 3–7: vytvoření a otevření prázdného playlistu (oprava v ddc342d), hromadné přidání skladeb, duplicity, přesun konkrétního výskytu, odebrání pouze jednoho výskytu, přejmenování a smazání pomocného playlistu. Změny přetrvaly po obnovení, běžící poslech/fronta zachované. Blok 3 prošel. Dále blok 4 Výstupy a systémové ovládání.
+
 **Checklist, blok 3 – 3–1, 2026-10-30:** vytvoření prázdného playlistu a obnova přehledu fungují; otevření prázdného detailu selhalo. Oprava 0.3.89 přijímá shelf bez contents podle skutečné odpovědi YTM, zachovává validaci přítomnosti shelf a přehrávání/frontu. Regresní testy se skutečným parserem a čtecí ověření účtu prošly; Michal potvrdil opakovaný test GUI bez problémů. Oprava 0.3.89 a bod 3–1 přijaty.
 
 **Checklist, blok 6 – odznačení výběru (odsouhlaseno 2026-10-30):** zpřístupnit malé Zrušit výběr × už při jedné vybrané skladbě. Plná lišta hromadných akcí zůstane až od dvou. Escape ruší celý výběr, Ctrl+klik přepíná jednotlivou skladbu; doplnit zrušení výběru klikem do prázdného místa seznamu. Obyčejný opakovaný klik na řádek nebude přepínačem výběru, aby zůstalo předvídatelné chování dvojkliku pro přehrání. Modrý výběr a fialový stav Hraje zůstávají nezávislé. Při realizaci ověřit klávesové zkratky i odznačování napříč seznamy. Zatím pouze plán, aplikace nezměněná.

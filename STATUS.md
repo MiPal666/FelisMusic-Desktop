@@ -1,5 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## Checklist – blok 3 Knihovna a playlisty, dokončeno 2026-10-30
+
+- Oprava prázdného detailu a bod 3–1 uloženy v ddc342d.
+- Michal potvrdil bod 3–2: přidání tří různých skladeb hromadným výběrem do existujícího playlistu, správný obsah po obnovení a zachování běžícího poslechu/fronty. Prošlo.
+- Michal potvrdil bod 3–3: opětovné přidání stejné skladby a zachování obou výskytů po znovuotevření. Prošlo.
+- Michal potvrdil bod 3–4: přesun konkrétního duplicitního výskytu v uloženém playlistu a zachování nového pořadí po znovuotevření, bez změny běžícího poslechu/fronty. Prošlo.
+- Michal potvrdil bod 3–5: odebrání pouze jednoho duplicitního výskytu, zachování ostatních tří položek po znovuotevření a nezměněný běžící poslech/fronta. Prošlo.
+- Michal potvrdil bod 3–6: přejmenování pomocného playlistu, nový název po obnovení, zachování tří skladeb bez duplicity playlistu a nezměněný běžící poslech/fronta. Prošlo.
+- Michal potvrdil bod 3–7: smazání pomocného playlistu a jeho nepřítomnost po obnovení knihovny, zachování ostatních playlistů i běžícího poslechu/fronty. Prošlo.
+- Všech sedm scénářů 3–1 až 3–7 přijato. Dále blok 4 Výstupy a systémové ovládání; první scénář 4–1: místní přehrávání → Cast při hraní.
+
 ## 0.3.89-dev – otevření prázdného playlistu, Michalem přijato
 
 - Ve scénáři 3–1 vytvoření playlistu a obnovení přehledu funguje, ale otevření prázdného detailu skončilo chybou. Michal zavřel aplikaci a povolil opravu nad 276f282; bod 3–1 tehdy zůstal otevřený.
