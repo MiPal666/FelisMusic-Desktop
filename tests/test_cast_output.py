@@ -69,12 +69,12 @@ class CastOutputTests(CastOutputFixture):
         self.start('A','B');self.b._player_state='paused';self.status.player_state='PAUSED'
         self.status.adjusted_current_time=42;self.switch()
         self.assertFalse(self.remote.play_media.call_args.kwargs['autoplay']);self.assertEqual(self.b.playerState,'paused')
-        self.b.togglePlayPause();self.remote.play.assert_called_once();self.assertEqual(self.b.playerState,'playing')
-        self.b.togglePlayPause();self.remote.pause.assert_called_once()
-        self.b.seekTo(55);self.remote.seek.assert_called_once_with(55,timeout=3)
-        self.b.setVolume(25);self.assertEqual(self.b.playerVolume,25);self.cast.set_volume.assert_called_once_with(.25)
-        self.b.toggleMute();self.assertFalse(self.b.playerMuted);self.cast.set_volume_muted.assert_called_once_with(False)
-        self.b.stopPlayback();self.remote.stop.assert_called_once();self.assertEqual(self.b.playerState,'idle')
+        self.b.togglePlayPause();self.until(lambda:not self.b._cast_commands);self.remote.play.assert_called_once();self.assertEqual(self.b.playerState,'playing')
+        self.b.togglePlayPause();self.until(lambda:not self.b._cast_commands);self.remote.pause.assert_called_once()
+        self.b.seekTo(55);self.until(lambda:not self.b._cast_commands);self.remote.seek.assert_called_once_with(55,timeout=3)
+        self.b.setVolume(25);self.until(lambda:not self.b._cast_commands);self.assertEqual(self.b.playerVolume,25);self.cast.set_volume.assert_called_once_with(.25)
+        self.b.toggleMute();self.until(lambda:not self.b._cast_commands);self.assertFalse(self.b.playerMuted);self.cast.set_volume_muted.assert_called_once_with(False)
+        self.b.stopPlayback();self.until(lambda:not self.b._cast_commands);self.remote.stop.assert_called_once();self.assertEqual(self.b.playerState,'idle')
 
     def test_next_eos_and_repeat_stay_on_cast_without_local_download_or_prefetch(self):
         self.start('A','B','C');self.switch();downloads=dict(self.downloads);played=list(self.played)
@@ -148,7 +148,7 @@ class CastOutputTests(CastOutputFixture):
         self.b._library_items_model.set_items([dict(kind='song',videoId='A',title='A')])
         self.b.playFrom('library',0);self.until(lambda:self.b.playerState=='playing')
         self.remote.stop.assert_not_called();self.assertFalse(self.errors)
-        self.b.stopPlayback();self.assertIsNone(self.remote_status.media_session_id)
+        self.b.stopPlayback();self.until(lambda:not self.b._cast_commands);self.assertIsNone(self.remote_status.media_session_id)
         self.b.playFrom('library',0);self.until(lambda:self.b.playerState=='playing')
         self.remote.stop.assert_called_once();self.assertFalse(self.errors)
 

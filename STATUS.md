@@ -1,5 +1,17 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.91-dev – Cast ovládání neblokuje GUI, Michalem přijato
+
+- Michal upřesnil 5–5: při obou pokusech byl slyšet pouze Cast, notebook byl tichý; synchronizace znamenala zobrazení skladby v aplikaci. Následně potvrdil zavřenou aplikaci a povolil opravu.
+- Play/Pause, Stop, seek, volume a mute předávají Cast SDK volání sériovému playback executorovi. Next/Previous a ruční volba skladby zastavují původní Cast až v playback workeru. Stejná cesta platí při odchodu z výskytu označeného k odebrání. Místní ovládání zůstává dosavadní synchronní cestou.
+- Příkazy sdílejí pořadí s LOAD a přepínáním výstupů; jejich skutečné provedení může čekat na již běžící přípravu audia/URL. GUI na SDK nečeká. Stop/nová volba/výpadek ruší čekající staré příkazy generační kontrolou. Rozpracované SDK volání nelze tímto obalem okamžitě přerušit, jeho opožděný výsledek ale nesmí změnit jinou generaci nebo výstup.
+- Výsledek se vrací queued Qt signálem. Poll nejprve kontroluje spojení i během čekání a nepřebírá starý stav SDK přes rozpracovaný příkaz. Rychlé Play/Pause, změny hlasitosti a mute mají okamžitou místní odezvu; chyba se zobrazí stručně bez interního obsahu výjimky, stav dále ověří poll.
+- Sedm nových regresí: všech osm ovládacích akcí s čekajícím SDK a živým Qt event loop; detekce ztráty během čekání a ignorování pozdní chyby; Stop zruší staré čekající ovladače; pozdní seek nezmění novou generaci; stručná chyba bez posunu fronty; pořadí rychlého Play/volume/mute; přepnutí výstupu při čekajícím příkazu bez blokace GUI a staré chyby. Původní Cast testy upravené na čekání na asynchronní dokončení.
+- Ověření finální sady: 722 testů, 720 prošlo a 2 D-Bus testy přeskočené. Sedm nových regresí také prošlo samostatně; git diff --check bez chyb. Skutečné Cast/síť/audio v testech simulované.
+- Michal 2026-10-31 potvrdil opakovaný test 5–5: funguje, GUI vždy reaguje. Oprava 0.3.91 a bod 5–5 přijaty. Úplný výpadek internetu Castu netestován. Dále 5–6: ukončení během načítání a nový start aplikace.
+
+**Checklist 5–5 – původní nález před opravou 0.3.91 (následně opraveno a přijato).** Dva pokusy odpojení pouze notebooku: před detekcí ztráty Castu kliknutí na ovladače jednou dočasně zablokovalo GUI, podruhé zobrazilo chybu ovládání. Poté GUI opět reagovalo. Cast dál hrál / skladbu dohrál. Po obnovení sítě a ručním připojení první pokus pokračoval se synchronizovaným stavem, druhý spustil skladbu od začátku. Michal následně upřesnil, že notebook byl při obou pokusech tichý. Kontrola kódu potvrzuje synchronní Cast SDK volání z GUI slotů Play/Pause, Stop, seek a volume/mute; před nastavením příznaku výpadku mohou čekat na SDK. Přesný blokující příkaz a délka čekání nezměřeny. Další oprava: síťové ovládání mimo GUI vlákno, pořadí příkazů a ochrany proti opožděným výsledkům po změně výstupu/výpadku, regrese čekajícího příkazu před detekcí. Následná oprava a její přijetí jsou popsané výše. Úplný výpadek internetu Castu netestován.
+
 ## 0.3.90-dev – síťová chyba zachová výskyt ve frontě, Michalem přijato
 
 - Oprava nad 4ffebe6, průběžné poznámky bloku 5 zachované. network_errors.py rozpoznává typované síťové příčiny včetně DNS, timeoutu, přerušení spojení a obalů yt-dlp DownloadError/ExtractorError (cause, exc_info, Python exception chain). Bez odhadování podle textu a bez klasifikace každého DownloadError jako sítě. Nejde o detekci dostupnosti internetu před každou skladbou.

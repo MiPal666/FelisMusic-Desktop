@@ -223,6 +223,7 @@ class BackendBridge(QObject):
     _songLibraryProbeReady = Signal(int, object, str)
     _resultReady = Signal(str, object)
     _errorReady = Signal(str, str)
+    _castCommandReady = Signal(object)
     _playbackReady = Signal(int)
     _playbackFailed = Signal(int, str)
     _ratingStatusReady = Signal(int, str, str)
@@ -245,6 +246,7 @@ class BackendBridge(QObject):
         )
         self._closing = Event()
         self._transport_lock = Lock()
+        self._cast_commands = set()
         self._prefetch_future = None
         self._prefetch_revision = 0
         self._cast_streams = CastStreamCache()
@@ -419,6 +421,8 @@ class BackendBridge(QObject):
             self._apply_rating_action,
             Qt.ConnectionType.QueuedConnection,
         )
+
+        self._castCommandReady.connect(self._apply_cast_command, Qt.ConnectionType.QueuedConnection)
 
         self._player_timer = QTimer(self)
         self._player_timer.setInterval(500)
@@ -2125,7 +2129,7 @@ class BackendBridge(QObject):
         if (direction > 0 and self._queue.index + 1 == self._queue.count()
                 and (self._queue_has_more() or self._queue.radio_active)):
             if stop_current and self._active_output() is not None:
-                self._active_output().media_controller.stop(keep_output=True)
+                self._stop_current_output()
             self._set_player_state("idle")
             if self._queue_has_more():
                 self._active_queue_stream()["waiting"] = True
@@ -2140,7 +2144,7 @@ class BackendBridge(QObject):
             self._start_current_async(direction=direction, stop_current=stop_current)
         else:
             if stop_current and self._active_output() is not None:
-                self._active_output().media_controller.stop(keep_output=True)
+                self._stop_current_output()
             self._set_player_state("idle")
 
     def _set_player_from_queue(self):
@@ -2445,7 +2449,7 @@ class BackendBridge(QObject):
         mc = output.media_controller
         with self._transport_lock:
             self._playback_generation += 1
-            if stop_current:
+            if stop_current and getattr(output, "is_local", True):
                 try:
                     mc.stop(keep_output=True)
                 except Exception as exc:
@@ -2468,6 +2472,15 @@ class BackendBridge(QObject):
 
         def work():
             last_error = None
+            if stop_current and not getattr(output, "is_local", True):
+                if cancelled():
+                    return
+                try:
+                    mc.stop(keep_output=True)
+                except Exception:
+                    if not cancelled():
+                        self._playbackFailed.emit(generation, "Zastavení původní skladby na Castu selhalo.")
+                    return
             def load(source, song, prepared):
                 url, content_type = source
                 trace = current_trace()
@@ -2698,6 +2711,7 @@ class BackendBridge(QObject):
             or self._queue is None
             or self._queue.empty()
             or self._playback_transitioning
+            or (self._cast_output is not None and self._cast_commands)
         ):
             return
 
@@ -4606,6 +4620,50 @@ class BackendBridge(QObject):
         self._set_status(f"{'Přidáno jako další' if play_next else 'Přidáno do fronty'} · {len(tracks)} skladeb")
         return True
 
+    def _cast_command(self, command, message, apply=None):
+        """Serialize SDK calls with LOAD/handoffs without waiting in a Qt slot."""
+        output = self._active_output()
+        if output is None or getattr(output, "is_local", True):
+            return False
+        if not self._check_output_connection():
+            return True
+        generation = self._playback_generation
+        token = object()
+        self._cast_commands.add(token)
+
+        def work():
+            result, error = None, False
+            try:
+                if (self._closing.is_set() or generation != self._playback_generation
+                        or output.connection_lost.is_set()):
+                    return
+                result = command(output)
+            except Exception:
+                error = True
+            finally:
+                if not self._closing.is_set():
+                    self._castCommandReady.emit((token, output, generation, result, error, message, apply))
+
+        self._playback_executor.submit(work, _diagnostic_label="audio.cast_command")
+        return True
+
+    @Slot(object)
+    def _apply_cast_command(self, payload):
+        token, output, generation, result, error, message, apply = payload
+        self._cast_commands.discard(token)
+        if (not self._check_output_connection() or output is not self._active_output()
+                or generation != self._playback_generation or self._output_switching):
+            return
+        if error:
+            self.errorOccurred.emit(message + " Zkontroluj spojení s Castem.")
+        elif apply:
+            apply(result)
+
+    def _stop_current_output(self):
+        if not self._cast_command(lambda out: out.media_controller.stop(keep_output=True),
+                                  "Zastavení přehrávání selhalo."):
+            self._active_output().media_controller.stop(keep_output=True)
+
     @Slot()
     def stopPlayback(self):
         """Keep queue/selection and repeat, but Play starts this track at zero."""
@@ -4634,7 +4692,7 @@ class BackendBridge(QObject):
             if self._prefetch_future is not None:
                 self._prefetch_future.cancel()
             try:
-                self._active_output().media_controller.stop(keep_output=True)
+                self._stop_current_output()
             except Exception as exc:
                 self.playerChanged.emit()
                 self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
@@ -4655,6 +4713,12 @@ class BackendBridge(QObject):
         if self._playback_transitioning:
             return
         mc = self._active_output().media_controller
+        if self._cast_output is not None and self._player_state in ("playing", "paused"):
+            pause = self._player_state == "playing"
+            self._cast_command(lambda out: out.media_controller.pause() if pause else out.media_controller.play(),
+                               "Ovládání přehrávače selhalo.")
+            self._set_player_state("paused" if pause else "playing")
+            return
         try:
             if self._player_state == "playing":
                 mc.pause()
@@ -4707,6 +4771,13 @@ class BackendBridge(QObject):
             # inconsistently across demuxers.
             target = min(target, max(0.0, self._player_duration - 0.05))
 
+        def applied(_):
+            self._player_position = target
+            self.playerSeeked.emit(target)
+            self.playerChanged.emit()
+        if self._cast_command(lambda out: out.media_controller.seek(target, timeout=3),
+                              "Posun ve skladbě selhal.", applied):
+            return
         try:
             self._active_output().media_controller.seek(target, timeout=3)
             self._player_position = target
@@ -4739,6 +4810,14 @@ class BackendBridge(QObject):
             return
 
         percent = max(0, min(100, int(percent)))
+        def applied(level):
+            self._player_volume = int(round(float(level) * 100))
+            self.playerChanged.emit()
+        if self._cast_command(lambda out: out.set_volume(percent / 100.0),
+                              "Nastavení hlasitosti selhalo.", applied):
+            self._player_volume = percent
+            self.playerChanged.emit()
+            return
         try:
             level = self._active_output().set_volume(percent / 100.0)
             self._player_volume = int(round(float(level) * 100))
@@ -4755,6 +4834,14 @@ class BackendBridge(QObject):
         if self._active_output() is None:
             return
 
+        muted = not self._player_muted
+        def applied(value):
+            self._player_muted = bool(value)
+            self.playerChanged.emit()
+        if self._cast_command(lambda out: out.set_volume_muted(muted), "Ztlumení selhalo.", applied):
+            self._player_muted = muted
+            self.playerChanged.emit()
+            return
         try:
             self._player_muted = bool(
                 self._active_output().set_volume_muted(not self._player_muted)
