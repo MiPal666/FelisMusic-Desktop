@@ -1,5 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## Checklist – blok 4 Výstupy a systémové ovládání, dokončeno 2026-10-31
+
+- 2026-10-31: Michal potvrdil 4–1, notebook → Cast při hraní: stejná skladba, navazující pozice a zachovaná fronta; Pauza/Play, seek, Další/Předchozí a hlasitost z aplikace fungují. Po přepnutí hraje pouze Cast. Prošlo.
+- Michal potvrdil 4–2: Cast → notebook při hraní, zachování skladby/pozice/fronty, ztichnutí Castu a místní ovládání. Prošlo.
+- Michal potvrdil 4–3: notebook → Cast → notebook během pauzy; zachování skladby, pozice, fronty a pauzy bez samovolného přehrávání. Po Play hraje pouze zvolený výstup. Prošlo.
+- Michal potvrdil 4–4: Cast → jiný Cast/skupina při hraní i pauze; zachování skladby/pozice/fronty a správně zvolený aktivní výstup, bez samovolného spuštění během pauzy. Prošlo.
+- Michal potvrdil 4–5: panel přehrávače KDE s místním výstupem funguje; metadata, obal, pozice a všechny ovládací prvky v panelu korespondují s FelisMusic. Prošlo.
+- Michal potvrdil 4–6: panel přehrávače KDE při přehrávání na Castu funguje a odpovídá FelisMusic. Navíc otestoval ovládání ze zamčené obrazovky KDE. Prošlo.
+- Všech šest scénářů 4–1 až 4–6 přijato. Blok 4 dokončen. Dále blok 5 Chybové a hraniční situace; 5–1 velká kolekce, dočtení seznamu a přehrání skladby z jeho konce. Zatím neověřeno.
+- Výsledky bloku 3 uložené v b144957.
+
 ## Checklist – blok 3 Knihovna a playlisty, dokončeno 2026-10-30
 
 - Oprava prázdného detailu a bod 3–1 uloženy v ddc342d.
