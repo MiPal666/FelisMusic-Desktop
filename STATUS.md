@@ -1,5 +1,7 @@
 # FelisMusic Desktop – aktuální stav
 
+**Checklist, blok 5 – dokončeno 2026-10-31:** Michal samostatně potvrdil 5–6 (ukončení během načítání a nový start) jako funkční. Bod 5–6 přijatý; všech šest scénářů 5–1 až 5–6 funkčně přijato, blok 5 uzavřený v provedeném rozsahu. Dřívější doplněk o dlouhém načítání interpretů patřil podle Michalova upřesnění k 5–5 a nebyl podkladem přijetí 5–6. Oprava 0.3.91 uložená v c9be5b7. Úplný výpadek internetu Castu zůstává neověřený; technická hláška hledání z 5–3 je úkol pro blok 6. Dále blok 6: odznačování výběru, navigace na interpreta/album z menu skladeb a srozumitelné síťové chyby. Tyto úpravy zatím nejsou implementované.
+
 ## 0.3.91-dev – Cast ovládání neblokuje GUI, Michalem přijato
 
 - Michal upřesnil 5–5: při obou pokusech byl slyšet pouze Cast, notebook byl tichý; synchronizace znamenala zobrazení skladby v aplikaci. Následně potvrdil zavřenou aplikaci a povolil opravu.
