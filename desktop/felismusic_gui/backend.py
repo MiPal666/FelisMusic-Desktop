@@ -35,6 +35,7 @@ from .cast_discovery import CastDiscovery
 from .cast_output import handoff, handoff_to_local, dispose
 from .cast_streams import CastStreamCache
 from .profiles import load_library_profiles, load_profile, load_profile_page
+from .network_errors import is_network_failure
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -2522,6 +2523,10 @@ class BackendBridge(QObject):
                     if cancelled():
                         return
                     last_error = exc
+                    if is_network_failure(exc):
+                        # A connection failure says nothing about later tracks.
+                        # Keep this exact occurrence for a user-requested retry.
+                        break
                     with self._transport_lock:
                         # Stop/manual selection/shutdown can win while this
                         # worker waits for the lock after extraction failed.
@@ -2534,7 +2539,10 @@ class BackendBridge(QObject):
 
             if generation == self._playback_generation:
                 text = (
-                    f"{type(last_error).__name__}: {last_error}"
+                    ("Nepodařilo se spojit se službou pro přehrávání. "
+                     "Zkontroluj připojení a potom stiskni Play pro opakování této skladby."
+                     if is_network_failure(last_error)
+                     else f"{type(last_error).__name__}: {last_error}")
                     if last_error is not None
                     else "Ve frontě není přehratelná skladba."
                 )
@@ -2672,6 +2680,7 @@ class BackendBridge(QObject):
             return
         self._playback_transitioning = False
         self._set_player_state("idle")
+        self._set_player_from_queue()
         if self._queue and any(x.get("_guiRemoveAfterPlayback") for x in self._queue.tracks):
             self._prune_removed_queue_tracks(drop_current=True)
             self._set_player_from_queue()

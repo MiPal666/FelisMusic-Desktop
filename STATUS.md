@@ -1,5 +1,23 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.90-dev – síťová chyba zachová výskyt ve frontě, Michalem přijato
+
+- Oprava nad 4ffebe6, průběžné poznámky bloku 5 zachované. network_errors.py rozpoznává typované síťové příčiny včetně DNS, timeoutu, přerušení spojení a obalů yt-dlp DownloadError/ExtractorError (cause, exc_info, Python exception chain). Bez odhadování podle textu a bez klasifikace každého DownloadError jako sítě. Nejde o detekci dostupnosti internetu před každou skladbou.
+- _start_current_async při síťové chybě ukončí přípravu bez dalšího posunu kurzoru. Zobrazí stručnou českou hlášku s pokynem zkontrolovat spojení a stisknout Play. Žádný automatický restart po připojení. Stejná cesta platí pro místní audio i přípravu Cast streamu. Dosavadní přeskočení jednotlivé nedostupné skladby zůstává zachované.
+- Při selhání se metadata přehrávače obnoví podle skutečného kurzoru: i když před síťovou chybou byla přeskočena jiná nedostupná skladba, zobrazí se správný výskyt pro opakování. Generační ochrana Stop/ruční volby/shutdown zachovaná.
+- Šest nových regresí: aktuální a přednačtená skladba dohraje, další síťová chyba nepostoupí na následující a Play opakuje stejnou; nedostupná skladba následovaná síťovou chybou; Previous s duplicitními ID zachová konkrétní výskyt; typované a nesíťové výjimky; cyklus příčin; příprava Cast streamu a ruční retry. První dvě regrese před opravou selhaly. Celá sada před přidáním poslední Cast regrese: 714 testů, 712 prošlo, 2 D-Bus přeskočené. Poté cíleně všech šest nových regresí prošlo. git diff --check bez chyb. Skutečné síťové/audio výstupy v regresích simulované.
+- Michal potvrdil opakovaný test 5–4 jako funkční: po dohrání cache zůstane první nenačtený výskyt, po obnovení sítě jej ruční Play přehraje. Oprava 0.3.90 a 5–4 přijaty. Technická chyba hledání z 5–3 zůstává plánem pro blok 6.
+- Dále 5–5: ztráta ovládacího spojení notebook → Cast odpojením pouze notebooku. Cast zůstává online a může dál přehrávat. Ověřit odezvu GUI, označení ztráty spojení, žádné samovolné místní přehrávání a obnovení přes Výstupy po připojení. Úplný výpadek internetu Castu není tímto testem pokrytý; zásah do OPNsense není požadován.
+
+## Checklist – blok 5 Chybové a hraniční situace, průběžné ověření
+
+- Michal potvrdil 5–1: velká kolekce, dočtení seznamu, zachování poslechu při procházení, přehrání skladby poblíž konce a správné Další/Předchozí. Prošlo.
+- Michal potvrdil 5–2: rychlá změna vybrané skladby a Stop během přípravy; platí poslední volba, po Stop se nic samovolně nespustí ani neposune frontu. Prošlo.
+- Michal potvrdil 5–3: hledání bez sítě skončí chybou, první pokus dlouho čeká (ReadTimeout, read timeout=30), druhý chybuje hned; po obnovení sítě hledání funguje. Funkčně prošlo. Pro blok 6: nahradit technickou síťovou výjimku srozumitelnou českou hláškou.
+- 5–4 NEPROŠLO: místní přehrávání bez sítě nechá dohrát aktuální a přednačtenou skladbu, potom po každé chybě přípravy posouvá kurzor na další skladbu. Log opakovaně potvrzuje DNS/TransportError. GUI reaguje a Stop funguje; po obnovení sítě lze pokračovat, ale až na výskytu, kam mezitím došel kurzor.
+- Kontrola _start_current_async potvrzuje obecné except → queue.next/previous bez rozlišení síťové chyby a nedostupnosti konkrétní skladby. Oprava má při síťové chybě ponechat neúspěšný výskyt, ukončit přípravu a umožnit ruční Play po obnovení spojení; skutečně nedostupné skladby řešit samostatně. Michal následně potvrdil zavřenou aplikaci a povolil opravu 0.3.90.
+- Výsledky bloku 4 uložené v 4ffebe6.
+
 ## Checklist – blok 4 Výstupy a systémové ovládání, dokončeno 2026-10-31
 
 - 2026-10-31: Michal potvrdil 4–1, notebook → Cast při hraní: stejná skladba, navazující pozice a zachovaná fronta; Pauza/Play, seek, Další/Předchozí a hlasitost z aplikace fungují. Po přepnutí hraje pouze Cast. Prošlo.
@@ -8,7 +26,7 @@
 - Michal potvrdil 4–4: Cast → jiný Cast/skupina při hraní i pauze; zachování skladby/pozice/fronty a správně zvolený aktivní výstup, bez samovolného spuštění během pauzy. Prošlo.
 - Michal potvrdil 4–5: panel přehrávače KDE s místním výstupem funguje; metadata, obal, pozice a všechny ovládací prvky v panelu korespondují s FelisMusic. Prošlo.
 - Michal potvrdil 4–6: panel přehrávače KDE při přehrávání na Castu funguje a odpovídá FelisMusic. Navíc otestoval ovládání ze zamčené obrazovky KDE. Prošlo.
-- Všech šest scénářů 4–1 až 4–6 přijato. Blok 4 dokončen. Dále blok 5 Chybové a hraniční situace; 5–1 velká kolekce, dočtení seznamu a přehrání skladby z jeho konce. Zatím neověřeno.
+- Všech šest scénářů 4–1 až 4–6 přijato. Blok 4 dokončen. Dále blok 5 Chybové a hraniční situace; 5–1 velká kolekce, dočtení seznamu a přehrání skladby z jeho konce následně přijato.
 - Výsledky bloku 3 uložené v b144957.
 
 ## Checklist – blok 3 Knihovna a playlisty, dokončeno 2026-10-30
