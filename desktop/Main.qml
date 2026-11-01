@@ -1232,6 +1232,30 @@ ApplicationWindow {
         view.positionViewAtIndex(index, ListView.Center)
     }
 
+    component TrackListView: ListView {
+        id: selectionView
+        required property string selectionKey
+        objectName: "trackList_" + selectionKey
+        Keys.onPressed: function(event) { root.trackKeys(event, selectionKey) }
+
+        // Passive tap recognition leaves row clicks, double clicks and drags
+        // with their existing handlers. indexAt uses content coordinates.
+        TapHandler {
+            acceptedButtons: Qt.LeftButton
+            onTapped: function(eventPoint, button) {
+                var point = eventPoint.position
+                var scrollBar = selectionView.ScrollBar.vertical
+                if (scrollBar && scrollBar.visible && point.x >= selectionView.width - scrollBar.width)
+                    return
+                if (selectionView.indexAt(point.x + selectionView.contentX,
+                                          point.y + selectionView.contentY) < 0) {
+                    backend.clearTrackSelection()
+                    selectionView.forceActiveFocus()
+                }
+            }
+        }
+    }
+
     component TrackDelegate: Rectangle {
         id: trackDelegate
         // Qt 6 QAbstractListModel roles are injected directly into the delegate.
@@ -2367,8 +2391,9 @@ ApplicationWindow {
                     }
                 }
             }
-            ListView {
+            TrackListView {
                 id: trackList
+                selectionKey: trackPage.sourceKey
                 Layout.fillWidth: true
                 Layout.fillHeight: true
                 clip: true
@@ -2378,7 +2403,6 @@ ApplicationWindow {
                     enabled: trackPage.sourceKey !== "library" || (root.currentLibrarySection !== "songs" && root.currentLibrarySection !== "upload_songs")
                              || backend.librarySongsComplete || backend.librarySongsLoading
                 }
-                Keys.onPressed: function(event) { root.trackKeys(event, trackPage.sourceKey) }
                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -2564,6 +2588,13 @@ ApplicationWindow {
     RowLayout {
         anchors.fill: parent
         spacing: 0
+        Keys.priority: Keys.AfterItem
+        Keys.onPressed: function(event) {
+            if (event.key === Qt.Key_Escape && backend.selectedTrackIndices.length > 0) {
+                backend.clearTrackSelection()
+                event.accepted = true
+            }
+        }
 
         Rectangle {
             Layout.preferredWidth: 245
@@ -2793,12 +2824,12 @@ ApplicationWindow {
 
                         Component {
                             id: searchResultsComponent
-                            ListView {
+                            TrackListView {
                                 id: searchResultsList
+                                selectionKey: "search"
                                 clip: true
                                 model: backend.searchResultsModel
                                 delegate: TrackDelegate { sourceKey: "search" }
-                                Keys.onPressed: function(event) { root.trackKeys(event, "search") }
                                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -2825,14 +2856,14 @@ ApplicationWindow {
                                     PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
                                     ProfileNavigation { Layout.fillWidth: true }
-                                    ListView {
+                                    TrackListView {
                                         id: searchDetailList
+                                        selectionKey: "detail"
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
-                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -2903,14 +2934,14 @@ ApplicationWindow {
                                     PlaylistLoadBanner { Layout.fillWidth: true }
                                     ArtistNavigation { Layout.fillWidth: true }
                                     ProfileNavigation { Layout.fillWidth: true }
-                                    ListView {
+                                    TrackListView {
                                         id: libraryDetailList
+                                        selectionKey: "detail"
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
-                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -3058,14 +3089,14 @@ ApplicationWindow {
                                 }
                             }
 
-                            ListView {
+                            TrackListView {
                                 id: likedList
+                                selectionKey: "liked"
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
                                 clip: true
                                 model: backend.likedModel
                                 delegate: TrackDelegate { sourceKey: "liked"; enabled: backend.likedComplete || backend.likedLoading }
-                                Keys.onPressed: function(event) { root.trackKeys(event, "liked") }
                                 ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -3103,14 +3134,14 @@ ApplicationWindow {
                                         onGoBack: backend.clearDetail()
                                     }
                                     PlaylistLoadBanner { Layout.fillWidth: true }
-                                    ListView {
+                                    TrackListView {
                                         id: mixDetailList
+                                        selectionKey: "detail"
                                         Layout.fillWidth: true
                                         Layout.fillHeight: true
                                         clip: true
                                         model: backend.detailTracksModel
                                         delegate: TrackDelegate { sourceKey: "detail"; enabled: backend.detailComplete || backend.detailLoading }
-                                        Keys.onPressed: function(event) { root.trackKeys(event, "detail") }
                                         ScrollBar.vertical: ScrollBar { }
  Connections {
      target: root
@@ -3184,8 +3215,9 @@ ApplicationWindow {
                                 wrapMode: Text.Wrap
                                 color: "#aaaaaa"
                             }
-                            ListView {
+                            TrackListView {
                                 id: queueList
+                                selectionKey: "playing"
                                 objectName: "queueList"
                                 Layout.fillWidth: true
                                 Layout.fillHeight: true
@@ -3193,7 +3225,6 @@ ApplicationWindow {
                                 clip: true
                                 model: backend.playingTracksModel
                                 delegate: TrackDelegate { sourceKey: "playing" }
-                                Keys.onPressed: function(event) { root.trackKeys(event, "playing") }
                                 ScrollBar.vertical: ScrollBar { }
                                 Connections {
                                     target: backend
@@ -3202,6 +3233,22 @@ ApplicationWindow {
                             }
                         }
                     }
+                }
+
+                RowLayout {
+                    objectName: "singleSelectionActions"
+                    visible: backend.selectedTrackIndices.length === 1
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 22
+                    Layout.rightMargin: 22
+                    Button {
+                        objectName: "clearSingleTrackSelection"
+                        text: "Zrušit výběr ×"
+                        flat: true
+                        palette.buttonText: "#dddddd"
+                        onClicked: backend.clearTrackSelection()
+                    }
+                    Item { Layout.fillWidth: true }
                 }
 
                 RowLayout {
@@ -3224,7 +3271,7 @@ ApplicationWindow {
                     }
                     Button {
                         objectName: "clearTrackSelection"
-                        text: "Zrušit výběr"
+                        text: "Zrušit výběr ×"
                         onClicked: backend.clearTrackSelection()
                     }
                     Item { Layout.fillWidth: true }

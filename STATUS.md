@@ -1,5 +1,14 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.92-dev – checklist 6–1, odznačování výběru, Michalem přijato
+
+- Výsledky bloku 5 uložené v 0573ae4; Michal potvrdil zavřenou aplikaci a povolil první úpravu bloku 6.
+- Při jedné vybrané skladbě je nad přehrávačem malé Zrušit výběr ×, bez počtu/hromadných akcí. Dosavadní plná lišta zůstává od dvou vybraných skladeb. Tlačítko pro zrušení více vybraných má stejný text s ×.
+- Společný TrackListView přidává klik do prázdného místa seznamu pro hledání, knihovnu a její skladby/Nahrané, Oblíbené, Historii, detaily hledání/knihovny/Mixů i Frontu. Pasivní TapHandler používá obsahové souřadnice indexAt včetně posunu; řádky, dvojklik, tah a klik na svislý scrollbar nevyhodnocuje jako prázdné místo.
+- Escape nadále ruší výběr v seznamu; navíc nezpracovaný Escape probublá z ostatních ovladačů hlavního rozložení. Otevřené menu spotřebuje první Escape pro vlastní zavření, další Escape může zrušit výběr. Obyčejný opakovaný klik na skladbu ji neodznačí; Ctrl+klik zůstává přepínačem. Backend výběru, přehrávání/fronta a barevné odlišení Hraje beze změny.
+- Ověření: 14 testů multivýběru a 11 testů hromadného odebrání z playlistu prošlo. Skutečný Main.qml v offscreen Qt s mockovaným účtem/audio: velikosti 900×600 a 1280×800; výběr jedné/více, viditelnost tlačítka/lišt, opakovaný klik, Ctrl+klik, odznačení tlačítkem/Escape/prázdným místem napříč zdroji, oba další detailové seznamy, Ctrl+A, Enter a dvojklik pro přehrání, Escape po přesunu fokusu do hledání a dvoustupňové Escape menu→výběr. Ověřený klik na řádek po odrolování i zachování výběru při tahu. Odznačování zachovalo audio/frontu/pozici; snímek malé volby vizuálně zkontrolovaný. QML bez chyb, git diff --check bez chyb. Celá sada znovu nespouštěná, Python backend se nemění.
+- Michal 2026-11-01 potvrdil skutečný test 6–1 jako funkční. Odznačování 0.3.92 a bod 6–1 přijaty, připravené ke commitu. Další bod 6–2: navigace na interpreta/album z menu skladeb podle dostupných metadat, u více interpretů s výběrem. Srozumitelné síťové chyby zůstávají další samostatnou úpravou bloku 6.
+
 **Checklist, blok 5 – dokončeno 2026-10-31:** Michal samostatně potvrdil 5–6 (ukončení během načítání a nový start) jako funkční. Bod 5–6 přijatý; všech šest scénářů 5–1 až 5–6 funkčně přijato, blok 5 uzavřený v provedeném rozsahu. Dřívější doplněk o dlouhém načítání interpretů patřil podle Michalova upřesnění k 5–5 a nebyl podkladem přijetí 5–6. Oprava 0.3.91 uložená v c9be5b7. Úplný výpadek internetu Castu zůstává neověřený; technická hláška hledání z 5–3 je úkol pro blok 6. Dále blok 6: odznačování výběru, navigace na interpreta/album z menu skladeb a srozumitelné síťové chyby. Tyto úpravy zatím nejsou implementované.
 
 ## 0.3.91-dev – Cast ovládání neblokuje GUI, Michalem přijato
