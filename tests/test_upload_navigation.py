@@ -181,3 +181,29 @@ class UploadNavigationTests(support.AudioPlaybackTestCase):
         self.b.openLibraryItem('upload_album', self.ALBUM, '', 'Album'); self.ready()
         self.navigate('detail', 'artist', self.ARTIST)
         self.assertEqual(self.b.detailTitle, 'Artist')
+
+    def test_guest_from_uploaded_artist_detail_and_back_preserve_audio(self):
+        self.rows[0]['artists'].append(dict(name='Guest', id=self.OTHER))
+        self.api.get_library_upload_artist.return_value = deepcopy(self.rows)
+        self.b.openLibraryItem('upload_artist', self.ARTIST, '', 'Artist'); self.ready()
+        state = self.b._detail_state()
+        self.b.playFrom('detail', 0); self.until(lambda: self.b.playerState == 'playing')
+        queue = self.b._queue; played = list(self.played)
+        self.b._player_position = 42
+        self.assertFalse(self.b.openUploadTrackTarget('detail', 0, 'artist', self.ARTIST, self.context))
+        self.navigate('detail', 'artist', self.OTHER)
+        self.api.get_library_upload_artist.assert_called_with(self.OTHER, limit=None)
+        self.b.backDetail()
+        self.assertEqual(self.b._detail_state(), state)
+        self.assertIs(self.b._queue, queue); self.assertEqual(self.played, played)
+        self.assertEqual(self.b.playerPosition, 42)
+
+    def test_other_uploaded_album_from_album_detail_is_allowed(self):
+        self.b.openLibraryItem('upload_album', self.ALBUM, '', 'Album'); self.ready()
+        other = self.ALBUM + '_other'
+        self.b._detail_tracks_model.set_items([self.b._track(dict(self.rows[0],
+            album=dict(name='Other', id=other)), upload=True)])
+        self.navigate('detail', 'album')
+        self.api.get_library_upload_album.assert_called_with(other)
+        self.b.backDetail()
+        self.assertEqual(self.b.detailMeta['browseId'], self.ALBUM)

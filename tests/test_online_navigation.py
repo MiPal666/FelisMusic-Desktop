@@ -137,3 +137,36 @@ class OnlineNavigationTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.opened[-1]['librarySection'],'albums')
         self.b.backDetail();self.assertEqual(self.b._detail_state(),state)
         self.assertEqual(self.restored[-1]['librarySection'],'artists')
+
+    def test_guest_artist_from_artist_detail_preserves_audio_and_back_snapshot(self):
+        self.rows[0]['artists'].append(dict(name='Guest', id=self.OTHER))
+        self.api.get_artist.return_value['songs']['results'] = deepcopy(self.rows)
+        self.b.openLibraryItem('artist', self.ARTIST, '', 'Artist'); self.ready()
+        state = self.b._detail_state()
+        self.play('detail'); queue = self.b._queue; played = list(self.played)
+        self.b._player_position = 42
+        self.navigate('detail', 'artist', self.OTHER)
+        self.assertEqual(self.api.get_artist.call_args.args, (self.OTHER,))
+        self.b.backDetail()
+        self.assertEqual(self.b._detail_state(), state)
+        self.assertIs(self.b._queue, queue); self.assertEqual(self.played, played)
+        self.assertEqual(self.b.playerPosition, 42)
+
+    def test_current_artist_alias_rejected_but_guest_allowed(self):
+        self.b._detail_meta = dict(kind='artist', browseId='MPLA' + self.ARTIST)
+        self.b._detail_tracks_model.set_items([self.b._track(dict(self.rows[0], artists=[
+            dict(name='Artist', id=self.ARTIST), dict(name='Guest', id=self.OTHER)]))])
+        self.assertFalse(self.b.openTrackTarget('detail', 0, 'artist', self.ARTIST, self.context))
+        self.api.get_artist.assert_not_called()
+        self.navigate('detail', 'artist', self.OTHER)
+        self.api.get_artist.assert_called_once_with(self.OTHER)
+
+    def test_different_album_from_album_detail_is_allowed(self):
+        self.b.openLibraryItem('album', self.ALBUM, '', 'Album'); self.ready()
+        state = self.b._detail_state()
+        self.b._detail_tracks_model.set_items([self.b._track(dict(self.rows[0],
+            album=dict(name='Other album', id='MPREother')))])
+        self.navigate('detail', 'album')
+        self.assertEqual(self.api.get_album.call_args.args, ('MPREother',))
+        self.b.backDetail()
+        self.assertEqual(self.b.detailMeta['browseId'], state['meta']['browseId'])

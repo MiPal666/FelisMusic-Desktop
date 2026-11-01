@@ -1280,6 +1280,11 @@ ApplicationWindow {
                                     || (sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs") && !backend.librarySongsComplete)
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
+        property var navigationArtists: artistLinks.filter(function(artist) {
+            var currentKind = kind === "upload_song" ? "upload_artist" : "artist"
+            return sourceKey !== "detail" || backend.detailMeta.kind !== currentKind
+                || String(artist.id).replace(/^MPLA/, "") !== String(backend.detailMeta.browseId || "").replace(/^MPLA/, "")
+        })
         property bool actionable: videoId.length > 0 || browseId.length > 0 || playlistId.length > 0
         property bool currentTrack: backend.playerHasTrack
                                     && (sourceKey === "playing"
@@ -1516,7 +1521,8 @@ ApplicationWindow {
                 objectName: "uploadTrackAlbum"
                 text: "Otevřít nahrané album"
                 visible: !trackDelegate.multipleSelection && kind === "upload_song"
-                         && !(sourceKey === "detail" && backend.detailMeta.kind === "upload_album")
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "upload_album"
+                              && albumId === backend.detailMeta.browseId)
                          && albumId.indexOf("FEmusic_library_privately_owned_release") === 0
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1526,7 +1532,8 @@ ApplicationWindow {
                 objectName: "onlineTrackAlbum"
                 text: "Otevřít album"
                 visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video")
-                         && !(sourceKey === "detail" && backend.detailMeta.kind === "album")
+                         && !(sourceKey === "detail" && backend.detailMeta.kind === "album"
+                              && albumId === backend.detailMeta.browseId)
                          && albumId.indexOf("MPRE") === 0
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1534,28 +1541,26 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "onlineTrackArtist"
-                text: "Otevřít interpreta" + (artistLinks.length > 1 ? "…" : "")
-                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video") && artistLinks.length > 0
-                         && !(sourceKey === "detail" && backend.detailMeta.kind === "artist")
+                text: "Otevřít interpreta" + (trackDelegate.navigationArtists.length > 1 ? "…" : "")
+                visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video") && trackDelegate.navigationArtists.length > 0
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
                 onTriggered: {
-                    if (artistLinks.length === 1)
-                        backend.openTrackTarget(sourceKey, trackDelegate.index, "artist", artistLinks[0].id, root.navigationContext())
+                    if (trackDelegate.navigationArtists.length === 1)
+                        backend.openTrackTarget(sourceKey, trackDelegate.index, "artist", trackDelegate.navigationArtists[0].id, root.navigationContext())
                     else
                         uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
                 }
             }
             MenuItem {
                 objectName: "uploadTrackArtist"
-                text: "Otevřít nahraného interpreta" + (artistLinks.length > 1 ? "…" : "")
-                visible: !trackDelegate.multipleSelection && kind === "upload_song" && artistLinks.length > 0
-                         && !(sourceKey === "detail" && backend.detailMeta.kind === "upload_artist")
+                text: "Otevřít nahraného interpreta" + (trackDelegate.navigationArtists.length > 1 ? "…" : "")
+                visible: !trackDelegate.multipleSelection && kind === "upload_song" && trackDelegate.navigationArtists.length > 0
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
                 onTriggered: {
-                    if (artistLinks.length === 1)
-                        backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "artist", artistLinks[0].id, root.navigationContext())
+                    if (trackDelegate.navigationArtists.length === 1)
+                        backend.openUploadTrackTarget(sourceKey, trackDelegate.index, "artist", trackDelegate.navigationArtists[0].id, root.navigationContext())
                     else
                         uploadArtistMenu.popup(menuButton, menuButton.width - uploadArtistMenu.width, menuButton.height)
                 }
@@ -1703,7 +1708,7 @@ ApplicationWindow {
             palette.windowText: "#eeeeee"
             background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
             Instantiator {
-                model: trackDelegate.artistLinks
+                model: trackDelegate.navigationArtists
                 delegate: MenuItem {
                     required property var modelData
                     text: modelData.name

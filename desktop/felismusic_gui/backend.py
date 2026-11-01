@@ -1519,9 +1519,6 @@ class BackendBridge(QObject):
         if item.get("kind", "song") not in allowed or not item.get("videoId"):
             return False
         prefix = "upload_" if upload else ""
-        if source == "detail" and ((self._detail_meta.get("kind") == prefix + "artist" and target == "artist")
-                or (self._detail_meta.get("kind") == prefix + "album" and target == "album")):
-            return False
         if target == "album":
             browse_id, title = item.get("albumId", ""), item.get("album", "")
             if not browse_id.startswith("FEmusic_library_privately_owned_release" if upload else "MPRE"):
@@ -1534,6 +1531,12 @@ class BackendBridge(QObject):
             if not browse_id.startswith("FEmusic_library_privately_owned_artist" if upload else ("UC", "MPLAUC")):
                 return False
         else:
+            return False
+        # A guest artist or a different album is a valid target even while
+        # viewing the same kind of detail. Reject only the actual open target.
+        current_id = str(self._detail_meta.get("browseId") or "")
+        if (source == "detail" and self._detail_meta.get("kind") == prefix + target
+                and browse_id.removeprefix("MPLA") == current_id.removeprefix("MPLA")):
             return False
         parent = self._detail_state()
         parent["returnContext"] = dict(context)

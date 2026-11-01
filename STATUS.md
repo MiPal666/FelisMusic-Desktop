@@ -1,5 +1,15 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.93-dev – checklist 6–2, cíle v menu skladeb napříč detaily, Michalem přijato
+
+- Odznačování 0.3.92 a bod 6–1 uložené v 58dd587. Michal potvrdil zavřenou aplikaci a povolil další úpravu.
+- Audit zjistil, že společné menu již nabízí Otevřít album/interpreta podle skutečných ID ve všech seznamech, včetně výběru více interpretů. Chybně se ale skrýval a backendem odmítal celý typ cíle v detailu stejného typu: z detailu interpreta nebyl dostupný ani jiný/hostující interpret skladby. Úprava zachovává existující navigační cestu, neprovádí dodatečné hledání či odhad chybějících ID.
+- Main.qml odfiltruje pouze právě otevřeného interpreta (včetně aliasu MPLAUC/UC); při jednom zbývajícím cíli přejde přímo, při více otevře nabídku. Album skrývá jen při shodě konkrétního browseId s otevřeným albem. Stejná logika platí pro Nahrané a jejich soukromá ID. Hromadný výběr nadále nenabízí individuální navigaci.
+- Backend _open_track_target nadále validuje typ skladby, cílové ID a příslušnost vybraného interpreta ke skladbě; blokuje pouze totožný otevřený detail místo celého typu. Historie návratu, navigační kontext, fronta a přehrávání zůstávají stávající cestou.
+- Pět nových backend regresí: hostující interpret z detailu interpreta a návrat při běžícím audiu; rozpoznání aktuálního interpreta přes MPLA alias; jiné album z detailu alba; hostující Nahraný interpret a zachování audia/návratu; jiné Nahrané album. Prošlo 30 navigačních testů a celá sada: 727 testů, 725 prošlo, 2 D-Bus přeskočené.
+- Skutečný Main.qml s mockovaným účtem/audio ověřený v 900×600 a 1280×800: menu hledání, knihovny, Oblíbených, Historie, Fronty a detailu; otevření alba i výběr interpreta, návrat a zachování audia/fronty/pozice. Navíc hostující interpret z aktuálního interpreta včetně aliasu, výběr ze dvou hostujících bez aktuálního interpreta, chybějící metadata a hromadný výběr, Nahraní hostující interpreti i Nahrané album. Nabídka hostů vizuálně zkontrolovaná, QML bez chyb, git diff --check bez chyb.
+- Michal 2026-11-01 potvrdil skutečný test 6–2 jako funkční, výslovně i hostujícího interpreta. Bod 6–2 a úprava 0.3.93 přijaty, připravené ke commitu. Nabídka cíle závisí na dodaných ID, právě otevřený cílový detail se znovu nenabízí. Srozumitelné síťové chyby zůstávají dalším bodem 6–3.
+
 ## 0.3.92-dev – checklist 6–1, odznačování výběru, Michalem přijato
 
 - Výsledky bloku 5 uložené v 0573ae4; Michal potvrdil zavřenou aplikaci a povolil první úpravu bloku 6.
