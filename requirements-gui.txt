@@ -1,5 +1,5 @@
 PySide6
 ytmusicapi
-yt-dlp
+yt-dlp[default]
 PyChromecast
 dbus-python

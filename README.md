@@ -1,5 +1,25 @@
 # FelisMusic Desktop
 
+## Instalace desktopové verze 1.0.0
+
+Instalace, spuštění z nabídky a lokální přehrávání byly ověřeny na
+openSUSE Tumbleweed s KDE a na Debianu 13.7 s GNOME 48.
+
+1. Připrav Python 3 s podporou `venv`, PyGObject a GStreamer 1.0. Na Debianu
+   balíček `python3-venv` doplní podporu vytvoření virtuálního prostředí.
+2. Připrav Deno 2.3 nebo novější. Na Tumbleweedu byl ověřen systémový RPM
+   balíček a na Debianu uživatelská instalace podle
+   [návodu Deno](https://docs.deno.com/runtime/getting_started/installation/).
+3. Rozbal `FelisMusic-1.0.0-linux-installer.zip` a ve složce
+   `FelisMusic-Installer` spusť `bash install.sh` bez `sudo`.
+4. Spusť FelisMusic z nabídky aplikací a přihlas se. Rozbalený adresář můžeš smazat.
+
+Instalátor podporuje čistou instalaci. Pokud máš testovací instalaci, ukonči ji
+a před instalací spusť `bash uninstall.sh` z rozbaleného archivu.
+Nainstalovanou aplikaci odebereš příkazem
+`bash "$HOME/.local/opt/felismusic/uninstall.sh"`. Přihlášení a nastavení
+zůstanou v uživatelské konfiguraci, běžně v `~/.config/felismusic/`.
+
 ## Stav
 
 Horní tlačítko **Výstupy → Vyhledat zařízení** zobrazí dostupné Cast audio výstupy a skupiny. U nalezeného Castu lze stisknout **Přepnout**: poslech přejde z notebooku na vybraný výstup se stejnou frontou, skladbou, pozicí a stavem pauzy. Ovládání přehrávače pak míří na Cast; hlasitost se načte ze zařízení. Z Castu se lze přes **Výstupy → Toto zařízení → Přepnout** vrátit na notebook se zachováním skladby, pozice a pauzy. Přímo přepínat lze také mezi nalezenými Casty a skupinami, se zachováním skladby, pozice a pauzy. Při ztrátě spojení se Cast označí jako odpojený a fronta zůstane zachovaná. V nabídce Výstupy ručně vyber jiný výstup nebo znovu připoj nalezené zařízení; přehrávání pak spusť tlačítkem Play od začátku vybrané skladby. Automatický návrat ani nové přehrávání po výpadku neproběhnou. Po novém spuštění aplikace je výstup opět **Toto zařízení**. Samotné otevření dialogu hledání nespustí. Po ručním vyhledání se přehled průběžně aktualizuje do ukončení aplikace.
@@ -40,7 +60,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **0.3.85-dev** (experiment s přípravou následujícího Cast odkazu; dosavadní přehrávání a Cast přijaty)
+- Desktop GUI: **1.0.0**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

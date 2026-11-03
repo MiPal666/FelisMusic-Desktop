@@ -11,6 +11,11 @@ elif [[ -f "$ROOT/../env/bin/activate" ]]; then
     source "$ROOT/../env/bin/activate"
 fi
 
+# Desktop launchers may lack the shell PATH configured by the Deno installer.
+if ! command -v deno >/dev/null 2>&1 && [[ -x "${DENO_INSTALL:-$HOME/.deno}/bin/deno" ]]; then
+    export PATH="${DENO_INSTALL:-$HOME/.deno}/bin:$PATH"
+fi
+
 if ! python -c 'import gi; gi.require_version("Gst", "1.0"); from gi.repository import Gst' >/dev/null 2>&1; then
     echo "VAROVÁNÍ: tento Python nevidí PyGObject/GStreamer." >&2
     echo "Datová část GUI poběží, ale lokální přehrávání nebude dostupné." >&2
