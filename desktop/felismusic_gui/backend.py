@@ -4894,10 +4894,18 @@ class BackendBridge(QObject):
                     trace.event("api.error", error=type(exc).__name__)
                 # Parser exceptions can embed an entire server response.
                 # These read-only views need a concise error, never its body.
-                message = ("Profily se nepodařilo načíst. Zkus to prosím znovu."
-                           if name == "library:channels" else
-                           "Detail se nepodařilo načíst. Zkus to prosím znovu."
-                           if name == "detail" else f"{type(exc).__name__}: {exc}")
+                if is_network_failure(exc):
+                    message = ("Vyhledávání se nepodařilo dokončit kvůli chybě spojení s YouTube Music. "
+                               "Zkontroluj připojení a zkus hledání znovu."
+                               if name == "search" else
+                               "Nepodařilo se spojit s YouTube Music. Zkontroluj připojení.")
+                else:
+                    message = ("Vyhledávání se nepodařilo dokončit. Zkus to prosím znovu."
+                               if name == "search" else
+                               "Profily se nepodařilo načíst. Zkus to prosím znovu."
+                               if name == "library:channels" else
+                               "Detail se nepodařilo načíst. Zkus to prosím znovu."
+                               if name == "detail" else f"{type(exc).__name__}: {exc}")
                 self._errorReady.emit(name, message)
                 return
             self._resultReady.emit(name, result)

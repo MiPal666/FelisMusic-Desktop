@@ -288,7 +288,7 @@ ApplicationWindow {
 
         contentItem: Label {
             text: root.errorText
-            color: "#eeeeee"
+            color: errorDialog.palette.windowText
             wrapMode: Text.WordWrap
             padding: 18
         }

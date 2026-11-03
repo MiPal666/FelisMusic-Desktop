@@ -1,5 +1,15 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.94-dev – checklist 6–3, srozumitelné chyby hledání a spojení, Michalem přijato
+
+- Navigace 0.3.93 a 6–2 uložené v c3c689e. Michal potvrdil zavřenou aplikaci a povolil další krok.
+- _submit používá existující typované is_network_failure také pro chyby API. DNS, ConnectionError a Timeout dostanou stručnou českou zprávu o spojení s YTM. U hledání navíc výslovný pokyn zkontrolovat připojení a zopakovat hledání. Neodhadujeme nedostupný internet z textu výjimky.
+- Ostatní chyby hledání (např. HTTP chyba či chyba parseru) mají obecnou českou hlášku bez typu výjimky, URL nebo obsahu odpovědi. Stávající specializované hlášky detailů/Profilů a ochrany zápisů v _apply_error zachované; obecná zpráva o spojení nevyzývá k opakování zápisu. Timeouty, retry, přihlašování a běh požadavků se nemění.
+- Vizuální kontrola odhalila pevný světlý text v systémovém světlém chybovém dialogu. Main.qml nyní bere barvu textu z errorDialog.palette.windowText, takže odpovídá paletě dialogu.
+- Pět nových regresí: DNS/spojení/timeout v katalogu, knihovně a Nahraných; zachování předchozích výsledků a audia/fronty/pozice při chybě a úspěšné nové hledání ve stejné session; HTTP/parser/textové offline chyby bez chybné klasifikace sítě; čekající hledání neblokuje Qt a Stop; síťová chyba detailu a následný úspěšný retry. Před opravou 8 kontrol ve 4 nových testech selhalo. Po opravě všech 10 testů hledání prošlo; celá sada 732 testů: 730 prošlo, 2 D-Bus přeskočené.
+- Skutečný Main.qml s mockovaným účtem/sítí/audio ověřený v 900×600 a 1280×800: hledání přes Enter, text chyby, zalomení bez ořezu, zavření dialogu a další úspěšné hledání bez restartu/session změny a bez změny audia/fronty. Po úpravě barvy opakováno, malý dialog vizuálně zkontrolovaný. git diff --check bez chyb.
+- Michal 2026-11-03 potvrdil skutečný test 6–3: krásná česká netechnická hláška, menu stále reaguje a po obnovení sítě lze vyhledat stejný výraz. Bod 6–3 a úprava 0.3.94 přijaty, připravené ke commitu. První pokus může nadále čekat na dosavadní timeout. Domluvené úpravy 6–1 až 6–3 jsou uživatelsky přijaté.
+
 ## 0.3.93-dev – checklist 6–2, cíle v menu skladeb napříč detaily, Michalem přijato
 
 - Odznačování 0.3.92 a bod 6–1 uložené v 58dd587. Michal potvrdil zavřenou aplikaci a povolil další úpravu.
