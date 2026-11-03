@@ -2236,7 +2236,7 @@ ApplicationWindow {
                 objectName: "libraryTabs"
                 Layout.row: 0
                 Layout.column: 0
-                Layout.columnSpan: libraryToolbar.sortOnOwnRow ? 2 : 1
+                Layout.columnSpan: !librarySort.visible || libraryToolbar.sortOnOwnRow ? 2 : 1
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
                 Layout.preferredHeight: childrenRect.height
@@ -2308,7 +2308,7 @@ ApplicationWindow {
                 Layout.column: libraryToolbar.sortOnOwnRow ? 0 : 1
                 Layout.columnSpan: libraryToolbar.sortOnOwnRow ? 2 : 1
                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
-                visible: root.currentPage === 1
+                visible: root.currentPage === 1 && backend.detailTitle.length === 0
                 spacing: 8
 
                 Label {

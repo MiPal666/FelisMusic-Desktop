@@ -2,6 +2,8 @@
 
 ## Doladění GUI – hlavička detailů
 
+- Horní řazení Knihovny se v detailu skryje a po návratu se zobrazí s původní volbou. Ověřeno v QML v češtině i angličtině a ručně Michalem.
+
 - Společná hlavička s menším tlačítkem Zpět, obalem podle dostupnosti a nabídkou Akce u názvu. Když se název s nabídkou nevejdou vedle sebe, nabídka přejde na další řádek. Řazení interpreta má popisek Řadit podle.
 - Ověřeny QML detaily alba, interpreta, playlistu, nahraného alba a nahraného interpreta v češtině i angličtině, včetně dlouhého názvu, otevření nabídky a tlačítka Zpět. Prošlo sedm testů hlaviček a sedm testů překladů.
 - Po ručním testu opraveno předčasné zkracování názvů podle měřené šířky textu. Skladby, Nahrané skladby i přehled playlistů používají nad seznamem stejnou pojmenovanou nabídku Akce. Třítečkové nabídky jednotlivých řádků jsou oddělené.
