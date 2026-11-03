@@ -1,6 +1,8 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
-**0.3.99-dev / L4 – přihlášení, chyby, bannery a počty:** Hlásky aplikace označené k překladu, číselné tvary podle Qt numerus i bez katalogu. Katalog 476 aktivních textů. Michal potvrdil ruční ověření v aplikaci. Připraveno ke commitu.
+**0.3.100-dev / L5 – angličtina podle prostředí:** Přeloženo 490 textů. Sestavené české a anglické katalogy se načítají při spuštění podle preferencí Linuxu. Michal potvrdil angličtinu i návrat k češtině. Michal také ověřil angličtinu s francouzským nastavením a následný návrat k češtině. Připraveno ke commitu.
+
+**0.3.99-dev / L4 – přihlášení, chyby, bannery a počty:** Hlásky aplikace označené k překladu, číselné tvary podle Qt numerus i bez katalogu. Katalog 476 aktivních textů. Michal potvrdil ruční ověření v aplikaci. Uloženo v 0b37a75.
 
 **0.3.98-dev / L3 – nabídky a stavové hlášky:** L2 uložené v 52cc8d6, Michal povolil další krok při zavřené aplikaci. Zbývající pevné nabídky/tooltipy a přímé _set_status texty označené, složené stavové věty jako celé pojmenované šablony. QML šablony připojení/výběru/výstupu. Katalog 287 textů (182 nových), čeština zachovaná, skutečný EN se stále nedodává. Čtyři nové regrese a celá sada 752 testů: 750 prošlo, 2 D-Bus přeskočené. QML české i se zkušebním katalogem v 900×600/1280×800 ověřilo nabídky, výběr, přesun, hodnocení API, uživatelské parametry a simulovaný Cast/Stop; řídicí logika mimo texty ověřená AST revizí. Michal potvrdil ruční ověření L3 v aplikaci. Uloženo v 8ccc852.
 

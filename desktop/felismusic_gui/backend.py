@@ -475,7 +475,7 @@ class BackendBridge(QObject):
                 "canReturn": self._cast_output is not None and self._local_output is not None
                              and not self._output_switching and not self._busy and not self._playback_transitioning
                              and not self._output_result_pending,
-                "devices": [{"id": "local", "name": "Toto zařízení", "kind": "local"}]
+                "devices": [{"id": "local", "name": QCoreApplication.translate("BackendBridge", "Toto zařízení"), "kind": "local"}]
                            + rows}
 
     def _active_output(self):
@@ -1564,10 +1564,10 @@ class BackendBridge(QObject):
                 parent["returnUploadComplete"] = self.uploadSongsComplete
         parent["uploadNavigationContext"] = dict(context, page=1,
             librarySection=prefix + ("albums" if target == "album" else "artists"),
-            libraryLabel=(("Nahraná alba" if target == "album" else "Nahraní interpreti") if upload
-                          else ("Alba" if target == "album" else "Interpreti")))
+            libraryLabel=((QCoreApplication.translate("BackendBridge", "Nahraná alba") if target == "album" else QCoreApplication.translate("BackendBridge", "Nahraní interpreti")) if upload
+                          else (QCoreApplication.translate("BackendBridge", "Alba") if target == "album" else QCoreApplication.translate("BackendBridge", "Interpreti"))))
         self._pending_detail_parent = parent
-        self.openLibraryItem(prefix + target, browse_id, "", title or ("Nahrané" if upload else "Knihovna"))
+        self.openLibraryItem(prefix + target, browse_id, "", title or (QCoreApplication.translate("BackendBridge", "Nahrané") if upload else QCoreApplication.translate("BackendBridge", "Knihovna")))
         return True
 
     @Slot(int)
@@ -1590,7 +1590,7 @@ class BackendBridge(QObject):
         if context is not None:
             self._pending_detail_parent["returnContext"] = dict(context)
             self._pending_detail_parent["uploadNavigationContext"] = dict(
-                context, page=1, librarySection="albums", libraryLabel="Alba")
+                context, page=1, librarySection="albums", libraryLabel=QCoreApplication.translate("BackendBridge", "Alba"))
         self.openLibraryItem("album", item["browseId"], "", item["title"])
 
     @classmethod
@@ -1731,7 +1731,7 @@ class BackendBridge(QObject):
         album = str(item.get("album") or "")
         thumbnail = str(item.get("thumbnail") or "")
         track = {
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "artists": ([{"name": artists}] if artists else []),
             "album": ({"name": album, "id": item.get("albumId") or ""} if album else None),
             "albumId": str(item.get("albumId") or ""),
@@ -1824,7 +1824,7 @@ class BackendBridge(QObject):
             return {}
         current = source == "playing" and index == self.playerQueueIndex
         return {
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "artist": self._artists(item), "album": self._album(item),
             "thumbnail": str(item.get("thumbnail") or ""),
             "duration": self.playerDuration if current else float(core.song_duration_seconds(item) or 0),
@@ -2003,14 +2003,14 @@ class BackendBridge(QObject):
 
     def _queue_name_for_source(self, source):
         if source == "liked":
-            return "Oblíbená hudba"
+            return QCoreApplication.translate("BackendBridge", "Oblíbená hudba")
         if source == "history":
-            return "Historie"
+            return QCoreApplication.translate("BackendBridge", "Historie")
         if source == "search":
-            return "Hledání"
+            return QCoreApplication.translate("BackendBridge", "Hledání")
         if source == "detail":
-            return self._detail_title or "Fronta"
-        return "Knihovna"
+            return self._detail_title or QCoreApplication.translate("BackendBridge", "Fronta")
+        return QCoreApplication.translate("BackendBridge", "Knihovna")
 
     def _prune_removed_queue_tracks(self, drop_current=False, direction=1, preserve_audio=False):
         """Drop playlist removals without rebuilding queue songs or their order."""
@@ -2198,7 +2198,7 @@ class BackendBridge(QObject):
             self._player_duration = 0.0
             self._player_like_status = "UNKNOWN"
         else:
-            self._player_title = str(song.get("title") or "Bez názvu")
+            self._player_title = str(song.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu"))
             self._player_subtitle = str(song.get("_guiSubtitle") or "")
             self._player_thumbnail = str(song.get("_guiThumbnail") or "")
             self._player_position = 0.0
@@ -3530,7 +3530,7 @@ class BackendBridge(QObject):
             for playlist in api.get_library_playlists(limit=None) or []:
                 pid = str(core.playlist_id_from_item(playlist) or "")
                 if playlist.get("owned") is True and pid and pid not in deleted_ids and pid not in ("LM", "SE") and not pid.startswith("RD"):
-                    targets.append({"playlistId": pid, "title": str(playlist.get("title") or "Bez názvu")})
+                    targets.append({"playlistId": pid, "title": str(playlist.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu"))})
             return sorted(targets, key=lambda x: x["title"].casefold())
         self._submit("playlist_save_choices", QCoreApplication.translate("BackendBridge", "Načítám vlastní playlisty…"), task)
         return True
@@ -4130,14 +4130,14 @@ class BackendBridge(QObject):
                     tracks = [items[i] for i in indices]
                     result["indices"] = indices if (state["meta"].get("section") == "songs"
                         and state["meta"].get("songScope", "all") == "all") else [-1] * len(indices)
-                    name = f"{artist_name} - Náhodně"
+                    name = QCoreApplication.translate("BackendBridge", "{artist} - Náhodně").format(artist=artist_name)
                 else:
                     queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
                     if queue is None or queue.empty():
                         raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo přehratelnou frontu interpreta."))
                     tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), queue.tracks)
                     tracks = core.limit_radio_tracks_for_test(tracks)
-                    name = queue.name
+                    name = QCoreApplication.translate("BackendBridge", "{artist} - Mix / rádio").format(artist=artist_name)
                 result.update(name=name, tracks=[self._playback_track(x if mode == "shuffle" else self._track(x))
                                                 for x in tracks])
             except Exception as exc:
@@ -4251,7 +4251,7 @@ class BackendBridge(QObject):
             for song, index in zip(result["tracks"], result["indices"]):
                 song["_guiOrigin"] = dict(origin, index=index)
         self._start_generated_queue(result["tracks"],
-            "Oblíbená hudba – " + ("Náhodně" if shuffle else "Mix"),
+            QCoreApplication.translate("BackendBridge", "Oblíbená hudba – Náhodně") if shuffle else QCoreApplication.translate("BackendBridge", "Oblíbená hudba – Mix"),
             radio=not shuffle, shuffle=shuffle, origin=origin)
         if shuffle:
             self._queue.source_playlist_id = "LL"
@@ -4398,8 +4398,8 @@ class BackendBridge(QObject):
             track = self._playback_track(origin["snapshots"]["library"][index])
             track["_guiOrigin"] = dict(origin, index=index)
             tracks.append(track)
-        title = "Nahrané skladby" if result["section"] == "upload_songs" else "Skladby"
-        self._start_generated_queue(tracks, title + " – Náhodně", shuffle=True, origin=origin)
+        title = (QCoreApplication.translate("BackendBridge", "Nahrané skladby") if result["section"] == "upload_songs" else QCoreApplication.translate("BackendBridge", "Skladby"))
+        self._start_generated_queue(tracks, QCoreApplication.translate("BackendBridge", "{title} – Náhodně").format(title=title), shuffle=True, origin=origin)
         self._queue_source_indices = result["indices"]
         self.collectionShuffleStarted.emit()
 
@@ -4865,7 +4865,7 @@ class BackendBridge(QObject):
             )
             self.playerChanged.emit()
         except Exception as exc:
-            self.errorOccurred.emit(f"Mute selhalo: {exc}")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Mute selhalo: {exc}").format(exc=exc))
 
     # ------------------------------------------------------------------
     # Worker plumbing
@@ -5224,7 +5224,7 @@ class BackendBridge(QObject):
                     upload_navigation_context = self._pending_detail_parent.get("uploadNavigationContext")
                     self._detail_history.append(self._pending_detail_parent)
                     self._pending_detail_parent = None
-                title = result.get("title") or "Fronta"
+                title = result.get("title") or QCoreApplication.translate("BackendBridge", "Fronta")
                 tracks = result.get("tracks") or []
                 self._detail_title = title
                 self._detail_meta = result.get("meta") or {}
@@ -5407,7 +5407,7 @@ class BackendBridge(QObject):
             links = artist_links or []
         return {
             "kind": "upload_song" if upload else (item.get("resultType") or "song"),
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "subtitle": " · ".join(subtitle_parts),
             "artists": artists,
             "album": album,
@@ -5444,7 +5444,7 @@ class BackendBridge(QObject):
                 subtitle = QCoreApplication.translate("BackendBridge", "{count} skladeb").format(count=count)
         return {
             "kind": kind,
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "subtitle": subtitle,
             "artists": "",
             "album": "",
@@ -5464,7 +5464,7 @@ class BackendBridge(QObject):
         subtitle = " · ".join(x for x in (artists, str(year or "")) if x)
         return {
             "kind": kind,
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "subtitle": subtitle,
             "year": str(year or ""),
             "artists": artists,
@@ -5482,7 +5482,7 @@ class BackendBridge(QObject):
             item.get("artist")
             or item.get("name")
             or item.get("title")
-            or "Bez názvu"
+            or QCoreApplication.translate("BackendBridge", "Bez názvu")
         )
         subtitle = str(item.get("subscribers") or "")
         return {
@@ -5508,7 +5508,7 @@ class BackendBridge(QObject):
             subtitle = str(channel or "")
         return {
             "kind": "podcast",
-            "title": str(item.get("title") or "Bez názvu"),
+            "title": str(item.get("title") or QCoreApplication.translate("BackendBridge", "Bez názvu")),
             "subtitle": subtitle,
             "artists": "",
             "album": "",
@@ -5570,7 +5570,7 @@ class BackendBridge(QObject):
             item.get("title")
             or item.get("name")
             or item.get("artist")
-            or "Bez názvu"
+            or QCoreApplication.translate("BackendBridge", "Bez názvu")
         )
         subtitle = cls._artists(item)
         if not subtitle:
@@ -6082,7 +6082,7 @@ class BackendBridge(QObject):
         kind = (kind or "").strip()
         browse_id = (browse_id or "").strip()
         playlist_id = (playlist_id or "").strip()
-        title = (title or "Knihovna").strip()
+        title = (title or QCoreApplication.translate("BackendBridge", "Knihovna")).strip()
         if kind == "channel":
             kind = "profile"
         upload_radio_ids = dict(self._upload_artist_radio_ids)
@@ -6263,7 +6263,7 @@ class BackendBridge(QObject):
         kind = str(item.get("kind") or "").strip().lower()
         browse_id = str(item.get("browseId") or "")
         playlist_id = str(item.get("playlistId") or "")
-        title = str(item.get("title") or "Výsledek hledání")
+        title = str(item.get("title") or QCoreApplication.translate("BackendBridge", "Výsledek hledání"))
 
         # Nahrané soubory někdy nepřijdou s resultType, ale jejich browseId
         # je jednoznačný.
@@ -6381,7 +6381,7 @@ class BackendBridge(QObject):
     @Slot(str, str)
     def loadMixTracks(self, playlist_id, title):
         playlist_id = (playlist_id or "").strip()
-        title = (title or "Mix pro vás").strip()
+        title = (title or QCoreApplication.translate("BackendBridge", "Mix pro vás")).strip()
         if not playlist_id:
             return
         if self._is_dynamic_playlist(playlist_id):

@@ -1,12 +1,19 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.100-dev – anglický katalog a výchozí jazyk
+
+- Anglický katalog obsahuje všech 490 aktivních položek. Oba sestavené katalogy jsou součástí aplikace a při spuštění nepotřebují Qt Linguist.
+- Ověřen skutečný start QML bez přihlášení k YouTube Music v rozměrech 900×600 a 1280×800. Čeština s preferencí `cs:en`, britská angličtina, angličtina s českým číselným locale a anglický výchozí text pro nepodporované francouzské prostředí. Kontrolovány počty 0, 1, 2, 4, 5 a 21.
+- Regresní test porovnává sestavený anglický katalog se zdrojovým inventářem včetně množného čísla. Celá sada: 753 prošlo, 2 testy D-Bus přeskočené. Po doplnění názvu rádia interpreta znovu prošly cílené testy překladů a přehrávání interpreta.
+- Michal potvrdil ruční ověření angličtiny a návratu do češtiny. Na jeho podnět je angličtina výchozí, pokud žádný preferovaný jazyk nemá použitelný katalog. Michal ověřil francouzské nastavení i návrat do češtiny. Připraveno ke commitu.
+
 ## 0.3.99-dev – překlady, krok L4, ručně ověřeno
 
 - Překladové šablony pro hlášky přihlášení a Castu, playlistových operací, chyb vyhledávání a dalšího načítání. Část technických detailů z knihoven a standardní texty Qt mají vlastní zdroje.
 - Qt numerus pro české tvary počtů skladeb a položek. Stejné české tvary bez katalogu. Úpravy informačních pruhů v Knihovně, Oblíbené hudbě, detailech a Frontě.
 - Katalog 476 aktivních textů. V načteném QML ověřeny počty 0, 1, 2, 4, 5 a 21 v rozměrech 900×600 a 1280×800 bez katalogu, s českým katalogem a se zkušební angličtinou. Anglický katalog se zatím nedodává.
 - Automatická sada: 754 testů, 752 prošlo a 2 D-Bus byly přeskočené. Po doplnění podpory počtů z API předaných jako řetězec ověřeny karty playlistů pro číselné i textové vstupy.
-- Michal potvrdil, že ruční ověření L4 proběhlo v pořádku. Připraveno ke commitu.
+- Michal potvrdil, že ruční ověření L4 proběhlo v pořádku. Uloženo v 0b37a75.
 
 ## 0.3.98-dev – překlady, krok L3: nabídky a přímé stavové hlášky, ručně ověřeno
 

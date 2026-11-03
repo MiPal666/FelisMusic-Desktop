@@ -7,10 +7,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'desktop'))
-from PySide6.QtCore import QCoreApplication, QLocale
-from felismusic_gui.i18n import install_translation
+from PySide6.QtCore import QCoreApplication, QLocale, QTranslator
+from felismusic_gui.i18n import TRANSLATIONS_DIR, install_translation
 
 
 class TranslationTests(unittest.TestCase):
@@ -54,11 +55,9 @@ class TranslationTests(unittest.TestCase):
         self.assertEqual(QCoreApplication.translate('Main', 'Nepřeložená hláška'), 'Nepřeložená hláška')
         self.assertEqual(QCoreApplication.translate('Main', 'playing'), 'playing')
 
-    def test_czech_unknown_and_c_locales_preserve_source_text(self):
-        for locale in ('cs_CZ', 'fr_FR', 'C'):
-            with self.subTest(locale=locale):
-                self.assertIsNone(self.install(locale))
-                self.assertEqual(QCoreApplication.translate('Main', 'Hledat'), 'Hledat')
+    def test_no_matching_catalog_uses_english(self):
+        self.assertIsNotNone(self.install('fr_FR'))
+        self.assertEqual(QCoreApplication.translate('Main', 'Hledat'), 'Search')
 
     def test_missing_or_invalid_catalog_does_not_prevent_startup(self):
         self.assertIsNone(self.install('en_GB', self.catalogs / 'does-not-exist'))
@@ -81,9 +80,9 @@ translator = install_translation(app, directory=sys.argv[1])
 print(json.dumps([QLocale.system().uiLanguages(), QCoreApplication.translate("Main", "Hledat")]))
 '''
         for language, preference, expected in (('en_GB.UTF-8', 'en_GB:en', 'Search'),
-                                               ('cs_CZ.UTF-8', 'cs', 'Hledat'),
+                                               ('C', 'C', 'Search'),
                                                ('cs_CZ.UTF-8', 'en:cs', 'Search'),
-                                               ('fr_FR.UTF-8', 'fr', 'Hledat')):
+                                               ('fr_FR.UTF-8', 'fr', 'Search')):
             with self.subTest(language=language, preference=preference):
                 environment = dict(os.environ, LANG=language, LANGUAGE=preference,
                                    PYTHONPATH=str(Path(__file__).resolve().parents[1] / 'desktop'))
@@ -92,3 +91,43 @@ print(json.dumps([QLocale.system().uiLanguages(), QCoreApplication.translate("Ma
                                         env=environment, capture_output=True, text=True, check=True)
                 languages, text = json.loads(result.stdout)
                 self.assertEqual(text, expected, languages)
+
+
+class ShippedEnglishCatalogTests(unittest.TestCase):
+    def test_shipped_czech_is_preferred_to_english_default(self):
+        app = QCoreApplication.instance() or QCoreApplication([])
+        translator = install_translation(app, locale=QLocale('cs_CZ'))
+        self.assertIsNotNone(translator)
+        self.addCleanup(app.removeTranslator, translator)
+        self.assertEqual(QCoreApplication.translate('Main', 'Hledat'), 'Hledat')
+        self.assertEqual(QCoreApplication.translate('Main', '%n skladba', None, 2), '2 skladby')
+    def test_compiled_catalog_covers_the_czech_source_inventory(self):
+        catalogs = {
+            language: ET.parse(TRANSLATIONS_DIR / f'felismusic_{language}.ts').getroot()
+            for language in ('cs', 'en')
+        }
+        def messages(catalog):
+            return {
+                (context.findtext('name'), message.findtext('source')): message
+                for context in catalog.findall('context')
+                for message in context.findall('message')
+                if message.find('translation').get('type') not in ('vanished', 'obsolete')
+            }
+
+        english = messages(catalogs['en'])
+        self.assertEqual(english.keys(), messages(catalogs['cs']).keys())
+        translator = QTranslator()
+        self.assertTrue(translator.load(str(TRANSLATIONS_DIR / 'felismusic_en.qm')))
+        for (context, source), message in english.items():
+            with self.subTest(context=context, source=source):
+                entry = message.find('translation')
+                self.assertIsNone(entry.get('type'))
+                if message.get('numerus') == 'yes':
+                    forms = [form.text for form in entry.findall('numerusform')]
+                    self.assertEqual(len(forms), 2)
+                    for count, form in enumerate(forms, start=1):
+                        self.assertTrue(form)
+                        self.assertEqual(translator.translate(context, source, None, count), form)
+                else:
+                    self.assertTrue(entry.text)
+                    self.assertEqual(translator.translate(context, source), entry.text)

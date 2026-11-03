@@ -24,7 +24,8 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+11"/>
+        <location line="-33"/>
+        <location line="+44"/>
         <source>Toto zařízení</source>
         <translation type="unfinished"></translation>
     </message>
@@ -562,7 +563,47 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-53"/>
+        <location line="-1781"/>
+        <source>Nahrané</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+164"/>
+        <location line="+93"/>
+        <location line="+374"/>
+        <location line="+1332"/>
+        <location line="+1877"/>
+        <location line="+37"/>
+        <location line="+20"/>
+        <location line="+18"/>
+        <location line="+26"/>
+        <location line="+62"/>
+        <source>Bez názvu</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-3567"/>
+        <source>Oblíbená hudba</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Historie</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Hledání</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <location line="+3215"/>
+        <source>Fronta</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-1929"/>
         <source>Ověřuji smazání…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -770,12 +811,22 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+4"/>
+        <source>{artist} - Náhodně</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
         <source>YouTube Music nevrátilo přehratelnou frontu interpreta.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+10"/>
+        <location line="+3"/>
+        <source>{artist} - Mix / rádio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Načítám mix · {artist}…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -810,7 +861,17 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+25"/>
+        <location line="+9"/>
+        <source>Oblíbená hudba – Náhodně</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Oblíbená hudba – Mix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <source>YouTube Music nevrátilo žádnou přehratelnou náhodnou frontu.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -836,7 +897,12 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+36"/>
+        <location line="+10"/>
+        <source>{title} – Náhodně</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+26"/>
         <source>Kolekce neobsahuje přehratelné skladby.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -901,7 +967,12 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+56"/>
+        <location line="+10"/>
+        <source>Mute selhalo: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+46"/>
         <source>Vyhledávání se nepodařilo dokončit kvůli chybě spojení s YouTube Music. Zkontroluj připojení a zkus hledání znovu.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1024,17 +1095,21 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-790"/>
+        <location line="+791"/>
         <source>Skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-3624"/>
+        <location line="+25"/>
+        <location line="+3600"/>
         <source>Alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-3625"/>
+        <location line="+3626"/>
         <source>Interpreti</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1049,25 +1124,31 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-795"/>
+        <location line="+796"/>
         <location line="+597"/>
         <location line="+9"/>
         <source>Nahrané skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-605"/>
+        <location line="-4236"/>
+        <location line="+3631"/>
         <source>Nahraná alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-3631"/>
+        <location line="+3632"/>
         <source>Nahraní interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
-        <location line="+1154"/>
+        <location line="-3629"/>
+        <location line="+443"/>
+        <location line="+3187"/>
+        <location line="+885"/>
+        <location line="+269"/>
         <source>Knihovna</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1172,12 +1253,22 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+317"/>
+        <location line="+277"/>
+        <source>Výsledek hledání</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+40"/>
         <source>Výsledek typu {detail} zatím neumím otevřít.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+141"/>
+        <location line="+78"/>
+        <source>Mix pro vás</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+63"/>
         <source>První blok playlistu se nepodařilo načíst ({error}).</source>
         <translation type="unfinished"></translation>
     </message>

@@ -1,11 +1,10 @@
 # Překlady FelisMusic Desktop
 
-Čeština je zdrojový jazyk. Po kroku L4 (0.3.99-dev) katalog zahrnuje
-476 textů včetně přihlášení, chyb, výsledků operací s playlisty a hlášek
-při načítání. Texty s proměnnými hodnotami používají šablony.
-Počty skladeb a položek používají Qt numerus nebo formulaci „Počet …“.
-Bez katalogu zůstávají k dispozici české tvary pro 1, 2–4 a ostatní počty.
-Anglický katalog se zatím nedistribuuje.
+Čeština je zdrojový jazyk. FelisMusic od 0.3.100-dev dodává anglický
+katalog pro 490 aplikačních textů. Český katalog obsahuje tvary počtů
+a umožňuje vybrat češtinu i v prostředí, které uvádí angličtinu jako
+další preferovaný jazyk. Bez katalogu zůstávají české zdrojové texty
+včetně správných českých tvarů pro 1, 2–4 a ostatní počty.
 
 ## Volba jazyka
 
@@ -17,7 +16,8 @@ Změna prostředí vyžaduje nový start aplikace.
 
 Načítají se pouze lokální katalogy `felismusic_<jazyk>.qm` v tomto adresáři.
 Qt zohlední regionální varianty a základní jazyk (např. en_GB → en).
-Chybějící/neplatný katalog nebo nepřeložená položka ponechá český zdrojový text.
+Pokud se nepodaří načíst katalog žádného preferovaného jazyka, použije se angličtina.
+Pokud chybí i anglický katalog nebo překlad jednotlivé položky, použije se český zdrojový text.
 Překlad neřídí jazyk API YouTube Music, názvy skladeb/playlistů od serveru,
 přihlášení ani stav audia. Standardní texty Qt dialogů tento krok nemění.
 
@@ -26,23 +26,22 @@ přihlášení ani stav audia. Standardní texty Qt dialogů tento krok nemění
 Z kořene projektu:
 
 ```bash
-env/bin/python tools/update_translations.py
-```
-
-Skript používá dostupné `pyside6-lupdate`, `lupdate6` nebo `lupdate`.
-Jde o vývojový nástroj Qt Linguist; běh aplikace jej nepotřebuje.
-Český `.ts` obsahuje zdrojové texty a vyplněné tvary Qt numerus.
-Český `.qm` aplikace ke spuštění nepotřebuje.
-
-Volitelné sestavení dokončených překladů (nedokončené se nezahrnují):
-
-```bash
 env/bin/python tools/update_translations.py --release
 ```
 
-Pro ověření bez souborů v aplikačním adresáři použij `--output-dir /tmp/felismusic-translations`.
-Skript hledá také `pyside6-lrelease`, `lrelease6` nebo `lrelease`.
-Anglický katalog pro testy vzniká jen dočasně v testovacím adresáři.
+Skript aktualizuje zdrojové katalogy `.ts` a sestaví `.qm`.
+Používá dostupné nástroje Qt Linguist `pyside6-lupdate`, `lupdate6` nebo
+`lupdate` a odpovídající `lrelease`. Při běžném spuštění aplikace
+už Qt Linguist není potřeba. Změny katalogů commituj společně se
+sestavenými soubory `.qm`. Rozpracované položky se do nich nezahrnují.
+Pro zkušební sestavení mimo aplikační adresář lze přidat
+`--output-dir /tmp/felismusic-translations`.
+
+Jazyk lze jednorázově ověřit bez změny systémových nastavení:
+
+```bash
+env -u LC_ALL -u LC_MESSAGES LANG=en_GB.UTF-8 LANGUAGE=en ./run-gui.sh
+```
 
 ## Pravidla pro další kroky
 
@@ -59,5 +58,4 @@ Anglický katalog pro testy vzniká jen dočasně v testovacím adresáři.
 - Před převodem zkontrolovat vazby na obsah textu. Barva obecné chyby načítání
   už používá příznak `statusIsError` místo hledání českého slova `Chyba`.
   `_set_status()` příznak předává explicitně; nový běžný stav jej vynuluje.
-- Angličtinu nabídnout až po převedení a kontrole zbývajících textů, aby
-  uživatel nedostal pouze částečně přeložené rozhraní.
+- Po přidání nebo změně textu aktualizuj anglickou položku a znovu sestav katalogy.
