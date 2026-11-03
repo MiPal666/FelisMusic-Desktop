@@ -507,3 +507,7 @@ Tlačítka hlasitosti Bluetooth sluchátek standardně mění systémovou hlasit
 ### Profily v knihovně (0.3.88-dev)
 
 Profily odpovídají filtru Profily ve webovém YouTube Music. Jejich detail nabízí Videa a Playlisty; playlist otevřeš jedním klikem a Zpět tě vrátí do profilu. Pokud server poskytuje další stránku, použij Načíst další. Fronta při spuštění videa obsahuje právě načtená videa; samotné procházení nebo doplnění stránky běžící poslech nemění. Chyby načítání se zobrazují stručně. Michal skutečný test opravy potvrdil bez problémů.
+
+## Licence
+
+FelisMusic Desktop je šířen pod licencí GNU General Public License verze 3 nebo jakékoli pozdější verze (GPL-3.0-or-later). Viz [LICENSE](LICENSE).

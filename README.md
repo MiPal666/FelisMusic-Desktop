@@ -43,3 +43,7 @@ with local output each time you open it.
 - Download and manage music for offline listening.
 - Restore the queue, current track, and playback position after restarting the app.
 - Use a Chromecast connected to a TV as an additional audio output.
+
+## License
+
+FelisMusic Desktop is licensed under the GNU General Public License, version 3 or any later version (GPL-3.0-or-later). See [LICENSE](LICENSE).
