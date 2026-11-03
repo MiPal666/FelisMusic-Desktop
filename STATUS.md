@@ -1,5 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.97-dev – překlady, krok L2: dialogy a nezávislá barva chyby, Michalem přijato
+
+- L1 a oprava hledání uložené v 3d171a4. Michal potvrdil zavřenou aplikaci a povolil další krok. Čeština i automatický výběr prostředí zůstávají výchozím chováním; skutečná angličtina se stále nedodává.
+- Označené pevné texty dialogů Castu, přihlášení/odhlášení, nového/editace/smazání/uložení playlistu, hromadného odebrání a informací o skladbě. TextRole/valueRole, IDs, privacy stavy, playlistová data ani akce tlačítek se nemění. Katalog nyní 105 různých textů (59 nových).
+- Počet vybraných skladeb a potvrzení hromadného odebrání používají celé qsTr šablony s %1/%2 místo skládání částí věty. České výsledné znění zachované, včetně dosavadního množného čísla; pokrytí všech numerus pravidel je pozdější samostatný krok. Uživatelský název se vloží až jako poslední parametr a jeho obsah se nepřekládá.
+- Backend má statusIsError (notify statusChanged), _set_status ukládá explicitní příznak i při stejném textu a nový normální status jej resetuje. Obecná chyba načítání příznak nastaví a samotný text je označený k překladu. QML používá příznak pro barvu místo status.indexOf("Chyba"). Například jméno skladby obsahující Chyba už nesignalizuje chybu.
+- Čtyři nové regrese: přeložená chyba bez českého klíčového slova, normální skladba se slovem Chyba, reset chybového příznaku již během nového hledání, notify při změně závažnosti stejného textu. Prošly samostatně i v celé sadě 748 testů: 746 prošlo, 2 D-Bus přeskočené.
+- Skutečný Main.qml offscreen v 900×600/1280×800 bez katalogu i s dočasným zkušebním katalogem: otevírání/zavírání dialogů výstupů, účtu a playlistů, metadata skladby, zrušení smazání bez zápisu, výběry soukromí s neměnnými PRIVATE/UNLISTED/PUBLIC, počet více vybraných a potvrzovací šablona s názvem obsahujícím %1. Zachované uživatelské názvy/popisy, audio/fronta/pozice; žádná simulovaná zapisovací API akce při rušení. V QML potvrzená červená chyba i při anglickém textu a šedý běžný stav se slovem Chyba. Malý český dialog vizuálně zkontrolovaný, QML bez chyb.
+- Revize změn Main.qml potvrdila pouze překladové obaly, dvě šablony, testovací objectName statusu a novou vazbu barvy, bez změn akcí. Extrakce katalogu a git diff --check prošly. Dokumentace překladů aktualizovaná.
+- Michal 2026-11-03 potvrdil skutečný test L2: vše česky a srozumitelné. L2 a 0.3.97 přijaty a připravené ke commitu. Potom pokračovat další sadou textů backendu a zbylých nabídek, teprve pak kompletní angličtina.
+
 ## 0.3.96-dev – prázdné hledání v Knihovně, Michalem přijato
 
 - Michal dodal bezpečný výpis skutečné odpovědi pro Skladby/Alba/Interprety: tři tabs, selected=true na druhé, ta obsahuje itemSectionRenderer/messageRenderer; první a třetí jsou pouze reload placeholders s continuations a bez contents. Upstream filtr nutí parser číst první tab, takže vzniká KeyError v navigation.py. Nejde o síťové selhání ani o pouhé přejmenování hlášky.

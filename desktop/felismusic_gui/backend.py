@@ -266,6 +266,7 @@ class BackendBridge(QObject):
         self._playlistPageReady.connect(self._apply_playlist_page, Qt.ConnectionType.QueuedConnection)
         self._ytmusic = None
         self._status = QCoreApplication.translate("BackendBridge", "Připravuji backend…")
+        self._status_is_error = False
         self._account_name = "YouTube Music"
         self._busy = False
         self._connected = False
@@ -438,6 +439,10 @@ class BackendBridge(QObject):
     @Property(str, notify=statusChanged)
     def status(self):
         return self._status
+
+    @Property(bool, notify=statusChanged)
+    def statusIsError(self):
+        return self._status_is_error
 
     @Property(str, notify=accountNameChanged)
     def accountName(self):
@@ -4867,10 +4872,12 @@ class BackendBridge(QObject):
         self.busyChanged.emit()
         self.castDevicesChanged.emit()
 
-    def _set_status(self, value: str):
-        if self._status == value:
+    def _set_status(self, value: str, *, error=False):
+        error = bool(error)
+        if self._status == value and self._status_is_error == error:
             return
         self._status = value
+        self._status_is_error = error
         self.statusChanged.emit()
 
     def _set_connected(self, value: bool):
@@ -5286,7 +5293,7 @@ class BackendBridge(QObject):
             self._set_status("Backend nepřipojen")
             message = "Připojení k YouTube Music se nepodařilo ověřit. Zkontroluj připojení k síti, případně použij tlačítko Účet → Přihlásit / obnovit přihlášení."
         else:
-            self._set_status("Chyba při načítání")
+            self._set_status(QCoreApplication.translate("BackendBridge", "Chyba při načítání"), error=True)
         self.errorOccurred.emit(message)
 
     def _require_ytmusic(self):

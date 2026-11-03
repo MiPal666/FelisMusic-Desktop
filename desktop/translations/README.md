@@ -1,9 +1,10 @@
 # Překlady FelisMusic Desktop
 
-První přípravný krok (0.3.95-dev) ponechává češtinu jako zdrojový jazyk.
-Označeno je prvních 46 různých textů: hlavní navigace, vybrané nabídky a
-přehrávací ovladače, výchozí stav backendu a název místního výstupu.
-Zbytek dialogů, hlášek a skládaných textů čeká na další kroky. Zatím se
+Příprava překladů ponechává češtinu jako zdrojový jazyk. Po kroku L2
+(0.3.97-dev) je označeno 105 různých textů: hlavní navigace, vybrané nabídky a
+přehrávací ovladače, dialogy výstupů/účtu/playlistů/informací a několik textů
+backendu. Dvě hlášky dialogů s počtem položek používají celé šablony s parametry.
+Zbytek stavových hlášek, dalších nabídek a počtů čeká na další kroky. Zatím se
 nedistribuuje anglický katalog a žádný kompletní druhý jazyk není hotový.
 
 ## Volba jazyka
@@ -52,7 +53,8 @@ Anglický katalog pro testy vzniká jen dočasně v testovacím adresáři.
 - Další skládané věty převádět na celé překládané šablony s parametry;
   neobalovat až výsledný dynamický text a neupravovat uživatelské hodnoty.
 - Počty a množné číslo řešit samostatně podle Qt numerus, s testy češtiny.
-- Před převodem zkontrolovat vazby na obsah textu. Například barva stavové
-  hlášky zatím používá české slovo `Chyba`; takové vazby nelze jen přeložit.
+- Před převodem zkontrolovat vazby na obsah textu. Barva obecné chyby načítání
+  už používá příznak `statusIsError` místo hledání českého slova `Chyba`.
+  `_set_status()` příznak předává explicitně; nový běžný stav jej vynuluje.
 - Angličtinu nabídnout až po převedení a kontrole zbývajících textů, aby
   uživatel nedostal pouze částečně přeložené rozhraní.

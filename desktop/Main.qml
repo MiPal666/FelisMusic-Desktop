@@ -297,7 +297,7 @@ ApplicationWindow {
     Dialog {
         id: castDialog
         objectName: "castDevicesDialog"
-        title: "Zvukové výstupy"
+        title: qsTr("Zvukové výstupy")
         modal: true
         anchors.centerIn: parent
         width: Math.min(520, root.width - 40)
@@ -334,8 +334,8 @@ ApplicationWindow {
                         }
                         Label {
                             text: modelData.id === backend.castState.currentId
-                                  ? (backend.castState.disconnected ? "Odpojeno" : "Aktuální výstup")
-                                  : modelData.kind === "group" ? "Skupina" : "Cast audio"
+                                  ? (backend.castState.disconnected ? qsTr("Odpojeno") : qsTr("Aktuální výstup"))
+                                  : modelData.kind === "group" ? qsTr("Skupina") : qsTr("Cast audio")
                             visible: modelData.kind !== "local" || modelData.id === backend.castState.currentId
                             color: modelData.id === backend.castState.currentId
                                    ? (backend.castState.disconnected ? "#ff8a80" : "#a6d3a6") : "#aaaaaa"
@@ -343,7 +343,7 @@ ApplicationWindow {
                         }
                         Button {
                             objectName: "castSelectButton"
-                            text: modelData.id === backend.castState.currentId ? "Znovu připojit" : "Přepnout"
+                            text: modelData.id === backend.castState.currentId ? qsTr("Znovu připojit") : qsTr("Přepnout")
                             visible: modelData.id !== backend.castState.currentId || backend.castState.canReconnect
                             enabled: modelData.kind === "local" ? backend.castState.canReturn : backend.castState.canSelect
                             onClicked: modelData.kind === "local" ? backend.selectLocalOutput() : backend.selectCastOutput(modelData.id)
@@ -356,14 +356,14 @@ ApplicationWindow {
             Button {
                 objectName: "castDiscoverButton"
                 Layout.fillWidth: true
-                text: "Vyhledat zařízení"
+                text: qsTr("Vyhledat zařízení")
                 enabled: !backend.castState.scanning
                 onClicked: backend.discoverCastDevices()
             }
             Button {
                 objectName: "castCloseButton"
                 Layout.fillWidth: true
-                text: "Zavřít"
+                text: qsTr("Zavřít")
                 onClicked: castDialog.close()
             }
         }
@@ -372,7 +372,7 @@ ApplicationWindow {
     Dialog {
         id: logoutDialog
         objectName: "logoutDialog"
-        title: "Odhlásit FelisMusic?"
+        title: qsTr("Odhlásit FelisMusic?")
         modal: true
         anchors.centerIn: parent
         width: Math.min(500, root.width - 40)
@@ -382,20 +382,20 @@ ApplicationWindow {
             spacing: 14
             Label {
                 Layout.fillWidth: true
-                text: "Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také CLI."
+                text: qsTr("Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také CLI.")
                 color: "#eeeeee"
                 wrapMode: Text.WordWrap
             }
             Button {
                 objectName: "logoutConfirmButton"
                 Layout.fillWidth: true
-                text: "Odhlásit"
+                text: qsTr("Odhlásit")
                 onClicked: { logoutDialog.close(); backend.logout() }
             }
             Button {
                 objectName: "logoutCancelButton"
                 Layout.fillWidth: true
-                text: "Zrušit"
+                text: qsTr("Zrušit")
                 onClicked: logoutDialog.close()
             }
         }
@@ -404,7 +404,7 @@ ApplicationWindow {
     Dialog {
         id: loginDialog
         objectName: "loginDialog"
-        title: "Přihlášení k YouTube Music"
+        title: qsTr("Přihlášení k YouTube Music")
         background: Rectangle { color: "#202020"; border.color: "#555555"; radius: 6 }
         header: Label {
             text: loginDialog.title
@@ -426,7 +426,7 @@ ApplicationWindow {
             }
             Label {
                 Layout.fillWidth: true
-                text: "Přihlášení proběhne v samostatném profilu prohlížeče."
+                text: qsTr("Přihlášení proběhne v samostatném profilu prohlížeče.")
                 color: "#aaaaaa"
                 wrapMode: Text.WordWrap
             }
@@ -447,7 +447,7 @@ ApplicationWindow {
             Button {
                 objectName: "loginStartButton"
                 Layout.fillWidth: true
-                text: "Otevřít přihlašovací okno"
+                text: qsTr("Otevřít přihlašovací okno")
                 visible: backend.loginState.phase === "choose" || backend.loginState.phase === "error"
                 enabled: loginBrowserChoice.currentIndex >= 0
                 onClicked: backend.startLogin(loginBrowserChoice.currentValue)
@@ -455,7 +455,7 @@ ApplicationWindow {
             Button {
                 objectName: "loginFinishButton"
                 Layout.fillWidth: true
-                text: "Převzít přihlášení"
+                text: qsTr("Převzít přihlášení")
                 visible: backend.loginState.phase === "browser"
                 enabled: backend.loginState.canFinish || false
                 onClicked: backend.finishLogin()
@@ -463,7 +463,7 @@ ApplicationWindow {
             Button {
                 objectName: "loginCancelButton"
                 Layout.fillWidth: true
-                text: "Zrušit"
+                text: qsTr("Zrušit")
                 onClicked: backend.cancelLogin()
             }
         }
@@ -472,7 +472,7 @@ ApplicationWindow {
     component PlaylistPrivacyChoice: ComboBox {
         readonly property string privacyValue: ["PRIVATE", "UNLISTED", "PUBLIC"][currentIndex] || ""
         Layout.fillWidth: true
-        model: ["Soukromý", "Neveřejný (přístup přes odkaz)", "Veřejný"]
+        model: [qsTr("Soukromý"), qsTr("Neveřejný (přístup přes odkaz)"), qsTr("Veřejný")]
         Accessible.name: "Viditelnost playlistu"
     }
 
@@ -505,13 +505,13 @@ ApplicationWindow {
                 wrapMode: Text.WordWrap
             }
             Label {
-                text: "Smaže se celý playlist z YouTube Music. Tuto akci nelze vrátit. Samotné skladby tím neodstraníš."
+                text: qsTr("Smaže se celý playlist z YouTube Music. Tuto akci nelze vrátit. Samotné skladby tím neodstraníš.")
                 color: "#dddddd"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
             }
             Label {
-                text: "Přehrávací fronta zůstane zachovaná."
+                text: qsTr("Přehrávací fronta zůstane zachovaná.")
                 color: "#aaaaaa"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -543,7 +543,7 @@ ApplicationWindow {
             }
             PlayerTextButton {
                 objectName: "playlistDeleteRecheck"
-                text: "Ověřit znovu"
+                text: qsTr("Ověřit znovu")
                 implicitWidth: 125
                 visible: !!backend.playlistDeleteState.canRecheck
                 enabled: !backend.busy && !backend.playlistDeleteState.pending
@@ -551,7 +551,7 @@ ApplicationWindow {
             }
             PlayerTextButton {
                 objectName: "playlistDeleteCancel"
-                text: backend.playlistDeleteState.locked ? "Zavřít" : "Zrušit"
+                text: backend.playlistDeleteState.locked ? qsTr("Zavřít") : qsTr("Zrušit")
                 implicitWidth: 85
                 enabled: !backend.playlistDeleteState.pending
                 onClicked: playlistDeleteDialog.close()
@@ -581,7 +581,7 @@ ApplicationWindow {
                 id: playlistEditName
                 objectName: "playlistEditName"
                 Layout.fillWidth: true
-                placeholderText: "Název playlistu"
+                placeholderText: qsTr("Název playlistu")
                 color: "white"
                 placeholderTextColor: "#999999"
                 background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
@@ -592,7 +592,7 @@ ApplicationWindow {
                 TextArea {
                     id: playlistEditDescription
                     objectName: "playlistEditDescription"
-                    placeholderText: "Popis (nepovinný)"
+                    placeholderText: qsTr("Popis (nepovinný)")
                     placeholderTextColor: "#999999"
                     color: "white"
                     wrapMode: TextEdit.Wrap
@@ -603,7 +603,7 @@ ApplicationWindow {
                 id: playlistEditPrivacy
                 objectName: "playlistEditPrivacy"
                 Layout.fillWidth: true
-                model: ["Soukromý", "Neveřejný (přístup přes odkaz)", "Veřejný"]
+                model: [qsTr("Soukromý"), qsTr("Neveřejný (přístup přes odkaz)"), qsTr("Veřejný")]
             }
             Label {
                 objectName: "playlistEditMessage"
@@ -618,7 +618,7 @@ ApplicationWindow {
             background: Item { }
             PlayerTextButton {
                 objectName: "playlistEditSubmit"
-                text: "Uložit"
+                text: qsTr("Uložit")
                 implicitWidth: 105
                 enabled: !backend.busy && !backend.playlistEditState.locked && !backend.playlistEditState.pending
                          && !backend.playlistEditState.completed && playlistEditName.text.trim().length > 0
@@ -627,7 +627,7 @@ ApplicationWindow {
             }
             PlayerTextButton {
                 objectName: "playlistEditClose"
-                text: "Zavřít"
+                text: qsTr("Zavřít")
                 implicitWidth: 85
                 onClicked: playlistEditDialog.close()
             }
@@ -643,7 +643,7 @@ ApplicationWindow {
         padding: 18
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
-            text: "Nový prázdný playlist"
+            text: qsTr("Nový prázdný playlist")
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -655,7 +655,7 @@ ApplicationWindow {
                 id: emptyPlaylistName
                 objectName: "emptyPlaylistName"
                 Layout.fillWidth: true
-                placeholderText: "Název playlistu"
+                placeholderText: qsTr("Název playlistu")
                 color: "white"
                 placeholderTextColor: "#999999"
                 enabled: !backend.busy && !backend.emptyPlaylistState.locked
@@ -692,7 +692,7 @@ ApplicationWindow {
             PlayerTextButton {
                 id: emptyPlaylistSubmit
                 objectName: "emptyPlaylistSubmit"
-                text: "Vytvořit"
+                text: qsTr("Vytvořit")
                 implicitWidth: 105
                 enabled: !backend.busy && !backend.emptyPlaylistState.pending
                          && !backend.emptyPlaylistState.completed && !backend.emptyPlaylistState.locked
@@ -701,7 +701,7 @@ ApplicationWindow {
             }
             PlayerTextButton {
                 objectName: "emptyPlaylistClose"
-                text: "Zavřít"
+                text: qsTr("Zavřít")
                 implicitWidth: 85
                 onClicked: emptyPlaylistDialog.close()
             }
@@ -722,8 +722,8 @@ ApplicationWindow {
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
             text: playlistSave.duplicateResult
-                  ? (backend.playlistSaveState.collection ? "Duplicitní skladby" : "Duplicitní skladba")
-                  : "Přidat do playlistu"
+                  ? (backend.playlistSaveState.collection ? qsTr("Duplicitní skladby") : qsTr("Duplicitní skladba"))
+                  : qsTr("Přidat do playlistu")
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -740,13 +740,13 @@ ApplicationWindow {
             }
             Label {
                 visible: !!backend.playlistSaveState.collection
-                text: "Počet vybraných skladeb: " + (backend.playlistSaveState.selectionCount || 0)
+                text: qsTr("Počet vybraných skladeb: %1").arg(backend.playlistSaveState.selectionCount || 0)
                 color: "#aaaaaa"
             }
             RowLayout {
                 visible: !playlistSave.duplicateResult
                 Button {
-                    text: "Existující playlist"
+                    text: qsTr("Existující playlist")
                     checkable: true
                     checked: !playlistSave.newMode
                     enabled: playlistSave.canSave && playlistChoice.count > 0
@@ -754,7 +754,7 @@ ApplicationWindow {
                 }
                 Button {
                     objectName: "playlistNewMode"
-                    text: "Nový playlist"
+                    text: qsTr("Nový playlist")
                     checkable: true
                     checked: playlistSave.newMode
                     enabled: playlistSave.canSave
@@ -774,7 +774,7 @@ ApplicationWindow {
             CheckBox {
                 id: playlistDuplicates
                 objectName: "playlistDuplicates"
-                text: backend.playlistSaveState.collection ? "Povolit opakované výskyty skladeb" : "Povolit další výskyt stejné skladby"
+                text: backend.playlistSaveState.collection ? qsTr("Povolit opakované výskyty skladeb") : qsTr("Povolit další výskyt stejné skladby")
                 visible: !playlistSave.duplicateResult && !playlistSave.newMode
                 enabled: playlistSave.canSave
                 contentItem: Text {
@@ -790,7 +790,7 @@ ApplicationWindow {
                 Layout.fillWidth: true
                 visible: !playlistSave.duplicateResult && playlistSave.newMode
                 enabled: playlistSave.canSave
-                placeholderText: "Název nového playlistu"
+                placeholderText: qsTr("Název nového playlistu")
                 color: "white"
                 placeholderTextColor: "#999999"
                 background: Rectangle { color: "#292929"; border.color: "#666666"; radius: 4 }
@@ -803,7 +803,7 @@ ApplicationWindow {
             }
             Label {
                 text: backend.playlistSaveState.collection
-                      ? "Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit."
+                      ? qsTr("Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit.")
                       : "Playlist bude obsahovat vybranou skladbu."
                 visible: !playlistSave.duplicateResult && playlistSave.newMode && !backend.playlistSaveState.completed
                 color: "#aaaaaa"
@@ -832,7 +832,7 @@ ApplicationWindow {
                 objectName: "playlistSaveSubmit"
                 visible: !backend.playlistSaveState.completed && !backend.playlistSaveState.locked
                 implicitWidth: 155
-                text: playlistSave.newMode ? "Vytvořit a přidat" : "Přidat"
+                text: playlistSave.newMode ? qsTr("Vytvořit a přidat") : qsTr("Přidat")
                 enabled: playlistSave.canSave && (playlistSave.newMode
                          ? playlistName.text.trim().length > 0 : playlistChoice.currentIndex >= 0)
                 onClicked: {
@@ -843,7 +843,7 @@ ApplicationWindow {
             PlayerTextButton {
                 objectName: "playlistSaveRecheck"
                 implicitWidth: 130
-                text: "Ověřit znovu"
+                text: qsTr("Ověřit znovu")
                 visible: !!backend.playlistSaveState.canRecheck
                 enabled: !backend.busy && !backend.playlistSaveState.pending
                 onClicked: backend.recheckPlaylistSave()
@@ -851,7 +851,7 @@ ApplicationWindow {
             PlayerTextButton {
                 objectName: "playlistSaveClose"
                 implicitWidth: 85
-                text: playlistSave.duplicateResult ? "OK" : "Zavřít"
+                text: playlistSave.duplicateResult ? qsTr("OK") : qsTr("Zavřít")
                 onClicked: playlistSave.close()
             }
         }
@@ -862,7 +862,7 @@ ApplicationWindow {
         objectName: "playlistBatchRemoveDialog"
         property int itemCount: 0
         property string playlistTitle: ""
-        title: "Odebrat vybrané skladby?"
+        title: qsTr("Odebrat vybrané skladby?")
         modal: true
         anchors.centerIn: parent
         width: Math.min(root.width - 48, 540)
@@ -870,8 +870,8 @@ ApplicationWindow {
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label { text: playlistBatchRemove.title; color: "white"; font.pixelSize: 19; padding: 18 }
         contentItem: Label {
-            text: "Odebrat " + playlistBatchRemove.itemCount + " vybraných skladeb z playlistu „"
-                  + playlistBatchRemove.playlistTitle + "“?"
+            text: qsTr("Odebrat %1 vybraných skladeb z playlistu „%2“?")
+                  .arg(playlistBatchRemove.itemCount).arg(playlistBatchRemove.playlistTitle)
             color: "#eeeeee"
             wrapMode: Text.Wrap
         }
@@ -890,7 +890,7 @@ ApplicationWindow {
             queueIndex: backend.playerQueueIndex, queueCount: backend.playerQueueCount,
             queueTitle: backend.playingListTitle
         })
-        title: "Informace o skladbě"
+        title: qsTr("Informace o skladbě")
         modal: true
         padding: 18
         anchors.centerIn: parent
@@ -911,7 +911,7 @@ ApplicationWindow {
         footer: DialogButtonBox {
             background: Item { }
             PlayerTextButton {
-                text: "Zavřít"
+                text: qsTr("Zavřít")
                 implicitWidth: 85
                 DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
             }
@@ -937,16 +937,16 @@ ApplicationWindow {
                 }
                 Repeater {
                     model: [
-                        {label: "Název", value: trackInfo.information.title},
-                        {label: "Interpret", value: trackInfo.information.artist},
-                        {label: "Album", value: trackInfo.information.album},
-                        {label: "Délka", value: trackInfo.information.duration > 0 ? root.formatTime(trackInfo.information.duration) : "Neznámá"},
-                        {label: "Hodnocení", value: trackInfo.information.likeStatus === "LIKE" ? "Oblíbená"
-                                                   : (trackInfo.information.likeStatus === "DISLIKE" ? "Neoblíbená"
-                                                      : (trackInfo.information.likeStatus === "INDIFFERENT" ? "Bez hodnocení" : "Nezjištěno"))}
+                        {label: qsTr("Název"), value: trackInfo.information.title},
+                        {label: qsTr("Interpret"), value: trackInfo.information.artist},
+                        {label: qsTr("Album"), value: trackInfo.information.album},
+                        {label: qsTr("Délka"), value: trackInfo.information.duration > 0 ? root.formatTime(trackInfo.information.duration) : qsTr("Neznámá")},
+                        {label: qsTr("Hodnocení"), value: trackInfo.information.likeStatus === "LIKE" ? qsTr("Oblíbená")
+                                                   : (trackInfo.information.likeStatus === "DISLIKE" ? qsTr("Neoblíbená")
+                                                      : (trackInfo.information.likeStatus === "INDIFFERENT" ? qsTr("Bez hodnocení") : qsTr("Nezjištěno")))}
                     ].concat(trackInfo.information.inQueue ? [
-                        {label: "Pozice ve frontě", value: trackInfo.information.queueIndex >= 0 ? (trackInfo.information.queueIndex + 1) + " / " + trackInfo.information.queueCount : "Prázdná fronta"},
-                        {label: "Název fronty", value: trackInfo.information.queueTitle}
+                        {label: qsTr("Pozice ve frontě"), value: trackInfo.information.queueIndex >= 0 ? (trackInfo.information.queueIndex + 1) + " / " + trackInfo.information.queueCount : qsTr("Prázdná fronta")},
+                        {label: qsTr("Název fronty"), value: trackInfo.information.queueTitle}
                     ] : [])
                     delegate: ColumnLayout {
                         required property var modelData
@@ -960,7 +960,7 @@ ApplicationWindow {
                         Label {
                             Layout.fillWidth: true
                             Layout.minimumWidth: 0
-                            text: modelData.value || "Neuvedeno"
+                            text: modelData.value || qsTr("Neuvedeno")
                             color: "#f3f3f3"
                             wrapMode: Text.Wrap
                             font.pixelSize: 15
@@ -2674,12 +2674,13 @@ ApplicationWindow {
                             Layout.minimumWidth: 0
                             elide: Text.ElideRight
                             horizontalAlignment: Text.AlignRight
+                            objectName: "connectionStatusLabel"
                             text: backend.busy
                                   ? backend.status
                                   : (backend.connected
                                      ? "Připojeno · " + backend.accountName
                                      : backend.status)
-                            color: backend.status.indexOf("Chyba") >= 0 ? "#ff8a80" : "#999999"
+                            color: backend.statusIsError ? "#ff8a80" : "#999999"
                             font.pixelSize: 13
                         }
                         PlayerTextButton {
