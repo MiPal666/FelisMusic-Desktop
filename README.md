@@ -1,5 +1,15 @@
 # FelisMusic Desktop
 
+**Chromecast Audio a skupiny reproduktorů Google Cast.** FelisMusic je
+přehrávač YouTube Music pro Linux, který umožňuje během poslechu přepínat mezi
+počítačem a výstupem Cast.
+
+## Plánované funkce
+
+- **Offline poslech** včetně stahování a správy stažené hudby.
+- **Obnovení přehrávání po restartu** včetně fronty, rozehrané skladby a její pozice.
+- **Přehrávání hudby přes Chromecast připojený k televizi** jako další zvukový výstup.
+
 ## Instalace desktopové verze 1.0.0
 
 Instalace, spuštění z nabídky a lokální přehrávání byly ověřeny na
