@@ -1464,56 +1464,56 @@ Create the virtual environment with --system-site-packages so it can access the 
         <location filename="../Main.qml" line="+19"/>
         <location line="+122"/>
         <location line="+103"/>
-        <location line="+1861"/>
+        <location line="+1880"/>
         <location line="+154"/>
         <location line="+3"/>
         <source>Playlisty</source>
         <translation>Playlists</translation>
     </message>
     <message>
-        <location line="-2145"/>
-        <location line="+2237"/>
+        <location line="-2164"/>
+        <location line="+2256"/>
         <source>Nahraná alba</source>
         <translation>Uploaded albums</translation>
     </message>
     <message>
-        <location line="-2237"/>
-        <location line="+2244"/>
+        <location line="-2256"/>
+        <location line="+2263"/>
         <source>Nahraní interpreti</source>
         <translation>Uploaded artists</translation>
     </message>
     <message>
-        <location line="-2243"/>
-        <location line="+2250"/>
+        <location line="-2262"/>
+        <location line="+2269"/>
         <source>Nahrané skladby</source>
         <translation>Uploaded tracks</translation>
     </message>
     <message>
-        <location line="-2244"/>
-        <location line="+3006"/>
+        <location line="-2263"/>
+        <location line="+3025"/>
         <source>Výchozí YTM</source>
         <translation>YouTube Music default</translation>
     </message>
     <message>
-        <location line="-3006"/>
+        <location line="-3025"/>
         <location line="+1"/>
-        <location line="+2070"/>
+        <location line="+2089"/>
         <location line="+2"/>
         <location line="+933"/>
         <source>A–Z</source>
         <translation>A–Z</translation>
     </message>
     <message>
-        <location line="-3006"/>
+        <location line="-3025"/>
         <location line="+1"/>
-        <location line="+2070"/>
+        <location line="+2089"/>
         <location line="+2"/>
         <location line="+933"/>
         <source>Z–A</source>
         <translation>Z–A</translation>
     </message>
     <message>
-        <location line="-3005"/>
+        <location line="-3024"/>
         <source>Nedávno přidané</source>
         <translation>Recently added</translation>
     </message>
@@ -1527,7 +1527,7 @@ Create the virtual environment with --system-site-packages so it can access the 
     <message>
         <location line="-2"/>
         <location line="+2"/>
-        <location line="+2016"/>
+        <location line="+2035"/>
         <location line="+6"/>
         <location line="+103"/>
         <location line="+3"/>
@@ -1536,9 +1536,9 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Tracks</translation>
     </message>
     <message>
-        <location line="-2227"/>
+        <location line="-2246"/>
         <location line="+2"/>
-        <location line="+2023"/>
+        <location line="+2042"/>
         <location line="+108"/>
         <location line="+3"/>
         <location line="+77"/>
@@ -1546,36 +1546,36 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Albums</translation>
     </message>
     <message>
-        <location line="-2213"/>
+        <location line="-2232"/>
         <location line="+2"/>
-        <location line="+2137"/>
+        <location line="+2156"/>
         <location line="+3"/>
         <location line="+78"/>
         <source>Interpreti</source>
         <translation>Artists</translation>
     </message>
     <message>
-        <location line="-2218"/>
-        <location line="+1965"/>
+        <location line="-2237"/>
+        <location line="+1984"/>
         <source>Videa</source>
         <translation>Videos</translation>
     </message>
     <message>
-        <location line="-1964"/>
-        <location line="+2142"/>
+        <location line="-1983"/>
+        <location line="+2161"/>
         <location line="+3"/>
         <source>Profily</source>
         <translation>Profiles</translation>
     </message>
     <message>
-        <location line="-2145"/>
-        <location line="+2148"/>
+        <location line="-2164"/>
+        <location line="+2167"/>
         <location line="+3"/>
         <source>Podcasty</source>
         <translation>Podcasts</translation>
     </message>
     <message>
-        <location line="-2151"/>
+        <location line="-2170"/>
         <source>Epizody</source>
         <translation>Episodes</translation>
     </message>
@@ -1866,24 +1866,24 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Track information</translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+57"/>
         <source>Název</source>
         <translation>Title</translation>
     </message>
     <message>
         <location line="+1"/>
-        <location line="+359"/>
+        <location line="+368"/>
         <source>Interpret</source>
         <translation>Artist</translation>
     </message>
     <message>
-        <location line="-358"/>
-        <location line="+357"/>
+        <location line="-367"/>
+        <location line="+366"/>
         <source>Album</source>
         <translation>Album</translation>
     </message>
     <message>
-        <location line="-356"/>
+        <location line="-358"/>
         <source>Délka</source>
         <translation>Duration</translation>
     </message>
@@ -1899,20 +1899,20 @@ Create the virtual environment with --system-site-packages so it can access the 
     </message>
     <message>
         <location line="+0"/>
-        <location line="+88"/>
+        <location line="+90"/>
         <location line="+652"/>
         <source>Oblíbená</source>
         <translation>Liked</translation>
     </message>
     <message>
-        <location line="-739"/>
-        <location line="+88"/>
+        <location line="-741"/>
+        <location line="+90"/>
         <location line="+657"/>
         <source>Neoblíbená</source>
         <translation>Disliked</translation>
     </message>
     <message>
-        <location line="-744"/>
+        <location line="-746"/>
         <source>Bez hodnocení</source>
         <translation>Unrated</translation>
     </message>
@@ -1937,12 +1937,12 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Queue name</translation>
     </message>
     <message>
-        <location line="+14"/>
+        <location line="+20"/>
         <source>Neuvedeno</source>
         <translation>Not specified</translation>
     </message>
     <message>
-        <location line="+69"/>
+        <location line="+65"/>
         <source>Zrušit oblíbenou</source>
         <translation>Remove like</translation>
     </message>
@@ -2563,12 +2563,12 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>Show playing list</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+13"/>
         <source>Nic se nepřehrává</source>
         <translation>Nothing is playing</translation>
     </message>
     <message>
-        <location line="+8"/>
+        <location line="+12"/>
         <source>Cast odpojený · vyber jiný výstup</source>
         <translation>Cast disconnected · Select another output</translation>
     </message>
@@ -2588,7 +2588,7 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>GStreamer is unavailable in this virtual environment</translation>
     </message>
     <message>
-        <location line="+51"/>
+        <location line="+49"/>
         <source>Připravuji skladbu…</source>
         <translation>Preparing track…</translation>
     </message>

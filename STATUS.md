@@ -1,5 +1,11 @@
 # FelisMusic Desktop – aktuální stav
 
+## Doladění GUI – název přehrávané skladby a informace
+
+- Název ve spodní liště dostává více místa v širším okně a při zkrácení se zobrazí celý po najetí myší. V testu při šířce okna 1280 px vzrostla šířka názvu ze 159 na 185 px, při 1600 px z 246 na 327 px.
+- Dialog má název, interpreta a album vedle obalu. Pod nimi jsou délka, hodnocení a údaje o frontě. Posouvání zůstává dostupné pro delší obsah.
+- Ověřeno v QML v češtině i angličtině při šířkách 900, 1280 a 1600 px. Běžný dialog včetně názvu fronty se vešel při výšce okna 600 px. Sedm testů překladů prošlo. Michal ručně ověřil a schválil.
+
 ## Doladění GUI – hlavička detailů
 
 - Horní řazení Knihovny se v detailu skryje a po návratu se zobrazí s původní volbou. Ověřeno v QML v češtině i angličtině a ručně Michalem.

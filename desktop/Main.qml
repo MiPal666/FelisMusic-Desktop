@@ -947,21 +947,38 @@ ApplicationWindow {
             contentWidth: availableWidth
 
             ColumnLayout {
+                objectName: "trackInfoFields"
                 width: infoScroll.availableWidth
-                spacing: 12
-                Image {
-                    Layout.preferredWidth: 96
-                    Layout.preferredHeight: 96
-                    source: trackInfo.information.thumbnail
-                    visible: source.toString().length > 0
-                    fillMode: Image.PreserveAspectFit
-                    asynchronous: true
+                spacing: 8
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 14
+                    Image {
+                        Layout.alignment: Qt.AlignTop
+                        Layout.preferredWidth: 96
+                        Layout.preferredHeight: 96
+                        source: trackInfo.information.thumbnail
+                        visible: source.toString().length > 0 && status !== Image.Error
+                        fillMode: Image.PreserveAspectFit
+                        asynchronous: true
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        spacing: 8
+                        Repeater {
+                            model: [
+                                {label: qsTr("Název"), value: trackInfo.information.title},
+                                {label: qsTr("Interpret"), value: trackInfo.information.artist},
+                                {label: qsTr("Album"), value: trackInfo.information.album}
+                            ]
+                            delegate: InfoField {}
+                        }
+                    }
                 }
                 Repeater {
                     model: [
-                        {label: qsTr("Název"), value: trackInfo.information.title},
-                        {label: qsTr("Interpret"), value: trackInfo.information.artist},
-                        {label: qsTr("Album"), value: trackInfo.information.album},
                         {label: qsTr("Délka"), value: trackInfo.information.duration > 0 ? root.formatTime(trackInfo.information.duration) : qsTr("Neznámá")},
                         {label: qsTr("Hodnocení"), value: trackInfo.information.likeStatus === "LIKE" ? qsTr("Oblíbená")
                                                    : (trackInfo.information.likeStatus === "DISLIKE" ? qsTr("Neoblíbená")
@@ -970,26 +987,28 @@ ApplicationWindow {
                         {label: qsTr("Pozice ve frontě"), value: trackInfo.information.queueIndex >= 0 ? (trackInfo.information.queueIndex + 1) + " / " + trackInfo.information.queueCount : qsTr("Prázdná fronta")},
                         {label: qsTr("Název fronty"), value: trackInfo.information.queueTitle}
                     ] : [])
-                    delegate: ColumnLayout {
-                        required property var modelData
-                        Layout.fillWidth: true
-                        spacing: 3
-                        Label {
-                            text: modelData.label
-                            color: "#aaaaaa"
-                            font.pixelSize: 12
-                        }
-                        Label {
-                            Layout.fillWidth: true
-                            Layout.minimumWidth: 0
-                            text: modelData.value || qsTr("Neuvedeno")
-                            color: "#f3f3f3"
-                            wrapMode: Text.Wrap
-                            font.pixelSize: 15
-                        }
-                    }
+                    delegate: InfoField {}
                 }
             }
+        }
+    }
+
+    component InfoField: ColumnLayout {
+        required property var modelData
+        Layout.fillWidth: true
+        spacing: 3
+        Label {
+            text: modelData.label
+            color: "#aaaaaa"
+            font.pixelSize: 12
+        }
+        Label {
+            Layout.fillWidth: true
+            Layout.minimumWidth: 0
+            text: modelData.value || qsTr("Neuvedeno")
+            color: "#f3f3f3"
+            wrapMode: Text.Wrap
+            font.pixelSize: 15
         }
     }
 
@@ -3458,16 +3477,24 @@ ApplicationWindow {
                         }
 
                         ColumnLayout {
-                            Layout.preferredWidth: 210
+                            Layout.fillWidth: true
+                            Layout.preferredWidth: 300
+                            Layout.maximumWidth: 420
                             spacing: 3
 
                             Label {
+                                id: nowPlayingTitle
+                                objectName: "nowPlayingTitle"
                                 text: backend.playerHasTrack ? backend.playerTitle : qsTr("Nic se nepřehrává")
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                HoverHandler { id: nowPlayingTitleHover }
+                                ToolTip.visible: nowPlayingTitle.truncated && nowPlayingTitleHover.hovered
+                                ToolTip.text: nowPlayingTitle.text
                             }
                             Label {
                                 text: backend.castState.disconnected ? qsTr("Cast odpojený · vyber jiný výstup")
@@ -3509,8 +3536,6 @@ ApplicationWindow {
                                 }
                             }
                         }
-
-                        Item { Layout.fillWidth: true }
 
                         ColumnLayout {
                             Layout.preferredWidth: 500
