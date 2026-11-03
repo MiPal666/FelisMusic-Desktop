@@ -1490,30 +1490,30 @@ Create the virtual environment with --system-site-packages so it can access the 
     </message>
     <message>
         <location line="-2197"/>
-        <location line="+2969"/>
+        <location line="+2988"/>
         <source>Výchozí YTM</source>
         <translation>YouTube Music default</translation>
     </message>
     <message>
-        <location line="-2969"/>
+        <location line="-2988"/>
         <location line="+1"/>
         <location line="+2024"/>
         <location line="+2"/>
-        <location line="+942"/>
+        <location line="+961"/>
         <source>A–Z</source>
         <translation>A–Z</translation>
     </message>
     <message>
-        <location line="-2969"/>
+        <location line="-2988"/>
         <location line="+1"/>
         <location line="+2024"/>
         <location line="+2"/>
-        <location line="+942"/>
+        <location line="+961"/>
         <source>Z–A</source>
         <translation>Z–A</translation>
     </message>
     <message>
-        <location line="-2968"/>
+        <location line="-2987"/>
         <source>Nedávno přidané</source>
         <translation>Recently added</translation>
     </message>
@@ -2038,37 +2038,37 @@ Create the virtual environment with --system-site-packages so it can access the 
         <location line="+16"/>
         <location line="+16"/>
         <location line="+424"/>
-        <location line="+965"/>
+        <location line="+985"/>
         <source>Přehrát jako další</source>
         <translation>Play next</translation>
     </message>
     <message>
-        <location line="-1835"/>
+        <location line="-1855"/>
         <location line="+422"/>
         <location line="+16"/>
         <location line="+16"/>
         <location line="+424"/>
-        <location line="+962"/>
+        <location line="+982"/>
         <source>Přidat na konec fronty</source>
         <translation>Add to end of queue</translation>
     </message>
     <message>
-        <location line="-1834"/>
-        <location line="+1839"/>
+        <location line="-1854"/>
+        <location line="+1859"/>
         <source>Přidat do playlistu…</source>
         <translation>Add to playlist…</translation>
     </message>
     <message>
-        <location line="-1830"/>
+        <location line="-1850"/>
         <location line="+332"/>
         <location line="+16"/>
         <location line="+8"/>
-        <location line="+1191"/>
+        <location line="+1206"/>
         <source>Spustit mix</source>
         <translation>Start mix</translation>
     </message>
     <message>
-        <location line="-1539"/>
+        <location line="-1554"/>
         <source>Otevřít nahrané album</source>
         <translation>Open uploaded album</translation>
     </message>
@@ -2175,12 +2175,12 @@ Create the virtual environment with --system-site-packages so it can access the 
         <location line="+45"/>
         <location line="+17"/>
         <location line="+507"/>
-        <location line="+694"/>
+        <location line="+709"/>
         <source>Přehrát náhodně</source>
         <translation>Shuffle play</translation>
     </message>
     <message>
-        <location line="-1176"/>
+        <location line="-1191"/>
         <source>Odebrat album z knihovny</source>
         <translation>Remove album from library</translation>
     </message>
@@ -2247,18 +2247,18 @@ Create the virtual environment with --system-site-packages so it can access the 
     </message>
     <message>
         <location line="+1"/>
-        <location line="+1098"/>
+        <location line="+1118"/>
         <source>Načítám další skladby…</source>
         <translation>Loading more tracks…</translation>
     </message>
     <message>
-        <location line="-1096"/>
-        <location line="+1098"/>
+        <location line="-1116"/>
+        <location line="+1118"/>
         <source>Načítání se nepodařilo dokončit</source>
         <translation>Couldn&apos;t finish loading</translation>
     </message>
     <message>
-        <location line="-1088"/>
+        <location line="-1108"/>
         <source>Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu.</source>
         <translation>You can play the tracks already loaded. Reopen the mix to try loading it again.</translation>
     </message>
@@ -2338,11 +2338,12 @@ Create the virtual environment with --system-site-packages so it can access the 
     </message>
     <message>
         <location line="+20"/>
+        <location line="+835"/>
         <source>Řadit podle</source>
         <translation>Sort by</translation>
     </message>
     <message>
-        <location line="+30"/>
+        <location line="-805"/>
         <source>Nahrané soubory:</source>
         <translation>Uploads:</translation>
     </message>
@@ -2392,30 +2393,30 @@ Double-click to play a track now. More tracks will be added to the queue as they
     </message>
     <message>
         <location line="-185"/>
-        <location line="+369"/>
+        <location line="+382"/>
         <source>Oblíbená hudba</source>
         <translation>Liked music</translation>
     </message>
     <message>
-        <location line="-368"/>
-        <location line="+492"/>
+        <location line="-381"/>
+        <location line="+512"/>
         <source>Historie</source>
         <translation>History</translation>
     </message>
     <message>
-        <location line="-491"/>
-        <location line="+500"/>
+        <location line="-511"/>
+        <location line="+520"/>
         <source>Mixy pro vás</source>
         <translation>Mixes for you</translation>
     </message>
     <message>
-        <location line="-499"/>
-        <location line="+546"/>
+        <location line="-519"/>
+        <location line="+566"/>
         <source>Fronta</source>
         <translation>Queue</translation>
     </message>
     <message>
-        <location line="-541"/>
+        <location line="-561"/>
         <source>Desktop GUI · %1</source>
         <translation>Desktop GUI · %1</translation>
     </message>
@@ -2470,7 +2471,7 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>Search YouTube Music…</translation>
     </message>
     <message>
-        <location line="+282"/>
+        <location line="+302"/>
         <source>Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; řazení a ostatní akce až po dokončení.</source>
         <translation>Double-click to play a track now. More tracks will be added to the queue as they load. Sorting and other actions are available when loading finishes.</translation>
     </message>

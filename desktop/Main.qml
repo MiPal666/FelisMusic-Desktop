@@ -3053,53 +3053,73 @@ ApplicationWindow {
                             anchors.margins: 22
                             spacing: 12
 
-                            RowLayout {
+                            GridLayout {
+                                id: likedHeader
                                 Layout.fillWidth: true
+                                columns: 2
+                                columnSpacing: 12
+                                rowSpacing: 8
+
+                                readonly property bool controlsOnOwnRow: width < likedHeading.implicitWidth
+                                    + likedControls.implicitWidth + columnSpacing
+
                                 Label {
+                                    id: likedHeading
+                                    Layout.row: 0
+                                    Layout.column: 0
+                                    Layout.columnSpan: likedHeader.controlsOnOwnRow ? 2 : 1
+                                    Layout.fillWidth: true
                                     text: qsTr("Oblíbená hudba")
                                     color: "white"
                                     font.pixelSize: 28
                                     font.bold: true
                                 }
-                                Item { Layout.fillWidth: true }
-                                ToolButton {
-                                    id: likedMenuButton
-                                    objectName: "likedMenuButton"
-                                    text: "⋮"
-                                    enabled: backend.connected && !backend.busy
-                                    onClicked: likedMenu.popup(likedMenuButton, 0, height)
-                                    Menu {
-                                        id: likedMenu
-                                        objectName: "likedContextMenu"
-                                        popupType: Popup.Item
-                                        MenuItem {
-                                            objectName: "likedShuffle"
-                                            text: qsTr("Přehrát náhodně")
-                                            enabled: backend.likedComplete && backend.likedModel.count > 0 && backend.connected && !backend.busy && backend.playerCanEditQueue
-                                            onTriggered: backend.startLikedPlayback("shuffle")
-                                        }
-                                        MenuItem {
-                                            objectName: "likedRadio"
-                                            text: qsTr("Spustit mix")
-                                            enabled: backend.likedComplete && backend.likedModel.count > 0 && backend.connected && !backend.busy && backend.playerCanEditQueue
-                                            onTriggered: backend.startLikedPlayback("radio")
-                                        }
+                                RowLayout {
+                                    id: likedControls
+                                    objectName: "likedControls"
+                                    Layout.row: likedHeader.controlsOnOwnRow ? 1 : 0
+                                    Layout.column: likedHeader.controlsOnOwnRow ? 0 : 1
+                                    Layout.columnSpan: likedHeader.controlsOnOwnRow ? 2 : 1
+                                    Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                                    spacing: 8
+
+                                    readonly property bool canStartPlayback: backend.likedComplete
+                                        && backend.likedModel.count > 0 && backend.connected
+                                        && !backend.busy && backend.playerCanEditQueue
+
+                                    Button {
+                                        objectName: "likedShuffle"
+                                        text: qsTr("Přehrát náhodně")
+                                        enabled: likedControls.canStartPlayback
+                                        onClicked: backend.startLikedPlayback("shuffle")
                                     }
-                                }
-                                ComboBox {
-                                    id: likedOrder
-                                    enabled: backend.likedComplete
-                                    Layout.preferredWidth: 170
-                                    model: [qsTr("Výchozí YTM"), qsTr("A–Z"), qsTr("Z–A")]
-                                    currentIndex: {
-                                        var values = ["", "a_to_z", "z_to_a"]
-                                        var index = values.indexOf(root.currentLikedOrder)
-                                        return index >= 0 ? index : 0
+                                    Button {
+                                        objectName: "likedRadio"
+                                        text: qsTr("Spustit mix")
+                                        enabled: likedControls.canStartPlayback
+                                        onClicked: backend.startLikedPlayback("radio")
                                     }
-                                    onActivated: {
-                                        var values = ["", "a_to_z", "z_to_a"]
-                                        root.currentLikedOrder = values[currentIndex]
-                                        backend.sortLiked(root.currentLikedOrder)
+                                    Label {
+                                        id: likedOrderLabel
+                                        text: qsTr("Řadit podle")
+                                        color: "#aaaaaa"
+                                    }
+                                    ComboBox {
+                                        id: likedOrder
+                                        Accessible.name: likedOrderLabel.text
+                                        enabled: backend.likedComplete
+                                        Layout.preferredWidth: 170
+                                        model: [qsTr("Výchozí YTM"), qsTr("A–Z"), qsTr("Z–A")]
+                                        currentIndex: {
+                                            var values = ["", "a_to_z", "z_to_a"]
+                                            var index = values.indexOf(root.currentLikedOrder)
+                                            return index >= 0 ? index : 0
+                                        }
+                                        onActivated: {
+                                            var values = ["", "a_to_z", "z_to_a"]
+                                            root.currentLikedOrder = values[currentIndex]
+                                            backend.sortLiked(root.currentLikedOrder)
+                                        }
                                     }
                                 }
                             }

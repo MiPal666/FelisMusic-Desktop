@@ -1,5 +1,10 @@
 # FelisMusic Desktop – aktuální stav
 
+## Doladění GUI – akce Oblíbené hudby
+
+- Přímá tlačítka Přehrát náhodně a Spustit mix, doplněný popisek Řadit podle. Původní podmínky dostupnosti akcí zachovány.
+- QML ověřeno v češtině i angličtině při šířkách 900, 1280 a 1600 px. Tlačítka jsou při načítání viditelná a neaktivní, po načtení předávají správné režimy simulovanému backendu. Michal ručně ověřil.
+
 ## Doladění GUI – řazení Knihovny
 
 - Společný přepínač všech sekcí má popisek „Řadit podle“ / „Sort by“. Vpravo vedle záložek, pokud se vejde, jinak vpravo pod nimi. Volby a obsluha řazení zachovány.
