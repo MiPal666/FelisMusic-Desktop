@@ -9,7 +9,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+243"/>
+        <location line="+9"/>
+        <source>Vyhledávání spustíš tlačítkem Vyhledat zařízení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+190"/>
+        <source>Spojení s Castem bylo přerušeno. Vyber výstup a potom spusť přehrávání.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+44"/>
         <source>Spojení s Castem bylo přerušeno · vyber výstup v nabídce Výstupy</source>
         <translation type="unfinished"></translation>
     </message>
@@ -19,7 +29,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+47"/>
+        <location line="+25"/>
+        <source>Místní GStreamer není dostupný. Návrat na toto zařízení není možný.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
         <source>Přepínám poslech na toto zařízení…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -39,12 +54,250 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+177"/>
+        <location line="+18"/>
+        <location line="+23"/>
+        <source>Hledám Cast zařízení a skupiny…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-11"/>
+        <source>Cast zařízení se nepodařilo vyhledat. Zkus hledání znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Nalezeno Cast zařízení a skupin: {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Žádná Cast zařízení ani skupiny nebyly nalezeny.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Před odhlášením nech dokončit načítání seznamů a změny účtu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Před odhlášením zavři přihlašovací okno prohlížeče.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Odhlašuji účet…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Odstraňuji uložené přihlášení…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Před přihlášením zastav poslech tlačítkem Stop a nech dokončit načítání seznamů a změny účtu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Hledám podporované prohlížeče…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+31"/>
+        <source>Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <location line="+10"/>
+        <source>Přihlašovací prohlížeč se nepodařilo spustit.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-4"/>
+        <source>Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Ověřuji účet YouTube Music…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+26"/>
+        <source>Přihlášení zrušeno</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Přihlášení zrušeno · dosavadní účet zachován</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+981"/>
+        <location line="+11"/>
+        <source>Vyber prohlížeč pro samostatné přihlašovací okno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Nenašla jsem podporovaný prohlížeč. Nainstaluj Firefox, Chromium, Chrome, Brave, Vivaldi nebo Edge.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Přihlášení se nepodařilo ověřit. Zavři celé přihlašovací okno a zkus se přihlásit znovu. Dosavadní účet zůstává zachován.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Přihlášení se nepodařilo uložit. Zkontroluj místo na disku a zkus to znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Přihlášení ověřeno a uloženo</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+350"/>
+        <source>Nelze ověřit ovládání knihovny tohoto alba. Otevři album znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+48"/>
+        <source>YouTube Music nepotvrdilo změnu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-44"/>
+        <location line="+47"/>
+        <source>YouTube Music zatím nevrátilo požadovaný stav.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-45"/>
+        <source>Změnu knihovny se nepodařilo ověřit. Otevři album znovu a zkontroluj stav. </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source> · Přehled Alb se nepodařilo obnovit, otevři sekci Alba znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ukládám album v knihovně…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Nelze ověřit ovládání knihovny tohoto playlistu. Otevři playlist znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Změnu knihovny se nepodařilo ověřit. Otevři playlist znovu a zkontroluj stav. </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source> · Přehled Playlistů se nepodařilo obnovit, otevři sekci Playlisty znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ukládám playlist v knihovně…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+48"/>
+        <source>YouTube Music vrátilo jiný kanál odběru.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>YouTube Music zatím nevrátilo požadovaný stav odběru.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <source>Nelze ověřit kanál a stav odběru. Otevři interpreta znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>YouTube Music nepotvrdilo změnu odběru.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Změnu odběru se nepodařilo ověřit. Otevři interpreta znovu a zkontroluj stav. </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source> · Přehled Interpretů se nepodařilo obnovit, otevři sekci Interpreti znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Ukládám odběr interpreta…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message numerus="yes">
+        <location line="+83"/>
+        <source>%n skladba</source>
+        <translation>
+            <numerusform>%n skladba</numerusform>
+            <numerusform>%n skladby</numerusform>
+            <numerusform>%n skladeb</numerusform>
+        </translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Načteno {count} z {total} skladeb</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Načteno {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Dostupné: {count} z {total} skladeb</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>dostupných {duration}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Délka {duration}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+176"/>
+        <source>Načítám celý seznam…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+64"/>
+        <source>Načítám profil…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Načítám další položky profilu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+81"/>
         <source>Schránka není dostupná</source>
         <translation type="unfinished"></translation>
     </message>
@@ -90,12 +343,23 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+41"/>
+        <location line="+13"/>
+        <source>YouTube Music nepotvrdilo změnu hodnocení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+28"/>
         <source>Hodnocení se nepodařilo uložit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+2"/>
+        <source>Nepodařilo se změnit hodnocení skladby:
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
         <source>Oblíbená</source>
         <translation type="unfinished"></translation>
     </message>
@@ -116,38 +380,361 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+50"/>
+        <location line="+27"/>
+        <source>Lokální GStreamer není v tomto Python prostředí dostupný.
+
+GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systémový PyGObject/GStreamer.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
+        <source>Zastavení původní skladby selhalo: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Připravuji audio · {title}…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+218"/>
+        <location line="+17"/>
+        <source>Zastavení původní skladby na Castu selhalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+73"/>
+        <source>Nepodařilo se spojit se službou pro přehrávání. Zkontroluj připojení a potom stiskni Play pro opakování této skladby.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Ve frontě není přehratelná skladba.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+123"/>
         <source>Přehrávám · {title}</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+105"/>
+        <location line="+19"/>
+        <source>Skladbu se nepodařilo přehrát:
+</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+86"/>
         <source>Mix · čekám na další doporučení…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+299"/>
+        <location line="+129"/>
+        <location line="+727"/>
+        <source>Vyplň název playlistu bez znaků &lt; a &gt;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-712"/>
+        <source>Vytvořen prázdný playlist: {title}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Vytvoření playlistu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlisty ve webovém YTM.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-16"/>
+        <location line="+17"/>
+        <source>Vytvářím prázdný playlist…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+76"/>
+        <source>Pořadí skladby uloženo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Přesun se nepodařilo potvrdit. Obnov playlist a zkontroluj pořadí.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Nelze ověřit pořadí, výskyt nebo vlastnictví playlistu. Obnov seznam; nic nebylo změněno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Ukládám pořadí skladby…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+68"/>
         <source>Výběr se změnil. Otevři odebrání z playlistu znovu.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+773"/>
-        <location line="+2703"/>
+        <location line="+46"/>
+        <source>Skladba odebrána z playlistu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Položka už v playlistu není. Seznam obnoven.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Odebráno skladeb z playlistu: {count}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source> Již chybějící položky: {count}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Odebrání se nepodařilo potvrdit. Obnov playlist a zkontroluj jeho obsah.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Nelze ověřit položky nebo vlastnictví playlistu. Nic nebylo změněno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Odebírám skladby z playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+54"/>
+        <source>Nelze ověřit vlastní playlist pro smazání.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám playlist pro potvrzení smazání…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+63"/>
+        <location line="+48"/>
+        <source>Smazán playlist: {title}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-46"/>
+        <source>Výsledek smazání zatím není ověřen. Zkus Ověřit znovu nebo zkontroluj playlist ve webovém YTM. Mazání se znovu neodesílá.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Ověřuji smazání playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Playlist už není vlastní. Nic nebylo smazáno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Název playlistu se změnil. Zavři potvrzení a otevři ho znovu. Nic nebylo smazáno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+18"/>
+        <source>YT Music nepotvrdilo smazání. Zkontroluj stav přes Ověřit znovu nebo ve webovém YTM.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Nelze ověřit vlastnictví playlistu. Nic nebylo smazáno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-38"/>
+        <location line="+39"/>
+        <source>Mažu playlist…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-53"/>
+        <source>Ověřuji smazání…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+118"/>
+        <source>Nelze načíst údaje vlastního playlistu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám údaje playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Vyplň název a nepoužívej znaky &lt; a &gt;.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+5"/>
+        <source>Ukládám údaje…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Údaje playlistu uloženy.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+4"/>
+        <source>Uložení se nepodařilo potvrdit. Zavři formulář a zkontroluj údaje před dalším pokusem.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Nelze ověřit vlastnictví playlistu. Nic nebylo změněno.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Ukládám údaje playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+69"/>
+        <source>Načítám vlastní playlisty…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+24"/>
+        <source>Vytvořen playlist: {title}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Skladba přidána do playlistu: {title}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Playlist {title} byl vytvořen.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>YT Music potvrdilo přidání skladby do playlistu {title}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source> Obsah zatím nelze ověřit. Můžeš jej zkusit načíst znovu nebo zkontrolovat ve webovém YTM.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Vytvořen playlist: {title}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Uloženo do playlistu: {title}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source> Přidáno skladeb: {added}. Vynecháno duplicit: {skipped}.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Playlist už není vlastní nebo ho nelze upravovat.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+11"/>
+        <source>Skladba už v playlistu {title} je. Nic se nepřidalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Všechny vybrané skladby už v playlistu {title} jsou. Nic se nepřidalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+17"/>
+        <source>Výsledek zápisu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlist ve webovém YTM.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Playlist se nepodařilo načíst. Zkus to prosím znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <location line="+2"/>
+        <source>Ověřuji obsah playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+34"/>
+        <source>Ukládám…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Ukládám skladbu do playlistu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+32"/>
+        <source>YT Music pro tuto skladbu neposkytlo ovládání knihovny.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+21"/>
+        <source>Zjišťuji stav knihovny…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+50"/>
+        <source>Ukládám změnu…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>YT Music zatím nevrátilo požadovaný stav.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Požadavek byl odeslán, ale změnu se nepodařilo ověřit. Znovu otevři nabídku skladby pro načtení stavu. </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Ukládám změnu knihovny…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+91"/>
+        <location line="+2713"/>
         <source>Další část mixu zatím není dostupná · zkusím znovu za 30 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2676"/>
-        <source>Mix doplněn · +{added} skladeb · celkem {total}</source>
+        <location line="-2657"/>
+        <source>Míchám frontu…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+38"/>
+        <location line="+9"/>
         <source>Frontu se nepodařilo zamíchat</source>
         <translation type="unfinished"></translation>
     </message>
@@ -157,7 +744,18 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+66"/>
+        <location line="+50"/>
+        <source>YouTube Music nevrátilo přehratelný mix této kolekce.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <location line="+52"/>
+        <source>Načítám mix · {title}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-42"/>
         <source>Mix kolekce se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
@@ -167,17 +765,57 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+82"/>
+        <location line="+52"/>
+        <source>Interpret nemá načtené přehratelné skladby.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>YouTube Music nevrátilo přehratelnou frontu interpreta.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Načítám mix · {artist}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám náhodné pořadí · {artist}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
         <source>Frontu interpreta se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+85"/>
+        <location line="+68"/>
+        <source>YouTube Music nevrátilo přehratelnou frontu oblíbené hudby.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Načítám oblíbenou hudbu · mix…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám oblíbenou hudbu · náhodně…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
         <source>Frontu oblíbené hudby se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+89"/>
+        <location line="+25"/>
+        <source>YouTube Music nevrátilo žádnou přehratelnou náhodnou frontu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+64"/>
         <source>Další část mixu se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
@@ -187,47 +825,108 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+58"/>
+        <location line="+47"/>
+        <location line="+54"/>
+        <source>Připravuji náhodné pořadí · {title}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-43"/>
         <source>Náhodné pořadí se nepodařilo připravit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+52"/>
+        <location line="+36"/>
+        <source>Kolekce neobsahuje přehratelné skladby.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+16"/>
         <source>Náhodné pořadí se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+29"/>
-        <source>Náhodně · {title} · {count} skladeb</source>
+        <location line="+58"/>
+        <source>YouTube Music nevrátilo žádné další skladby pro mix.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+43"/>
+        <location line="+6"/>
+        <source>Vytvářím Mix · {title}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
         <source>Mix se nepodařilo vytvořit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+30"/>
-        <source>{title} · {count} skladeb</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+91"/>
-        <source>Přidáno jako další · {count} skladeb</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+0"/>
-        <source>Přidáno do fronty · {count} skladeb</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+83"/>
+        <location line="+204"/>
         <source>Přehrávání zastaveno</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+258"/>
+        <location line="+16"/>
+        <source>Ovládání přehrávače selhalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+13"/>
+        <source>Ovládání přehrávače selhalo: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+47"/>
+        <source>Posun ve skladbě selhal.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+8"/>
+        <source>Posun ve skladbě selhal: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+30"/>
+        <source>Nastavení hlasitosti selhalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Nastavení hlasitosti selhalo: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+15"/>
+        <source>Ztlumení selhalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+56"/>
+        <source>Vyhledávání se nepodařilo dokončit kvůli chybě spojení s YouTube Music. Zkontroluj připojení a zkus hledání znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Nepodařilo se spojit s YouTube Music. Zkontroluj připojení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Vyhledávání se nepodařilo dokončit. Zkus to prosím znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Profily se nepodařilo načíst. Zkus to prosím znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Detail se nepodařilo načíst. Zkus to prosím znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+55"/>
         <source>Připojeno · {name}</source>
         <translation type="unfinished"></translation>
     </message>
@@ -298,35 +997,24 @@
     </message>
     <message>
         <location line="+10"/>
-        <location line="+807"/>
+        <location line="+815"/>
         <source>A–Z</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-806"/>
-        <location line="+807"/>
+        <location line="-814"/>
+        <location line="+815"/>
         <source>Z–A</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-806"/>
-        <location line="+807"/>
+        <location line="-814"/>
+        <location line="+815"/>
         <source>Výchozí YTM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-805"/>
-        <location line="+807"/>
-        <source>Oblíbená hudba · {count} skladeb · {order}</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="-802"/>
-        <source>Historie · {count} položek</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+5"/>
+        <location line="-803"/>
         <source>Playlisty · {count}</source>
         <translation type="unfinished"></translation>
     </message>
@@ -362,13 +1050,13 @@
     </message>
     <message>
         <location line="+1"/>
-        <location line="+589"/>
+        <location line="+597"/>
         <location line="+9"/>
         <source>Nahrané skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-597"/>
+        <location line="-605"/>
         <source>Nahraná alba</source>
         <translation type="unfinished"></translation>
     </message>
@@ -379,11 +1067,12 @@
     </message>
     <message>
         <location line="+1"/>
+        <location line="+1154"/>
         <source>Knihovna</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="-1153"/>
         <source>{label} · {count}</source>
         <translation type="unfinished"></translation>
     </message>
@@ -393,22 +1082,17 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+28"/>
-        <source>položek</source>
+        <location line="+74"/>
+        <source>Playlisty se nepodařilo načíst. Zkus to prosím znovu.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+0"/>
-        <source>skladeb</source>
+        <location line="+2"/>
+        <source>Operaci se nepodařilo dokončit. Zkontroluj stav playlistu ve webovém YTM.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
-        <source>{title} · {count} {label}</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+54"/>
+        <location line="+10"/>
         <source>Změnu knihovny se nepodařilo uložit nebo ověřit</source>
         <translation type="unfinished"></translation>
     </message>
@@ -423,27 +1107,57 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+3"/>
+        <location line="+1"/>
+        <source>Připojení k YouTube Music se nepodařilo ověřit. Zkontroluj připojení k síti, případně použij tlačítko Účet → Přihlásit / obnovit přihlášení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+2"/>
         <source>Chyba při načítání</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+343"/>
+        <location line="+5"/>
+        <source>YouTube Music backend ještě není připojený.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+133"/>
+        <source>{count} skladeb</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+210"/>
         <source>Nejsi přihlášený · použij tlačítko Účet</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+140"/>
+        <location line="+17"/>
+        <source>Připojuji k YouTube Music…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Načítám mixy pro vás…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+52"/>
+        <source>Načítám: {title}…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+49"/>
         <source>{title} se nepodařilo načíst celé</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+9"/>
-        <source>{title} · {count} položek načteno</source>
+        <location line="+43"/>
+        <source>Načítám oblíbenou hudbu…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+64"/>
+        <location line="+30"/>
         <source>Oblíbenou hudbu se nepodařilo načíst</source>
         <translation type="unfinished"></translation>
     </message>
@@ -452,64 +1166,260 @@
         <source>Oblíbená hudba · první blok načten</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <location line="+114"/>
+        <source>Načítám historii…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+317"/>
+        <source>Výsledek typu {detail} zatím neumím otevřít.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+141"/>
+        <source>První blok playlistu se nepodařilo načíst ({error}).</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-338"/>
+        <source>Album nemá browseId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Interpret nemá browseId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+38"/>
+        <source>Profil nemá browseId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+19"/>
+        <source>Podcast nemá podcastId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Nahrané album nemá browseId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+10"/>
+        <source>Nahraný interpret nemá browseId.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+27"/>
+        <source>Detail typu {detail} zatím není podporovaný.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+20"/>
+        <location line="+160"/>
+        <location line="+65"/>
+        <location line="+19"/>
+        <source>Načítám: {title}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-489"/>
+        <location line="+253"/>
+        <source>Načítám playlisty…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-2346"/>
+        <source>Mix doplněn · +{added} · celkem {total}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+569"/>
+        <source>Náhodně · {title} · {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+73"/>
+        <location line="+691"/>
+        <source>{title} · {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-600"/>
+        <source>Přidáno jako další · {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+0"/>
+        <source>Přidáno do fronty · {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+38"/>
+        <source> Zkontroluj spojení s Castem.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+6"/>
+        <source>Zastavení přehrávání selhalo.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+34"/>
+        <source>Zastavení přehrávání selhalo: {exc}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+450"/>
+        <location line="+815"/>
+        <source>Oblíbená hudba · {count} · {order}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="-810"/>
+        <source>Historie · Počet položek: {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+65"/>
+        <source>{title} · Počet položek: {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+568"/>
+        <source>{title} · Počet načtených položek: {count}</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+195"/>
+        <source>Načítám skladby…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám alba…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám interprety…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám profily…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám podcasty…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám nahrané skladby…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám nahraná alba…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítám nahrané interprety…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+350"/>
+        <source>Nahrané soubory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+22"/>
+        <source>Hledám · {scope_label}: {query}</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CastDiscovery</name>
+    <message>
+        <location filename="../felismusic_gui/cast_discovery.py" line="+18"/>
+        <source>Cast zařízení</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+67"/>
+        <source>Cast zařízení se nepodařilo vyhledat. Zkontroluj síť a zkus hledání znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>Login</name>
+    <message>
+        <location filename="../felismusic_gui/login.py" line="+31"/>
+        <source>Uložené přihlášení se nepodařilo celé odstranit. Zavři přihlašovací okno prohlížeče a zkus odhlášení znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Main</name>
     <message>
         <location filename="../Main.qml" line="+19"/>
         <location line="+122"/>
-        <location line="+81"/>
-        <location line="+1824"/>
+        <location line="+103"/>
+        <location line="+1825"/>
         <location line="+124"/>
         <location line="+3"/>
         <source>Playlisty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2056"/>
-        <location line="+2129"/>
+        <location line="-2079"/>
+        <location line="+2152"/>
         <source>Nahraná alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2129"/>
-        <location line="+2136"/>
+        <location line="-2152"/>
+        <location line="+2159"/>
         <source>Nahraní interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2135"/>
-        <location line="+2142"/>
-        <location line="+135"/>
+        <location line="-2158"/>
+        <location line="+2165"/>
         <source>Nahrané skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2271"/>
-        <location line="+2907"/>
+        <location line="-2159"/>
+        <location line="+2931"/>
         <source>Výchozí YTM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2907"/>
+        <location line="-2931"/>
         <location line="+1"/>
-        <location line="+2001"/>
+        <location line="+2024"/>
         <location line="+2"/>
-        <location line="+903"/>
+        <location line="+904"/>
         <source>A–Z</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2907"/>
+        <location line="-2931"/>
         <location line="+1"/>
-        <location line="+2001"/>
+        <location line="+2024"/>
         <location line="+2"/>
-        <location line="+903"/>
+        <location line="+904"/>
         <source>Z–A</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2906"/>
+        <location line="-2930"/>
         <source>Nedávno přidané</source>
         <translation type="unfinished"></translation>
     </message>
@@ -523,19 +1433,18 @@
     <message>
         <location line="-2"/>
         <location line="+2"/>
-        <location line="+1957"/>
+        <location line="+1980"/>
         <location line="+6"/>
         <location line="+73"/>
         <location line="+3"/>
         <location line="+78"/>
-        <location line="+138"/>
         <source>Skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2257"/>
+        <location line="-2142"/>
         <location line="+2"/>
-        <location line="+1964"/>
+        <location line="+1987"/>
         <location line="+78"/>
         <location line="+3"/>
         <location line="+58"/>
@@ -543,41 +1452,68 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2105"/>
+        <location line="-2128"/>
         <location line="+2"/>
-        <location line="+2048"/>
+        <location line="+2071"/>
         <location line="+3"/>
         <location line="+59"/>
         <source>Interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2110"/>
-        <location line="+1906"/>
+        <location line="-2133"/>
+        <location line="+1929"/>
         <source>Videa</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1905"/>
-        <location line="+2053"/>
+        <location line="-1928"/>
+        <location line="+2076"/>
         <location line="+3"/>
         <source>Profily</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2056"/>
-        <location line="+2059"/>
+        <location line="-2079"/>
+        <location line="+2082"/>
         <location line="+3"/>
         <source>Podcasty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2062"/>
+        <location line="-2085"/>
         <source>Epizody</source>
         <translation type="unfinished"></translation>
     </message>
+    <message numerus="yes">
+        <location line="+28"/>
+        <source>%n skladba</source>
+        <translation>
+            <numerusform>%n skladba</numerusform>
+            <numerusform>%n skladby</numerusform>
+            <numerusform>%n skladeb</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+7"/>
+        <source>%n položka</source>
+        <translation>
+            <numerusform>%n položka</numerusform>
+            <numerusform>%n položky</numerusform>
+            <numerusform>%n položek</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location line="+7"/>
+        <source>Vše načteno · %n skladba</source>
+        <translation>
+            <numerusform>Vše načteno · %n skladba</numerusform>
+            <numerusform>Vše načteno · %n skladby</numerusform>
+            <numerusform>Vše načteno · %n skladeb</numerusform>
+        </translation>
+    </message>
     <message>
-        <location line="+159"/>
+        <location line="+139"/>
         <source>Zvukové výstupy</source>
         <translation type="unfinished"></translation>
     </message>
@@ -830,7 +1766,7 @@
     </message>
     <message>
         <location line="+8"/>
-        <source>Odebrat %1 vybraných skladeb z playlistu „%2“?</source>
+        <source>Odebrat vybrané skladby z playlistu „%2“? Počet: %1.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1007,41 +1943,41 @@
     </message>
     <message>
         <location line="+47"/>
-        <location line="+419"/>
+        <location line="+420"/>
         <location line="+16"/>
         <location line="+16"/>
         <location line="+386"/>
-        <location line="+964"/>
+        <location line="+965"/>
         <source>Přehrát jako další</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1795"/>
-        <location line="+421"/>
+        <location line="-1797"/>
+        <location line="+422"/>
         <location line="+16"/>
         <location line="+16"/>
         <location line="+386"/>
-        <location line="+961"/>
+        <location line="+962"/>
         <source>Přidat na konec fronty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1794"/>
-        <location line="+1799"/>
+        <location line="-1796"/>
+        <location line="+1801"/>
         <source>Přidat do playlistu…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1790"/>
-        <location line="+331"/>
+        <location line="-1792"/>
+        <location line="+332"/>
         <location line="+16"/>
         <location line="+8"/>
-        <location line="+1152"/>
+        <location line="+1153"/>
         <source>Spustit mix</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1499"/>
+        <location line="-1501"/>
         <source>Otevřít nahrané album</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1067,18 +2003,18 @@
     </message>
     <message>
         <location line="+14"/>
-        <location line="+238"/>
+        <location line="+239"/>
         <source>Kopírovat odkaz</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-231"/>
-        <location line="+238"/>
+        <location line="-232"/>
+        <location line="+239"/>
         <source>Otevřít v prohlížeči</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-231"/>
+        <location line="-232"/>
         <source>Hodnocení…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1140,7 +2076,7 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+62"/>
+        <location line="+63"/>
         <source>Možnosti kolekce</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1148,12 +2084,12 @@
         <location line="+45"/>
         <location line="+17"/>
         <location line="+469"/>
-        <location line="+693"/>
+        <location line="+694"/>
         <source>Přehrát náhodně</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1137"/>
+        <location line="-1138"/>
         <source>Odebrat album z knihovny</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1214,19 +2150,24 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+2"/>
-        <location line="+1059"/>
+        <location line="+1"/>
+        <source>Dynamický mix · Počet načtených skladeb: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <location line="+1060"/>
         <source>Načítám další skladby…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1057"/>
-        <location line="+1059"/>
+        <location line="-1058"/>
+        <location line="+1060"/>
         <source>Načítání se nepodařilo dokončit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1049"/>
+        <location line="-1050"/>
         <source>Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1257,7 +2198,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-46"/>
+        <location line="-70"/>
+        <source>Počet načtených položek: %1. Přehrávání používá načtená videa.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+24"/>
         <source>Všechny skladby</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1289,13 +2235,13 @@
     </message>
     <message>
         <location line="+29"/>
-        <location line="+467"/>
+        <location line="+468"/>
         <location line="+129"/>
         <source>Knihovna</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-549"/>
+        <location line="-550"/>
         <source>Nahrané</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1315,7 +2261,23 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+159"/>
+        <location line="+95"/>
+        <source>Načítám další skladby… · %1 načteno
+Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akce nad celým seznamem budou dostupné po dokončení.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+3"/>
+        <source>Načítání se nepodařilo dokončit. Seznam není úplný. Otevři Skladby znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source>Načítání se nepodařilo dokončit. Seznam není úplný. Otevři Nahrané skladby znovu.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+61"/>
         <source>Možnosti playlistů</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1356,7 +2318,12 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-496"/>
+        <location line="-541"/>
+        <source>Desktop GUI · %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+45"/>
         <source>Připojeno · %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1416,7 +2383,27 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+106"/>
+        <location line="+96"/>
+        <source> · Čekám na další skladby…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source> · Načítám další skladby…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source> · Seznam není úplný</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+1"/>
+        <source> · Dynamický mix</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location line="+7"/>
         <source>Zamíchat</source>
         <translation type="unfinished"></translation>
     </message>

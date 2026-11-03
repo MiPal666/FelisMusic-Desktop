@@ -25,14 +25,17 @@ class StatusMessageTranslationTests(support.AudioPlaybackTestCase):
 <message><source>Přehrávám · {title}</source><translation>Now playing: {title}</translation></message>
 <message><source>Připravuji audio · {title}…</source><translation>Loading {title}…</translation></message>
 <message><source>Výsledků hledání · {count}</source><translation>{count} search results</translation></message>
-<message><source>Přidáno jako další · {count} skladeb</source><translation>Queued next: {count} tracks</translation></message>
-<message><source>Přidáno do fronty · {count} skladeb</source><translation>Appended {count} tracks</translation></message>
+<message numerus="yes"><source>%n skladba</source><translation><numerusform>%n track</numerusform><numerusform>%n tracks</numerusform></translation></message>
+<message><source>Přidáno jako další · {count}</source><translation>Queued next: {count}</translation></message>
+<message><source>Přidáno do fronty · {count}</source><translation>Appended {count}</translation></message>
 <message><source>Přehrávání zastaveno</source><translation>Playback stopped</translation></message>
 <message><source>Playlisty · {count}</source><translation>{count} playlists</translation></message>
 <message><source>{label} · {count}</source><translation>{count} items in {label}</translation></message>
 <message><source>Knihovna</source><translation>Library</translation></message>
 <message><source>Skladby</source><translation>Songs</translation></message>
 <message><source>Fronta zamíchána · aktuální skladba pokračuje</source><translation>Queue shuffled; current track continues</translation></message>
+<message><source>Vyber prohlížeč pro samostatné přihlašovací okno.</source><translation>Choose a browser for sign-in.</translation></message>
+<message><source>Vyhledávání se nepodařilo dokončit. Zkus to prosím znovu.</source><translation>Search failed. Please try again.</translation></message>
 </context></TS>''')
         subprocess.run([compiler, str(source), '-qm', str(source.with_suffix('.qm'))],
                        check=True, stdout=subprocess.DEVNULL)
@@ -85,10 +88,10 @@ class StatusMessageTranslationTests(support.AudioPlaybackTestCase):
         queue = self.b._queue; played = list(self.played)
         self.b._library_items_model.set_items([dict(kind='song', videoId='C', title='Knihovna {count}')])
         self.assertTrue(self.b.enqueueFrom('library', 0, True, {}))
-        self.assertEqual(self.b.status, 'Queued next: 1 tracks')
+        self.assertEqual(self.b.status, 'Queued next: 1 track')
         self.assertEqual([x['videoId'] for x in queue.tracks], ['A', 'C', 'B'])
         self.assertTrue(self.b.enqueueFrom('library', 0, False, {}))
-        self.assertEqual(self.b.status, 'Appended 1 tracks')
+        self.assertEqual(self.b.status, 'Appended 1 track')
         self.assertEqual([x['videoId'] for x in queue.tracks], ['A', 'C', 'B', 'C'])
         self.assertEqual(self.b.playerPosition, 42); self.assertEqual(self.played, played)
         self.assertIs(self.b._queue, queue)
@@ -98,3 +101,20 @@ class StatusMessageTranslationTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.status, '1 items in Songs')
         self.assertEqual(self.b.libraryItemsModel.snapshot()[0]['title'], 'Knihovna')
         self.assertFalse(self.errors)
+
+    def test_login_prompt_translates_without_changing_browser_id_or_name(self):
+        browser = dict(id='browser-id', name='Knihovna %1')
+        self.b._apply_login_result(self.b._login_generation, 'browsers', [browser])
+        self.assertEqual(self.b.loginState['phase'], 'choose')
+        self.assertEqual(self.b.loginState['message'], 'Choose a browser for sign-in.')
+        self.assertEqual(self.b.loginState['browsers'], [browser])
+
+    def test_worker_search_failure_translates_without_exposing_response(self):
+        api = Mock()
+        self.b._ytmusic = api
+        api.search.side_effect = ValueError('private response')
+        self.b.search('Knihovna %1', 'songs', 'catalog')
+        self.until(lambda: not self.b.busy)
+        self.assertEqual(self.errors, ['Search failed. Please try again.'])
+        self.assertTrue(self.b.statusIsError)
+        self.assertEqual(api.search.call_args.args, ('Knihovna %1',))

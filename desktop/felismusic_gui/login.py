@@ -5,6 +5,8 @@ import os
 import shutil
 import tempfile
 import time
+
+from PySide6.QtCore import QCoreApplication
 from ytmusicapi import YTMusic
 from .diagnostics import instrument_ytmusic
 
@@ -26,7 +28,7 @@ def remove_login(manager, legacy_file):
     except OSError:
         failed = True
     if failed:
-        raise RuntimeError("Uložené přihlášení se nepodařilo celé odstranit. Zavři přihlašovací okno prohlížeče a zkus odhlášení znovu.")
+        raise RuntimeError(QCoreApplication.translate("Login", "Uložené přihlášení se nepodařilo celé odstranit. Zavři přihlašovací okno prohlížeče a zkus odhlášení znovu."))
 
 
 class LoginCandidate:

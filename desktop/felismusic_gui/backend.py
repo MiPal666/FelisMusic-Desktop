@@ -274,7 +274,7 @@ class BackendBridge(QObject):
         self._cast_generation = 0
         self._cast_devices = []
         self._cast_scanning = False
-        self._cast_message = "Vyhledávání spustíš tlačítkem Vyhledat zařízení."
+        self._cast_message = QCoreApplication.translate("BackendBridge", "Vyhledávání spustíš tlačítkem Vyhledat zařízení.")
         self._castDevicesReady.connect(self._apply_cast_devices, Qt.ConnectionType.QueuedConnection)
         self._outputSwitchReady.connect(self._apply_output_switch, Qt.ConnectionType.QueuedConnection)
         self._login_state = {"phase": "closed", "browsers": [], "message": ""}
@@ -464,7 +464,7 @@ class BackendBridge(QObject):
             rows.append({"id": current_id, "name": self._cast_output.cast_info.friendly_name or "Cast",
                          "kind": self._cast_output.cast_info.cast_type})
         return {"scanning": self._cast_scanning,
-                "message": "Spojení s Castem bylo přerušeno. Vyber výstup a potom spusť přehrávání."
+                "message": QCoreApplication.translate("BackendBridge", "Spojení s Castem bylo přerušeno. Vyber výstup a potom spusť přehrávání.")
                            if self._cast_lost else self._cast_message,
                 "disconnected": self._cast_lost,
                 "canReconnect": self._cast_lost and any(row["id"] == current_id for row in self._cast_devices),
@@ -544,7 +544,7 @@ class BackendBridge(QObject):
             if self._cast_output is None:
                 return False
             if self._local_output is None:
-                self.errorOccurred.emit("Místní GStreamer není dostupný. Návrat na toto zařízení není možný.")
+                self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Místní GStreamer není dostupný. Návrat na toto zařízení není možný."))
                 return False
         elif (self._cast_discovery is None
               or (self._cast_output is not None and not self._cast_lost
@@ -653,7 +653,7 @@ class BackendBridge(QObject):
         if self._closing.is_set() or self._cast_scanning:
             return False
         self._cast_scanning = True
-        self._cast_message = "Hledám Cast zařízení a skupiny…"
+        self._cast_message = QCoreApplication.translate("BackendBridge", "Hledám Cast zařízení a skupiny…")
         self.castDevicesChanged.emit()
         if self._cast_discovery is not None and self._cast_discovery.thread.is_alive():
             self._cast_discovery.refresh()
@@ -665,7 +665,7 @@ class BackendBridge(QObject):
                     lambda rows, scanning, error: self._castDevicesReady.emit(generation, rows, scanning, error))
                 self._cast_discovery.start()
             except Exception:
-                self._apply_cast_devices(generation, [], False, "Cast zařízení se nepodařilo vyhledat. Zkus hledání znovu.")
+                self._apply_cast_devices(generation, [], False, QCoreApplication.translate("BackendBridge", "Cast zařízení se nepodařilo vyhledat. Zkus hledání znovu."))
         return True
 
     @Slot(int, object, bool, str)
@@ -676,8 +676,8 @@ class BackendBridge(QObject):
         self._cast_scanning = scanning
         if error:
             self._cast_discovery = None
-        self._cast_message = error or ("Hledám Cast zařízení a skupiny…" if scanning else
-            f"Nalezeno Cast zařízení a skupin: {len(rows)}" if rows else "Žádná Cast zařízení ani skupiny nebyly nalezeny.")
+        self._cast_message = error or (QCoreApplication.translate("BackendBridge", "Hledám Cast zařízení a skupiny…") if scanning else
+            QCoreApplication.translate("BackendBridge", "Nalezeno Cast zařízení a skupin: {count}").format(count=len(rows)) if rows else QCoreApplication.translate("BackendBridge", "Žádná Cast zařízení ani skupiny nebyly nalezeny."))
         self.castDevicesChanged.emit()
 
     @Property("QVariantMap", notify=loginChanged)
@@ -699,10 +699,10 @@ class BackendBridge(QObject):
         if self._closing.is_set() or self._busy or self._output_switching:
             return False
         if self._account_jobs_pending():
-            self.errorOccurred.emit("Před odhlášením nech dokončit načítání seznamů a změny účtu.")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Před odhlášením nech dokončit načítání seznamů a změny účtu."))
             return False
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
-            self.errorOccurred.emit("Před odhlášením zavři přihlašovací okno prohlížeče.")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Před odhlášením zavři přihlašovací okno prohlížeče."))
             return False
         if self._active_output() is not None and self.playerHasTrack and self.stopPlayback() is False:
             return False
@@ -714,9 +714,9 @@ class BackendBridge(QObject):
         self._account_name = "YouTube Music"
         self.accountNameChanged.emit()
         self._reset_account_views()
-        self._set_login_state("closed", "Odhlašuji účet…", browsers=[], canFinish=False)
+        self._set_login_state("closed", QCoreApplication.translate("BackendBridge", "Odhlašuji účet…"), browsers=[], canFinish=False)
         manager, legacy_file = core.AUTH, core.LEGACY_AUTH_FILE
-        self._submit("logout", "Odstraňuji uložené přihlášení…", lambda: remove_login(manager, legacy_file))
+        self._submit("logout", QCoreApplication.translate("BackendBridge", "Odstraňuji uložené přihlášení…"), lambda: remove_login(manager, legacy_file))
         return True
 
     @Slot(result=bool)
@@ -725,14 +725,14 @@ class BackendBridge(QObject):
             return False
         if (self._playback_transitioning or self._player_state in ("playing", "paused")
                 or self._account_jobs_pending()):
-            message = "Před přihlášením zastav poslech tlačítkem Stop a nech dokončit načítání seznamů a změny účtu."
+            message = QCoreApplication.translate("BackendBridge", "Před přihlášením zastav poslech tlačítkem Stop a nech dokončit načítání seznamů a změny účtu.")
             self._set_status(message)
             self.errorOccurred.emit(message)
             return False
         self._login_generation += 1
         self._login_cancel = Event()
         self._set_busy(True)
-        self._set_login_state("detecting", "Hledám podporované prohlížeče…", browsers=[], canFinish=False)
+        self._set_login_state("detecting", QCoreApplication.translate("BackendBridge", "Hledám podporované prohlížeče…"), browsers=[], canFinish=False)
         self.loginRequested.emit()
         generation = self._login_generation
         def work():
@@ -763,20 +763,20 @@ class BackendBridge(QObject):
             process.errorOccurred.connect(lambda error: self._login_browser_error(generation, error))
             self._login_process = process
             self._login_backend = browser
-            self._set_login_state("browser", "Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno.", canFinish=False)
+            self._set_login_state("browser", QCoreApplication.translate("BackendBridge", "Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno."), canFinish=False)
             process.start(command[0], command[1:])
         except Exception:
-            self._set_login_state("error", "Přihlašovací prohlížeč se nepodařilo spustit.")
+            self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlašovací prohlížeč se nepodařilo spustit."))
             return False
         return True
 
     def _login_browser_finished(self, generation):
         if generation == self._login_generation and self._login_state["phase"] == "browser":
-            self._set_login_state("browser", "Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení.", canFinish=True)
+            self._set_login_state("browser", QCoreApplication.translate("BackendBridge", "Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení."), canFinish=True)
 
     def _login_browser_error(self, generation, error):
         if generation == self._login_generation and error == QProcess.ProcessError.FailedToStart:
-            self._set_login_state("error", "Přihlašovací prohlížeč se nepodařilo spustit.")
+            self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlašovací prohlížeč se nepodařilo spustit."))
 
     @Slot(result=bool)
     def finishLogin(self):
@@ -784,7 +784,7 @@ class BackendBridge(QObject):
                 or not self._login_state.get("canFinish")):
             return False
         generation, cancelled, browser = self._login_generation, self._login_cancel, self._login_backend
-        self._set_login_state("verifying", "Ověřuji účet YouTube Music…", canFinish=False)
+        self._set_login_state("verifying", QCoreApplication.translate("BackendBridge", "Ověřuji účet YouTube Music…"), canFinish=False)
         def work():
             candidate = None
             try:
@@ -810,7 +810,7 @@ class BackendBridge(QObject):
         self._login_cancel.set()
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
             self._login_process.terminate()
-        self._set_login_state("closed", "Přihlášení zrušeno", canFinish=False)
+        self._set_login_state("closed", QCoreApplication.translate("BackendBridge", "Přihlášení zrušeno"), canFinish=False)
         self._set_busy(False)
         self._set_status(QCoreApplication.translate("BackendBridge", "Přihlášení zrušeno · dosavadní účet zachován"))
 
@@ -823,21 +823,21 @@ class BackendBridge(QObject):
         if stage == "browsers":
             self._login_browsers = {x["id"]: x for x in result}
             self._set_login_state("choose" if result else "error",
-                "Vyber prohlížeč pro samostatné přihlašovací okno." if result else
-                "Nenašla jsem podporovaný prohlížeč. Nainstaluj Firefox, Chromium, Chrome, Brave, Vivaldi nebo Edge.",
+                QCoreApplication.translate("BackendBridge", "Vyber prohlížeč pro samostatné přihlašovací okno.") if result else
+                QCoreApplication.translate("BackendBridge", "Nenašla jsem podporovaný prohlížeč. Nainstaluj Firefox, Chromium, Chrome, Brave, Vivaldi nebo Edge."),
                 browsers=[{"id": x["id"], "name": x["name"]} for x in result])
         elif stage == "error":
-            self._set_login_state("error", "Přihlášení se nepodařilo ověřit. Zavři celé přihlašovací okno a zkus se přihlásit znovu. Dosavadní účet zůstává zachován.")
+            self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlášení se nepodařilo ověřit. Zavři celé přihlašovací okno a zkus se přihlásit znovu. Dosavadní účet zůstává zachován."))
         elif stage == "verified":
             try:
                 data = result.publish()
             except Exception:
-                self._set_login_state("error", "Přihlášení se nepodařilo uložit. Zkontroluj místo na disku a zkus to znovu.")
+                self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlášení se nepodařilo uložit. Zkontroluj místo na disku a zkus to znovu."))
                 return
             finally:
                 result.close()
             self._reset_account_views()
-            self._set_login_state("success", "Přihlášení ověřeno a uloženo")
+            self._set_login_state("success", QCoreApplication.translate("BackendBridge", "Přihlášení ověřeno a uloženo"))
             self._apply_result("initialize", data)
 
     def _reset_account_views(self):
@@ -1187,28 +1187,28 @@ class BackendBridge(QObject):
             data = load_catalog_album(api, browse_id)
             fresh = data.get("_albumLibraryControls")
             if not fresh or fresh["playlistId"] != controls["playlistId"]:
-                raise RuntimeError("Nelze ověřit ovládání knihovny tohoto alba. Otevři album znovu.")
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nelze ověřit ovládání knihovny tohoto alba. Otevři album znovu."))
             if fresh["inLibrary"] != wanted:
                 try:
                     response = api.rate_playlist(fresh["playlistId"],
                         core.LikeStatus.LIKE if wanted else core.LikeStatus.INDIFFERENT)
                     if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
-                        raise RuntimeError("YouTube Music nepotvrdilo změnu.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nepotvrdilo změnu."))
                     data = load_catalog_album(api, browse_id)
                     fresh = data.get("_albumLibraryControls")
                     if not fresh or fresh["playlistId"] != controls["playlistId"] or fresh["inLibrary"] != wanted:
-                        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music zatím nevrátilo požadovaný stav."))
                 except Exception as exc:
-                    raise RuntimeError("Změnu knihovny se nepodařilo ověřit. Otevři album znovu a zkontroluj stav. " + str(exc)) from exc
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Změnu knihovny se nepodařilo ověřit. Otevři album znovu a zkontroluj stav. ") + str(exc)) from exc
             warning = ""
             try:
                 albums = [self._album_item(item) for item in api.get_library_albums(
                     limit=core.LIBRARY_LIMIT, order="recently_added") or []]
             except Exception:
                 albums = None
-                warning = " · Přehled Alb se nepodařilo obnovit, otevři sekci Alba znovu."
+                warning = QCoreApplication.translate("BackendBridge", " · Přehled Alb se nepodařilo obnovit, otevři sekci Alba znovu.")
             return {"browseId": browse_id, "controls": fresh, "albums": albums, "warning": warning}
-        self._submit("album_library_action", "Ukládám album v knihovně…", task)
+        self._submit("album_library_action", QCoreApplication.translate("BackendBridge", "Ukládám album v knihovně…"), task)
         return True
 
     @Property(bool, notify=detailTitleChanged)
@@ -1235,26 +1235,26 @@ class BackendBridge(QObject):
             data = load_library_playlist(api, playlist_id)
             fresh = data.get("_playlistLibraryControls")
             if not fresh:
-                raise RuntimeError("Nelze ověřit ovládání knihovny tohoto playlistu. Otevři playlist znovu.")
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nelze ověřit ovládání knihovny tohoto playlistu. Otevři playlist znovu."))
             if fresh["inLibrary"] != wanted:
                 try:
                     response = api.rate_playlist(playlist_id,
                         core.LikeStatus.LIKE if wanted else core.LikeStatus.INDIFFERENT)
                     if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
-                        raise RuntimeError("YouTube Music nepotvrdilo změnu.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nepotvrdilo změnu."))
                     fresh = load_library_playlist(api, playlist_id).get("_playlistLibraryControls")
                     if not fresh or fresh["inLibrary"] != wanted:
-                        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music zatím nevrátilo požadovaný stav."))
                 except Exception as exc:
-                    raise RuntimeError("Změnu knihovny se nepodařilo ověřit. Otevři playlist znovu a zkontroluj stav. " + str(exc)) from exc
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Změnu knihovny se nepodařilo ověřit. Otevři playlist znovu a zkontroluj stav. ") + str(exc)) from exc
             warning = ""
             try:
                 items = [self._playlist(item) for item in api.get_library_playlists(limit=500) or []]
             except Exception:
                 items = None
-                warning = " · Přehled Playlistů se nepodařilo obnovit, otevři sekci Playlisty znovu."
+                warning = QCoreApplication.translate("BackendBridge", " · Přehled Playlistů se nepodařilo obnovit, otevři sekci Playlisty znovu.")
             return {"playlistId": playlist_id, "controls": fresh, "items": items, "warning": warning}
-        self._submit("playlist_library_action", "Ukládám playlist v knihovně…", task)
+        self._submit("playlist_library_action", QCoreApplication.translate("BackendBridge", "Ukládám playlist v knihovně…"), task)
         return True
 
     def _update_album_library_views(self, browse_id, controls, albums=None):
@@ -1302,10 +1302,10 @@ class BackendBridge(QObject):
                 channel_matches=fresh["channelId"] == channel_id if fresh else None,
                 subscribed=fresh["subscribed"] if fresh else None)
             if fresh and fresh["channelId"] != channel_id:
-                raise RuntimeError("YouTube Music vrátilo jiný kanál odběru.")
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music vrátilo jiný kanál odběru."))
             if fresh and fresh["subscribed"] == wanted:
                 return fresh
-        raise RuntimeError("YouTube Music zatím nevrátilo požadovaný stav odběru.")
+        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music zatím nevrátilo požadovaný stav odběru."))
 
     @Slot(result=bool)
     def changeArtistSubscription(self):
@@ -1325,7 +1325,7 @@ class BackendBridge(QObject):
                 channel_matches=fresh["channelId"] == channel_id if fresh else None,
                 subscribed=fresh["subscribed"] if fresh else None)
             if not fresh or fresh["channelId"] != channel_id:
-                raise RuntimeError("Nelze ověřit kanál a stav odběru. Otevři interpreta znovu.")
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nelze ověřit kanál a stav odběru. Otevři interpreta znovu."))
             if fresh["subscribed"] != wanted:
                 try:
                     self._trace_artist_subscription("write_begin", wanted=wanted)
@@ -1334,21 +1334,21 @@ class BackendBridge(QObject):
                     self._trace_artist_subscription("write_end", status=(status if status in (
                         "STATUS_SUCCEEDED", "STATUS_FAILED", "missing", "not_dict") else "other"))
                     if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
-                        raise RuntimeError("YouTube Music nepotvrdilo změnu odběru.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nepotvrdilo změnu odběru."))
                     fresh = self._verify_artist_subscription(api, browse_id, channel_id, wanted)
                 except Exception as exc:
                     self._trace_artist_subscription("failed", error=type(exc).__name__)
-                    raise RuntimeError("Změnu odběru se nepodařilo ověřit. Otevři interpreta znovu a zkontroluj stav. " + str(exc)) from exc
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Změnu odběru se nepodařilo ověřit. Otevři interpreta znovu a zkontroluj stav. ") + str(exc)) from exc
             warning = ""
             try:
                 items = [self._artist_item(item) for item in api.get_library_artists(
                     limit=core.LIBRARY_LIMIT, order="recently_added") or []]
             except Exception:
                 items = None
-                warning = " · Přehled Interpretů se nepodařilo obnovit, otevři sekci Interpreti znovu."
+                warning = QCoreApplication.translate("BackendBridge", " · Přehled Interpretů se nepodařilo obnovit, otevři sekci Interpreti znovu.")
             return {"browseId": browse_id, "channelId": channel_id, "controls": fresh,
                     "items": items, "warning": warning}
-        self._submit("artist_subscription_action", "Ukládám odběr interpreta…", task)
+        self._submit("artist_subscription_action", QCoreApplication.translate("BackendBridge", "Ukládám odběr interpreta…"), task)
         return True
 
     def _update_collection_library_views(self, kind, target, controls, items=None, channel_id=""):
@@ -1429,6 +1429,13 @@ class BackendBridge(QObject):
                 "total": total, "duration": data.get("duration") if isinstance(data.get("duration"), str) else "",
                 "thumbnail": cls._thumbnail(data, allow_video_fallback=False)}
 
+    @staticmethod
+    def _song_count_text(count):
+        translated = QCoreApplication.translate("BackendBridge", "%n skladba", None, count)
+        if translated != f"{count} skladba" or count == 1:
+            return translated
+        return f"{count} skladby" if 2 <= count <= 4 else f"{count} skladeb"
+
     @Property(str, notify=detailTitleChanged)
     def detailHeaderSummary(self):
         meta = self._detail_meta
@@ -1437,12 +1444,12 @@ class BackendBridge(QObject):
         header = meta.get("header") or {}
         rows = self._detail_tracks_model.snapshot()
         count, total = len(rows), header.get("total")
-        count_text = f"{count} " + ("skladba" if count == 1 else "skladby" if 2 <= count <= 4 else "skladeb")
+        count_text = self._song_count_text(count)
         parts = [value for value in (header.get("creator"), header.get("year")) if value]
         if not self.detailComplete:
-            parts.append(f"Načteno {count} z {total} skladeb" if total is not None and total >= count else "Načteno " + count_text)
+            parts.append(QCoreApplication.translate("BackendBridge", "Načteno {count} z {total} skladeb").format(count=count, total=total) if total is not None and total >= count else QCoreApplication.translate("BackendBridge", "Načteno {count}").format(count=count_text))
         elif total is not None and total > count:
-            parts.append(f"Dostupné: {count} z {total} skladeb")
+            parts.append(QCoreApplication.translate("BackendBridge", "Dostupné: {count} z {total} skladeb").format(count=count, total=total))
         else:
             parts.append(count_text)
         duration = header.get("duration") or ""
@@ -1451,9 +1458,9 @@ class BackendBridge(QObject):
             if all(value is not None and value > 0 for value in lengths):
                 duration = core.format_seconds(sum(lengths))
                 if total is not None and total > count:
-                    duration = "dostupných " + duration
+                    duration = QCoreApplication.translate("BackendBridge", "dostupných {duration}").format(duration=duration)
         if duration:
-            parts.append("Délka " + duration)
+            parts.append(QCoreApplication.translate("BackendBridge", "Délka {duration}").format(duration=duration))
         return " · ".join(parts)
 
     def _detail_state(self):
@@ -1629,7 +1636,7 @@ class BackendBridge(QObject):
             def task():
                 items = self._load_artist_section(self._require_ytmusic(), meta, section)
                 return {"title": title, "tracks": items, "meta": meta}
-            self._submit("detail", "Načítám celý seznam…", task)
+            self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám celý seznam…"), task)
         else:
             meta["section"] = section
             self._detail_meta = meta
@@ -1693,7 +1700,7 @@ class BackendBridge(QObject):
             def task():
                 self._load_profile_section(self._require_ytmusic(), meta, section)
                 return {"title": title, "meta": meta, "tracks": meta["sections"][section], "profileRevision": revision}
-            self._submit("detail", "Načítám profil…", task)
+            self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám profil…"), task)
         else:
             self._detail_meta = meta
             self._detail_tracks_model.set_items(meta["sections"][section])
@@ -1712,7 +1719,7 @@ class BackendBridge(QObject):
         def task():
             self._load_profile_section(self._require_ytmusic(), meta, section)
             return {"title": title, "meta": meta, "tracks": meta["sections"][section], "profileRevision": revision}
-        self._submit("detail", "Načítám další položky profilu…", task)
+        self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám další položky profilu…"), task)
 
     # ------------------------------------------------------------------
     # Local playback
@@ -2378,7 +2385,7 @@ class BackendBridge(QObject):
             try:
                 response = ytmusic.rate_song(video_id, rating)
                 if isinstance(response, dict) and response.get("status", "STATUS_SUCCEEDED") != "STATUS_SUCCEEDED":
-                    raise RuntimeError("YouTube Music nepotvrdilo změnu hodnocení.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nepotvrdilo změnu hodnocení."))
             except Exception as exc:
                 error = f"{type(exc).__name__}: {exc}"
             # Empty old status means no optimistic update to roll back.
@@ -2408,7 +2415,7 @@ class BackendBridge(QObject):
                 self.playerChanged.emit()
             self._set_status(QCoreApplication.translate("BackendBridge", "Hodnocení se nepodařilo uložit"))
             self.errorOccurred.emit(
-                "Nepodařilo se změnit hodnocení skladby:\n" + error
+                QCoreApplication.translate("BackendBridge", "Nepodařilo se změnit hodnocení skladby:\n") + error
             )
             return
 
@@ -2449,9 +2456,9 @@ class BackendBridge(QObject):
 
         if self._active_output() is None:
             self.errorOccurred.emit(
-                "Lokální GStreamer není v tomto Python prostředí dostupný.\n\n"
+                QCoreApplication.translate("BackendBridge", "Lokální GStreamer není v tomto Python prostředí dostupný.\n\n"
                 "GUI virtualenv musí být vytvořen s --system-site-packages, "
-                "aby viděl systémový PyGObject/GStreamer."
+                "aby viděl systémový PyGObject/GStreamer.")
             )
             return
 
@@ -2465,7 +2472,7 @@ class BackendBridge(QObject):
                 except Exception as exc:
                     self._playback_transitioning = False
                     self._set_player_state("idle")
-                    self.errorOccurred.emit(f"Zastavení původní skladby selhalo: {exc}")
+                    self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Zastavení původní skladby selhalo: {exc}").format(exc=exc))
                     return
         if self._prefetch_future is not None:
             self._prefetch_future.cancel()
@@ -2489,7 +2496,7 @@ class BackendBridge(QObject):
                     mc.stop(keep_output=True)
                 except Exception:
                     if not cancelled():
-                        self._playbackFailed.emit(generation, "Zastavení původní skladby na Castu selhalo.")
+                        self._playbackFailed.emit(generation, QCoreApplication.translate("BackendBridge", "Zastavení původní skladby na Castu selhalo."))
                     return
             def load(source, song, prepared):
                 url, content_type = source
@@ -2562,12 +2569,12 @@ class BackendBridge(QObject):
 
             if generation == self._playback_generation:
                 text = (
-                    ("Nepodařilo se spojit se službou pro přehrávání. "
-                     "Zkontroluj připojení a potom stiskni Play pro opakování této skladby."
+                    (QCoreApplication.translate("BackendBridge", "Nepodařilo se spojit se službou pro přehrávání. "
+                     "Zkontroluj připojení a potom stiskni Play pro opakování této skladby.")
                      if is_network_failure(last_error)
                      else f"{type(last_error).__name__}: {last_error}")
                     if last_error is not None
-                    else "Ve frontě není přehratelná skladba."
+                    else QCoreApplication.translate("BackendBridge", "Ve frontě není přehratelná skladba.")
                 )
                 self._playbackFailed.emit(generation, text)
 
@@ -2709,7 +2716,7 @@ class BackendBridge(QObject):
             self._set_player_from_queue()
         self.playerChanged.emit()
         self.errorOccurred.emit(
-            "Skladbu se nepodařilo přehrát:\n" + message
+            QCoreApplication.translate("BackendBridge", "Skladbu se nepodařilo přehrát:\n") + message
         )
 
     @Slot()
@@ -2924,10 +2931,10 @@ class BackendBridge(QObject):
             return False
         title = str(title or "").strip()
         if not title or "<" in title or ">" in title:
-            self._empty_playlist_state = dict(state, error=True, message="Vyplň název playlistu bez znaků < a >.")
+            self._empty_playlist_state = dict(state, error=True, message=QCoreApplication.translate("BackendBridge", "Vyplň název playlistu bez znaků < a >."))
             self.emptyPlaylistChanged.emit()
             return False
-        self._empty_playlist_state = dict(state, pending=True, error=False, message="Vytvářím prázdný playlist…")
+        self._empty_playlist_state = dict(state, pending=True, error=False, message=QCoreApplication.translate("BackendBridge", "Vytvářím prázdný playlist…"))
         self.emptyPlaylistChanged.emit()
         api = self._ytmusic
         def task():
@@ -2939,12 +2946,12 @@ class BackendBridge(QObject):
                     raise RuntimeError("Creation not confirmed")
                 return {"pending": False, "completed": True, "locked": True,
                         "error": False, "playlistId": playlist_id, "title": title,
-                        "message": f"Vytvořen prázdný playlist: {title}"}
+                        "message": QCoreApplication.translate("BackendBridge", "Vytvořen prázdný playlist: {title}").format(title=title)}
             except Exception as exc:
                 print(f"FelisMusic vytvoření prázdného playlistu: {type(exc).__name__}")
                 return {"pending": False, "completed": False, "locked": True, "error": True,
-                        "message": "Vytvoření playlistu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlisty ve webovém YTM."}
-        self._submit("playlist_create_empty", "Vytvářím prázdný playlist…", task)
+                        "message": QCoreApplication.translate("BackendBridge", "Vytvoření playlistu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlisty ve webovém YTM.")}
+        self._submit("playlist_create_empty", QCoreApplication.translate("BackendBridge", "Vytvářím prázdný playlist…"), task)
         return True
 
     @staticmethod
@@ -3020,13 +3027,13 @@ class BackendBridge(QObject):
                                             "header": self._collection_header(data)},
                                    "tracks": [self._track(x) for x in core.usable_tracks(tracks)
                                               if x.get("setVideoId") not in removed]},
-                        "message": "Pořadí skladby uloženo."}
+                        "message": QCoreApplication.translate("BackendBridge", "Pořadí skladby uloženo.")}
             except Exception as exc:
                 print(f"FelisMusic přesun v playlistu: {type(exc).__name__}")
                 return {"ok": False, "message": (
-                    "Přesun se nepodařilo potvrdit. Obnov playlist a zkontroluj pořadí."
-                    if attempted else "Nelze ověřit pořadí, výskyt nebo vlastnictví playlistu. Obnov seznam; nic nebylo změněno.")}
-        self._submit("playlist_move_item", "Ukládám pořadí skladby…", task)
+                    QCoreApplication.translate("BackendBridge", "Přesun se nepodařilo potvrdit. Obnov playlist a zkontroluj pořadí.")
+                    if attempted else QCoreApplication.translate("BackendBridge", "Nelze ověřit pořadí, výskyt nebo vlastnictví playlistu. Obnov seznam; nic nebylo změněno."))}
+        self._submit("playlist_move_item", QCoreApplication.translate("BackendBridge", "Ukládám pořadí skladby…"), task)
         return True
 
     def _sync_playlist_queue_order(self, detail):
@@ -3140,11 +3147,11 @@ class BackendBridge(QObject):
                     if status != "STATUS_SUCCEEDED":
                         raise RuntimeError("Removal not confirmed")
                 remaining = [x for x in tracks if x.get("setVideoId") not in removed_ids]
-                message = ("Skladba odebrána z playlistu." if present else "Položka už v playlistu není. Seznam obnoven.")
+                message = (QCoreApplication.translate("BackendBridge", "Skladba odebrána z playlistu.") if present else QCoreApplication.translate("BackendBridge", "Položka už v playlistu není. Seznam obnoven."))
                 if len(items) > 1:
-                    message = f"Odebráno skladeb z playlistu: {len(present)}."
+                    message = QCoreApplication.translate("BackendBridge", "Odebráno skladeb z playlistu: {count}.").format(count=len(present))
                     if len(present) < len(items):
-                        message += f" Již chybějící položky: {len(items) - len(present)}."
+                        message += QCoreApplication.translate("BackendBridge", " Již chybějící položky: {count}.").format(count=len(items) - len(present))
                 return {"ok": True, "playlistId": playlist_id, "setVideoIds": list(removed_ids),
                         "selectionRevision": selection_revision,
                         "card": self._playlist(dict(data, playlistId=playlist_id, count=len(remaining))),
@@ -3156,9 +3163,9 @@ class BackendBridge(QObject):
             except Exception as exc:
                 print(f"FelisMusic odebrání z playlistu: {type(exc).__name__}")
                 return {"ok": False, "message": (
-                    "Odebrání se nepodařilo potvrdit. Obnov playlist a zkontroluj jeho obsah."
-                    if attempted else "Nelze ověřit položky nebo vlastnictví playlistu. Nic nebylo změněno.")}
-        self._submit("playlist_remove_item", "Odebírám skladby z playlistu…", task)
+                    QCoreApplication.translate("BackendBridge", "Odebrání se nepodařilo potvrdit. Obnov playlist a zkontroluj jeho obsah.")
+                    if attempted else QCoreApplication.translate("BackendBridge", "Nelze ověřit položky nebo vlastnictví playlistu. Nic nebylo změněno."))}
+        self._submit("playlist_remove_item", QCoreApplication.translate("BackendBridge", "Odebírám skladby z playlistu…"), task)
         return True
 
     def _update_playlist_browse_snapshots(self, detail):
@@ -3212,8 +3219,8 @@ class BackendBridge(QObject):
                         "pending": False, "completed": False, "locked": False, "message": ""}
             except Exception as exc:
                 print(f"FelisMusic potvrzení smazání playlistu: {type(exc).__name__}")
-                raise RuntimeError("Nelze ověřit vlastní playlist pro smazání.") from None
-        self._submit("playlist_delete_read", "Načítám playlist pro potvrzení smazání…", task)
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nelze ověřit vlastní playlist pro smazání.")) from None
+        self._submit("playlist_delete_read", QCoreApplication.translate("BackendBridge", "Načítám playlist pro potvrzení smazání…"), task)
         return True
 
     @Slot()
@@ -3276,9 +3283,9 @@ class BackendBridge(QObject):
     def _playlist_delete_result(self, api, target):
         if self._verify_playlist_deletion(api, target):
             return {"completed": True, "locked": True, "error": False, "canRecheck": False,
-                    "message": f"Smazán playlist: {target['title']}", "verification": target}
+                    "message": QCoreApplication.translate("BackendBridge", "Smazán playlist: {title}").format(title=target['title']), "verification": target}
         return {"completed": False, "locked": True, "error": False, "canRecheck": True,
-                "message": "Výsledek smazání zatím není ověřen. Zkus Ověřit znovu nebo zkontroluj playlist ve webovém YTM. Mazání se znovu neodesílá.",
+                "message": QCoreApplication.translate("BackendBridge", "Výsledek smazání zatím není ověřen. Zkus Ověřit znovu nebo zkontroluj playlist ve webovém YTM. Mazání se znovu neodesílá."),
                 "verification": target}
 
     @Slot()
@@ -3288,9 +3295,9 @@ class BackendBridge(QObject):
                 or not self._playlist_delete_state.get("canRecheck")):
             return
         api = self._ytmusic
-        self._playlist_delete_state = dict(self._playlist_delete_state, pending=True, message="Ověřuji smazání…")
+        self._playlist_delete_state = dict(self._playlist_delete_state, pending=True, message=QCoreApplication.translate("BackendBridge", "Ověřuji smazání…"))
         self.playlistDeleteChanged.emit()
-        self._submit("playlist_delete_recheck", "Ověřuji smazání playlistu…",
+        self._submit("playlist_delete_recheck", QCoreApplication.translate("BackendBridge", "Ověřuji smazání playlistu…"),
                      lambda: self._playlist_delete_result(api, target))
 
     @Slot(result=bool)
@@ -3302,7 +3309,7 @@ class BackendBridge(QObject):
             return False
         playlist_id, title = state["playlistId"], state["title"]
         api = self._ytmusic
-        self._playlist_delete_state = dict(state, pending=True, error=False, message="Mažu playlist…")
+        self._playlist_delete_state = dict(state, pending=True, error=False, message=QCoreApplication.translate("BackendBridge", "Mažu playlist…"))
         self.playlistDeleteChanged.emit()
         def task():
             attempted = False
@@ -3311,10 +3318,10 @@ class BackendBridge(QObject):
                 data = api.get_playlist(playlist_id, limit=1)
                 if data.get("owned") is not True:
                     return {"completed": False, "locked": True, "error": True,
-                            "message": "Playlist už není vlastní. Nic nebylo smazáno."}
+                            "message": QCoreApplication.translate("BackendBridge", "Playlist už není vlastní. Nic nebylo smazáno.")}
                 if data.get("title") != title:
                     return {"completed": False, "locked": True, "error": True,
-                            "message": "Název playlistu se změnil. Zavři potvrzení a otevři ho znovu. Nic nebylo smazáno."}
+                            "message": QCoreApplication.translate("BackendBridge", "Název playlistu se změnil. Zavři potvrzení a otevři ho znovu. Nic nebylo smazáno.")}
                 try:
                     target["beforeIds"] = sorted(self._read_playlist_library_ids(api))
                 except Exception as exc:
@@ -3324,7 +3331,7 @@ class BackendBridge(QObject):
                 status = response.get("status") if isinstance(response, dict) else response
                 if status == "STATUS_SUCCEEDED":
                     return {"completed": True, "locked": True, "error": False, "canRecheck": False,
-                            "message": f"Smazán playlist: {title}"}
+                            "message": QCoreApplication.translate("BackendBridge", "Smazán playlist: {title}").format(title=title)}
                 # Metadata only: never log response bodies, titles or auth data.
                 keys = [key for key in ("status", "responseContext", "actions", "error")
                         if isinstance(response, dict) and key in response]
@@ -3332,7 +3339,7 @@ class BackendBridge(QObject):
                 print(f"FelisMusic odpověď smazání: typ={type(response).__name__}; stav={known_status}; pole={','.join(keys)}")
                 if status == "STATUS_FAILED" or (isinstance(response, dict) and response.get("error")):
                     return {"completed": False, "locked": True, "error": True, "canRecheck": True,
-                            "message": "YT Music nepotvrdilo smazání. Zkontroluj stav přes Ověřit znovu nebo ve webovém YTM.",
+                            "message": QCoreApplication.translate("BackendBridge", "YT Music nepotvrdilo smazání. Zkontroluj stav přes Ověřit znovu nebo ve webovém YTM."),
                             "verification": target}
                 return self._playlist_delete_result(api, target)
             except Exception as exc:
@@ -3340,8 +3347,8 @@ class BackendBridge(QObject):
                 if attempted:
                     return self._playlist_delete_result(api, target)
                 return {"completed": False, "locked": False, "error": True,
-                        "message": "Nelze ověřit vlastnictví playlistu. Nic nebylo smazáno."}
-        self._submit("playlist_delete_write", "Mažu playlist…", task)
+                        "message": QCoreApplication.translate("BackendBridge", "Nelze ověřit vlastnictví playlistu. Nic nebylo smazáno.")}
+        self._submit("playlist_delete_write", QCoreApplication.translate("BackendBridge", "Mažu playlist…"), task)
         return True
 
     def _forget_deleted_playlist(self, playlist_id):
@@ -3406,8 +3413,8 @@ class BackendBridge(QObject):
                         "pending": False, "completed": False, "locked": False, "message": ""}
             except Exception as exc:
                 print(f"FelisMusic údaje playlistu: {type(exc).__name__}")
-                raise RuntimeError("Nelze načíst údaje vlastního playlistu.") from None
-        self._submit("playlist_edit_read", "Načítám údaje playlistu…", task)
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nelze načíst údaje vlastního playlistu.")) from None
+        self._submit("playlist_edit_read", QCoreApplication.translate("BackendBridge", "Načítám údaje playlistu…"), task)
         return True
 
     @Slot(str, str, str, result=bool)
@@ -3418,12 +3425,12 @@ class BackendBridge(QObject):
             return False
         title = str(title or "").strip()
         if not title or any(c in title + description for c in "<>") or privacy not in ("PRIVATE", "UNLISTED", "PUBLIC"):
-            self._playlist_edit_state = dict(state, error=True, message="Vyplň název a nepoužívej znaky < a >.")
+            self._playlist_edit_state = dict(state, error=True, message=QCoreApplication.translate("BackendBridge", "Vyplň název a nepoužívej znaky < a >."))
             self.playlistEditChanged.emit()
             return False
         playlist_id = state["playlistId"]
         api = self._ytmusic
-        self._playlist_edit_state = dict(state, pending=True, error=False, message="Ukládám údaje…")
+        self._playlist_edit_state = dict(state, pending=True, error=False, message=QCoreApplication.translate("BackendBridge", "Ukládám údaje…"))
         self.playlistEditChanged.emit()
         def task():
             writing = False
@@ -3450,13 +3457,13 @@ class BackendBridge(QObject):
                     raise RuntimeError("Edit not confirmed")
                 return {"completed": True, "locked": True, "error": False,
                         "title": title, "description": description, "privacy": privacy,
-                        "message": "Údaje playlistu uloženy."}
+                        "message": QCoreApplication.translate("BackendBridge", "Údaje playlistu uloženy.")}
             except Exception as exc:
                 print(f"FelisMusic úprava playlistu: {type(exc).__name__}")
                 return {"completed": False, "locked": writing, "error": True,
-                        "message": ("Uložení se nepodařilo potvrdit. Zavři formulář a zkontroluj údaje před dalším pokusem."
-                                    if writing else "Nelze ověřit vlastnictví playlistu. Nic nebylo změněno.")}
-        self._submit("playlist_edit_write", "Ukládám údaje playlistu…", task)
+                        "message": (QCoreApplication.translate("BackendBridge", "Uložení se nepodařilo potvrdit. Zavři formulář a zkontroluj údaje před dalším pokusem.")
+                                    if writing else QCoreApplication.translate("BackendBridge", "Nelze ověřit vlastnictví playlistu. Nic nebylo změněno."))}
+        self._submit("playlist_edit_write", QCoreApplication.translate("BackendBridge", "Ukládám údaje playlistu…"), task)
         return True
 
     @Property("QVariantMap", notify=playlistSaveChanged)
@@ -3525,7 +3532,7 @@ class BackendBridge(QObject):
                 if playlist.get("owned") is True and pid and pid not in deleted_ids and pid not in ("LM", "SE") and not pid.startswith("RD"):
                     targets.append({"playlistId": pid, "title": str(playlist.get("title") or "Bez názvu")})
             return sorted(targets, key=lambda x: x["title"].casefold())
-        self._submit("playlist_save_choices", "Načítám vlastní playlisty…", task)
+        self._submit("playlist_save_choices", QCoreApplication.translate("BackendBridge", "Načítám vlastní playlisty…"), task)
         return True
 
     _playlist_verify_delays = (0.0, 0.5, 1.5)
@@ -3549,16 +3556,16 @@ class BackendBridge(QObject):
         after = self._verify_playlist_song(api, target)
         verified = after is not None
         if verified:
-            message = (f"Vytvořen playlist: {target['title']}" if target["created"]
-                       else f"Skladba přidána do playlistu: {target['title']}")
+            message = (QCoreApplication.translate("BackendBridge", "Vytvořen playlist: {title}").format(title=target['title']) if target["created"]
+                       else QCoreApplication.translate("BackendBridge", "Skladba přidána do playlistu: {title}").format(title=target['title']))
         else:
-            message = (f"Playlist {target['title']} byl vytvořen." if target["created"]
-                       else f"YT Music potvrdilo přidání skladby do playlistu {target['title']}.")
-            message += " Obsah zatím nelze ověřit. Můžeš jej zkusit načíst znovu nebo zkontrolovat ve webovém YTM."
+            message = (QCoreApplication.translate("BackendBridge", "Playlist {title} byl vytvořen.").format(title=target['title']) if target["created"]
+                       else QCoreApplication.translate("BackendBridge", "YT Music potvrdilo přidání skladby do playlistu {title}.").format(title=target['title']))
+            message += QCoreApplication.translate("BackendBridge", " Obsah zatím nelze ověřit. Můžeš jej zkusit načíst znovu nebo zkontrolovat ve webovém YTM.")
         if verified and target.get("batch"):
-            message = (f"Vytvořen playlist: {target['title']}." if target["created"]
-                       else f"Uloženo do playlistu: {target['title']}.")
-            message += f" Přidáno skladeb: {target['addedCount']}. Vynecháno duplicit: {target['skipped']}."
+            message = (QCoreApplication.translate("BackendBridge", "Vytvořen playlist: {title}.").format(title=target['title']) if target["created"]
+                       else QCoreApplication.translate("BackendBridge", "Uloženo do playlistu: {title}.").format(title=target['title']))
+            message += QCoreApplication.translate("BackendBridge", " Přidáno skladeb: {added}. Vynecháno duplicit: {skipped}.").format(added=target["addedCount"], skipped=target["skipped"])
         return {"message": message, "completed": True, "locked": True,
                 "changed": True, "verified": verified, "canRecheck": not verified,
                 "error": False, "playlistId": target["playlistId"], "detail": after,
@@ -3580,7 +3587,7 @@ class BackendBridge(QObject):
             else:
                 before = api.get_playlist(playlist_id, limit=None)
                 if before.get("owned") is not True:
-                    return {"message": "Playlist už není vlastní nebo ho nelze upravovat.",
+                    return {"message": QCoreApplication.translate("BackendBridge", "Playlist už není vlastní nebo ho nelze upravovat."),
                             "completed": False, "locked": False, "changed": False, "error": True}
                 title = before.get("title") or "Playlist"
                 before_counts = Counter(x.get("videoId") for x in before.get("tracks", []))
@@ -3591,8 +3598,8 @@ class BackendBridge(QObject):
                         video_ids.append(video_id)
                         seen.add(video_id)
                 if not video_ids:
-                    message = (f"Skladba už v playlistu {title} je. Nic se nepřidalo." if len(items) == 1
-                               else f"Všechny vybrané skladby už v playlistu {title} jsou. Nic se nepřidalo.")
+                    message = (QCoreApplication.translate("BackendBridge", "Skladba už v playlistu {title} je. Nic se nepřidalo.").format(title=title) if len(items) == 1
+                               else QCoreApplication.translate("BackendBridge", "Všechny vybrané skladby už v playlistu {title} jsou. Nic se nepřidalo.").format(title=title))
                     return {"message": message, "completed": True, "duplicate": True,
                             "locked": False, "changed": False, "playlistId": playlist_id}
                 attempted = True
@@ -3609,9 +3616,9 @@ class BackendBridge(QObject):
         except Exception as exc:
             print(f"FelisMusic uložení playlistu: {type(exc).__name__}")
             if attempted:
-                message = "Výsledek zápisu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlist ve webovém YTM."
+                message = QCoreApplication.translate("BackendBridge", "Výsledek zápisu se nepodařilo potvrdit. Před dalším pokusem zkontroluj playlist ve webovém YTM.")
             else:
-                message = "Playlist se nepodařilo načíst. Zkus to prosím znovu."
+                message = QCoreApplication.translate("BackendBridge", "Playlist se nepodařilo načíst. Zkus to prosím znovu.")
             return {"message": message, "completed": False, "locked": attempted,
                     "changed": False, "error": True, "playlistId": playlist_id}
 
@@ -3623,9 +3630,9 @@ class BackendBridge(QObject):
             return
         target = dict(target)
         api = self._ytmusic
-        self._playlist_save_state = dict(state, pending=True, message="Ověřuji obsah playlistu…")
+        self._playlist_save_state = dict(state, pending=True, message=QCoreApplication.translate("BackendBridge", "Ověřuji obsah playlistu…"))
         self.playlistSaveChanged.emit()
-        self._submit("playlist_save_recheck", "Ověřuji obsah playlistu…",
+        self._submit("playlist_save_recheck", QCoreApplication.translate("BackendBridge", "Ověřuji obsah playlistu…"),
                      lambda: self._playlist_verification_result(api, target))
 
     @Slot(str, bool)
@@ -3651,7 +3658,7 @@ class BackendBridge(QObject):
             return
         title = str(title or "").strip()
         if not title or "<" in title or ">" in title:
-            self._playlist_save_state = dict(state, error=True, message="Vyplň název playlistu bez znaků < a >.")
+            self._playlist_save_state = dict(state, error=True, message=QCoreApplication.translate("BackendBridge", "Vyplň název playlistu bez znaků < a >."))
             self.playlistSaveChanged.emit()
             return
         self._begin_playlist_save("", title, False, privacy)
@@ -3659,9 +3666,9 @@ class BackendBridge(QObject):
     def _begin_playlist_save(self, playlist_id, title, duplicates, privacy="PRIVATE"):
         items = [dict(x) for x in self._playlist_save_items]
         api = self._ytmusic
-        self._playlist_save_state = dict(self._playlist_save_state, pending=True, message="Ukládám…", error=False)
+        self._playlist_save_state = dict(self._playlist_save_state, pending=True, message=QCoreApplication.translate("BackendBridge", "Ukládám…"), error=False)
         self.playlistSaveChanged.emit()
-        self._submit("playlist_save_write", "Ukládám skladbu do playlistu…",
+        self._submit("playlist_save_write", QCoreApplication.translate("BackendBridge", "Ukládám skladbu do playlistu…"),
                      lambda: self._save_playlist_song(api, items, playlist_id, title, duplicates, privacy))
 
     @Property("QVariantMap", notify=songLibraryMenuChanged)
@@ -3693,7 +3700,7 @@ class BackendBridge(QObject):
             controls = self._library_song_controls(song)
             if controls:
                 return controls
-        raise RuntimeError("YT Music pro tuto skladbu neposkytlo ovládání knihovny.")
+        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YT Music pro tuto skladbu neposkytlo ovládání knihovny."))
 
     @Slot(str, int, result=int)
     def prepareSongLibrary(self, source, index):
@@ -3714,7 +3721,7 @@ class BackendBridge(QObject):
         self._song_library_token = ""
         self._song_library_menu = {"requestId": request, "videoId": item["videoId"],
                                   "pending": True, "available": False,
-                                  "message": "Zjišťuji stav knihovny…"}
+                                  "message": QCoreApplication.translate("BackendBridge", "Zjišťuji stav knihovny…")}
         self.songLibraryMenuChanged.emit()
         def work():
             if self._closing.is_set() or request != self._library_probe_generation:
@@ -3764,19 +3771,19 @@ class BackendBridge(QObject):
         item = dict(self._song_library_item)
         api = self._ytmusic
         self._song_library_action_pending = True
-        self._song_library_menu = dict(state, pending=True, message="Ukládám změnu…")
+        self._song_library_menu = dict(state, pending=True, message=QCoreApplication.translate("BackendBridge", "Ukládám změnu…"))
         self.songLibraryMenuChanged.emit()
         def task():
             api.edit_song_library_status(feedbackTokens=[token])
             try:
                 controls = self._fetch_song_library_controls(api, item["videoId"], item.get("albumId", ""))
                 if controls["inLibrary"] != wanted:
-                    raise RuntimeError("YT Music zatím nevrátilo požadovaný stav.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YT Music zatím nevrátilo požadovaný stav."))
             except Exception as exc:
-                raise RuntimeError("Požadavek byl odeslán, ale změnu se nepodařilo ověřit. "
-                                   "Znovu otevři nabídku skladby pro načtení stavu. " + str(exc)) from exc
+                raise RuntimeError(QCoreApplication.translate("BackendBridge", "Požadavek byl odeslán, ale změnu se nepodařilo ověřit. "
+                                   "Znovu otevři nabídku skladby pro načtení stavu. ") + str(exc)) from exc
             return dict(controls, item=item, requestId=request)
-        self._submit("song_library_action", "Ukládám změnu knihovny…", task)
+        self._submit("song_library_action", QCoreApplication.translate("BackendBridge", "Ukládám změnu knihovny…"), task)
 
     def _update_song_library_snapshots(self, item, in_library):
         # Keep original browsing snapshots consistent, without editing the queue.
@@ -3894,7 +3901,7 @@ class BackendBridge(QObject):
             if self._player_state in ("playing", "paused") and not self._playback_transitioning:
                 self._prefetch_next_track()
         if not self._busy:
-            self._set_status(QCoreApplication.translate("BackendBridge", "Mix doplněn · +{added} skladeb · celkem {total}").format(added=len(result['tracks']), total=queue.count()))
+            self._set_status(QCoreApplication.translate("BackendBridge", "Mix doplněn · +{added} · celkem {total}").format(added=self._song_count_text(len(result['tracks'])), total=queue.count()))
 
     @Property(bool, notify=playerChanged)
     def playerCanShuffle(self):
@@ -3923,7 +3930,7 @@ class BackendBridge(QObject):
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("shuffle_queue", "Míchám frontu…", task)
+        self._submit("shuffle_queue", QCoreApplication.translate("BackendBridge", "Míchám frontu…"), task)
         return True
 
     def _apply_queue_shuffle(self, result):
@@ -4001,13 +4008,13 @@ class BackendBridge(QObject):
                     core.usable_tracks(data.get("tracks") or []))
                 tracks = core.limit_radio_tracks_for_test(tracks)
                 if not tracks:
-                    raise RuntimeError("YouTube Music nevrátilo přehratelný mix této kolekce.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo přehratelný mix této kolekce."))
                 result["tracks"] = [self._playback_track(self._track(x)) for x in tracks]
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("collection_radio", f"Načítám mix · {title}…", task)
+        self._submit("collection_radio", QCoreApplication.translate("BackendBridge", "Načítám mix · {title}…").format(title=title), task)
         return True
 
     def _apply_collection_radio(self, result):
@@ -4059,7 +4066,7 @@ class BackendBridge(QObject):
                 result["error"] = type(exc).__name__
             return result
 
-        self._submit("upload_artist_mix", f"Načítám mix · {state['title']}…", task)
+        self._submit("upload_artist_mix", QCoreApplication.translate("BackendBridge", "Načítám mix · {title}…").format(title=state['title']), task)
         return True
 
     def _apply_upload_artist_mix(self, result):
@@ -4119,7 +4126,7 @@ class BackendBridge(QObject):
                     indices = [i for i, item in enumerate(items) if item.get("videoId")]
                     random.shuffle(indices)
                     if not indices:
-                        raise RuntimeError("Interpret nemá načtené přehratelné skladby.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "Interpret nemá načtené přehratelné skladby."))
                     tracks = [items[i] for i in indices]
                     result["indices"] = indices if (state["meta"].get("section") == "songs"
                         and state["meta"].get("songScope", "all") == "all") else [-1] * len(indices)
@@ -4127,7 +4134,7 @@ class BackendBridge(QObject):
                 else:
                     queue = core.artist_action_queue(api, artist_name, playlist_id, mode=mode)
                     if queue is None or queue.empty():
-                        raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu interpreta.")
+                        raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo přehratelnou frontu interpreta."))
                     tracks = core.unique_new_radio_tracks(core.PlaybackQueue([]), queue.tracks)
                     tracks = core.limit_radio_tracks_for_test(tracks)
                     name = queue.name
@@ -4137,7 +4144,8 @@ class BackendBridge(QObject):
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("artist_playback", f"Načítám {'mix' if mode == 'radio' else 'náhodné pořadí'} · {artist_name}…", task)
+        self._submit("artist_playback", (QCoreApplication.translate("BackendBridge", "Načítám mix · {artist}…") if mode == "radio" else
+                                         QCoreApplication.translate("BackendBridge", "Načítám náhodné pořadí · {artist}…")).format(artist=artist_name), task)
         return True
 
     def _apply_artist_playback(self, result):
@@ -4217,15 +4225,15 @@ class BackendBridge(QObject):
                         core.usable_tracks(data.get("tracks") or []))
                     tracks = core.limit_radio_tracks_for_test(tracks)
                 if not tracks:
-                    raise RuntimeError("YouTube Music nevrátilo přehratelnou frontu oblíbené hudby.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo přehratelnou frontu oblíbené hudby."))
                 result["tracks"] = [self._playback_track(x if mode == "shuffle" else self._track(x))
                                     for x in tracks]
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("liked_playback", "Načítám oblíbenou hudbu · " +
-                     ("mix…" if mode == "radio" else "náhodně…"), task)
+        self._submit("liked_playback", QCoreApplication.translate("BackendBridge", "Načítám oblíbenou hudbu · mix…") if mode == "radio" else
+                     QCoreApplication.translate("BackendBridge", "Načítám oblíbenou hudbu · náhodně…"), task)
         return True
 
     def _apply_liked_playback(self, result):
@@ -4259,7 +4267,7 @@ class BackendBridge(QObject):
             tracks = core.usable_tracks(raw)
             if tracks or not more:
                 if not tracks:
-                    raise RuntimeError("YouTube Music nevrátilo žádnou přehratelnou náhodnou frontu.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo žádnou přehratelnou náhodnou frontu."))
                 result.update(pager=pager, more=more)
                 return tracks
         raise core.AudioPreparationCancelled()
@@ -4370,7 +4378,7 @@ class BackendBridge(QObject):
             return result
 
         title = "Nahrané skladby" if source_section == "upload_songs" else "Skladby"
-        self._submit("upload_shuffle", f"Připravuji náhodné pořadí · {title}…", task)
+        self._submit("upload_shuffle", QCoreApplication.translate("BackendBridge", "Připravuji náhodné pořadí · {title}…").format(title=title), task)
         return True
 
     def _apply_upload_shuffle(self, result):
@@ -4417,14 +4425,14 @@ class BackendBridge(QObject):
                 indices = [i for i, item in enumerate(state["tracks"]) if item.get("videoId")]
                 random.shuffle(indices)
                 if not indices:
-                    raise RuntimeError("Kolekce neobsahuje přehratelné skladby.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Kolekce neobsahuje přehratelné skladby."))
                 result["local_indices"] = indices
                 result["items"] = [state["tracks"][i] for i in indices]
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
 
-        self._submit("shuffle_detail", f"Připravuji náhodné pořadí · {state['title']}…", task)
+        self._submit("shuffle_detail", QCoreApplication.translate("BackendBridge", "Připravuji náhodné pořadí · {title}…").format(title=state['title']), task)
         return True
 
     def _apply_detail_shuffle(self, result):
@@ -4462,7 +4470,7 @@ class BackendBridge(QObject):
         self.playbackSourceCaptured.emit()
         self._set_player_from_queue()
         self._start_current_async(direction=1, stop_current=True)
-        self._set_status(QCoreApplication.translate("BackendBridge", "Náhodně · {title} · {count} skladeb").format(title=self._queue.name, count=len(tracks)))
+        self._set_status(QCoreApplication.translate("BackendBridge", "Náhodně · {title} · {count}").format(title=self._queue.name, count=self._song_count_text(len(tracks))))
         self.collectionShuffleStarted.emit()
 
     @Slot(str, int, result=bool)
@@ -4491,13 +4499,13 @@ class BackendBridge(QObject):
                 queue = core.PlaybackQueue([seed])
                 rest = core.unique_new_radio_tracks(queue, block, seed["videoId"])
                 if not rest:
-                    raise RuntimeError("YouTube Music nevrátilo žádné další skladby pro mix.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music nevrátilo žádné další skladby pro mix."))
                 tracks = [seed] + [self._playback_track(self._track(song)) for song in rest]
                 result["tracks"] = core.limit_radio_tracks_for_test(tracks)
             except Exception as exc:
                 result["error"] = f"{type(exc).__name__}: {exc}"
             return result
-        self._submit("radio", f"Vytvářím Mix · {seed['title']}…", task)
+        self._submit("radio", QCoreApplication.translate("BackendBridge", "Vytvářím Mix · {title}…").format(title=seed['title']), task)
         return True
 
     def _apply_radio(self, result):
@@ -4535,7 +4543,7 @@ class BackendBridge(QObject):
         else:
             self._set_player_from_queue()
             self._start_current_async(direction=1, stop_current=True)
-        self._set_status(QCoreApplication.translate("BackendBridge", "{title} · {count} skladeb").format(title=self._queue.name, count=self._queue.count()))
+        self._set_status(QCoreApplication.translate("BackendBridge", "{title} · {count}").format(title=self._queue.name, count=self._song_count_text(self._queue.count())))
         self.radioStarted.emit()
 
     @Slot(str, int, bool, "QVariantMap", result=bool)
@@ -4626,7 +4634,7 @@ class BackendBridge(QObject):
                 self._prefetch_future.cancel()
             if self._player_state in ("playing", "paused"):
                 self._prefetch_next_track()
-        self._set_status((QCoreApplication.translate("BackendBridge", "Přidáno jako další · {count} skladeb") if play_next else QCoreApplication.translate("BackendBridge", "Přidáno do fronty · {count} skladeb")).format(count=len(tracks)))
+        self._set_status((QCoreApplication.translate("BackendBridge", "Přidáno jako další · {count}") if play_next else QCoreApplication.translate("BackendBridge", "Přidáno do fronty · {count}")).format(count=self._song_count_text(len(tracks))))
         return True
 
     def _cast_command(self, command, message, apply=None):
@@ -4664,13 +4672,13 @@ class BackendBridge(QObject):
                 or generation != self._playback_generation or self._output_switching):
             return
         if error:
-            self.errorOccurred.emit(message + " Zkontroluj spojení s Castem.")
+            self.errorOccurred.emit(message + QCoreApplication.translate("BackendBridge", " Zkontroluj spojení s Castem."))
         elif apply:
             apply(result)
 
     def _stop_current_output(self):
         if not self._cast_command(lambda out: out.media_controller.stop(keep_output=True),
-                                  "Zastavení přehrávání selhalo."):
+                                  QCoreApplication.translate("BackendBridge", "Zastavení přehrávání selhalo.")):
             self._active_output().media_controller.stop(keep_output=True)
 
     @Slot()
@@ -4704,7 +4712,7 @@ class BackendBridge(QObject):
                 self._stop_current_output()
             except Exception as exc:
                 self.playerChanged.emit()
-                self.errorOccurred.emit(f"Zastavení přehrávání selhalo: {exc}")
+                self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Zastavení přehrávání selhalo: {exc}").format(exc=exc))
                 return False
         if self._queue.current().get("_guiRemoveAfterPlayback"):
             self._prune_removed_queue_tracks(drop_current=True)
@@ -4725,7 +4733,7 @@ class BackendBridge(QObject):
         if self._cast_output is not None and self._player_state in ("playing", "paused"):
             pause = self._player_state == "playing"
             self._cast_command(lambda out: out.media_controller.pause() if pause else out.media_controller.play(),
-                               "Ovládání přehrávače selhalo.")
+                               QCoreApplication.translate("BackendBridge", "Ovládání přehrávače selhalo."))
             self._set_player_state("paused" if pause else "playing")
             return
         try:
@@ -4738,7 +4746,7 @@ class BackendBridge(QObject):
             else:
                 self._start_current_async(direction=1)
         except Exception as exc:
-            self.errorOccurred.emit(f"Ovládání přehrávače selhalo: {exc}")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Ovládání přehrávače selhalo: {exc}").format(exc=exc))
 
     @Slot()
     def nextTrack(self):
@@ -4785,7 +4793,7 @@ class BackendBridge(QObject):
             self.playerSeeked.emit(target)
             self.playerChanged.emit()
         if self._cast_command(lambda out: out.media_controller.seek(target, timeout=3),
-                              "Posun ve skladbě selhal.", applied):
+                              QCoreApplication.translate("BackendBridge", "Posun ve skladbě selhal."), applied):
             return
         try:
             self._active_output().media_controller.seek(target, timeout=3)
@@ -4793,7 +4801,7 @@ class BackendBridge(QObject):
             self.playerSeeked.emit(target)
             self.playerChanged.emit()
         except Exception as exc:
-            self.errorOccurred.emit(f"Posun ve skladbě selhal: {exc}")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Posun ve skladbě selhal: {exc}").format(exc=exc))
 
     @Slot(float)
     def seekTo(self, seconds):
@@ -4823,7 +4831,7 @@ class BackendBridge(QObject):
             self._player_volume = int(round(float(level) * 100))
             self.playerChanged.emit()
         if self._cast_command(lambda out: out.set_volume(percent / 100.0),
-                              "Nastavení hlasitosti selhalo.", applied):
+                              QCoreApplication.translate("BackendBridge", "Nastavení hlasitosti selhalo."), applied):
             self._player_volume = percent
             self.playerChanged.emit()
             return
@@ -4832,7 +4840,7 @@ class BackendBridge(QObject):
             self._player_volume = int(round(float(level) * 100))
             self.playerChanged.emit()
         except Exception as exc:
-            self.errorOccurred.emit(f"Nastavení hlasitosti selhalo: {exc}")
+            self.errorOccurred.emit(QCoreApplication.translate("BackendBridge", "Nastavení hlasitosti selhalo: {exc}").format(exc=exc))
 
     @Slot(int)
     def changeVolume(self, delta):
@@ -4847,7 +4855,7 @@ class BackendBridge(QObject):
         def applied(value):
             self._player_muted = bool(value)
             self.playerChanged.emit()
-        if self._cast_command(lambda out: out.set_volume_muted(muted), "Ztlumení selhalo.", applied):
+        if self._cast_command(lambda out: out.set_volume_muted(muted), QCoreApplication.translate("BackendBridge", "Ztlumení selhalo."), applied):
             self._player_muted = muted
             self.playerChanged.emit()
             return
@@ -4903,16 +4911,16 @@ class BackendBridge(QObject):
                 # Parser exceptions can embed an entire server response.
                 # These read-only views need a concise error, never its body.
                 if is_network_failure(exc):
-                    message = ("Vyhledávání se nepodařilo dokončit kvůli chybě spojení s YouTube Music. "
-                               "Zkontroluj připojení a zkus hledání znovu."
+                    message = (QCoreApplication.translate("BackendBridge", "Vyhledávání se nepodařilo dokončit kvůli chybě spojení s YouTube Music. "
+                               "Zkontroluj připojení a zkus hledání znovu.")
                                if name == "search" else
-                               "Nepodařilo se spojit s YouTube Music. Zkontroluj připojení.")
+                               QCoreApplication.translate("BackendBridge", "Nepodařilo se spojit s YouTube Music. Zkontroluj připojení."))
                 else:
-                    message = ("Vyhledávání se nepodařilo dokončit. Zkus to prosím znovu."
+                    message = (QCoreApplication.translate("BackendBridge", "Vyhledávání se nepodařilo dokončit. Zkus to prosím znovu.")
                                if name == "search" else
-                               "Profily se nepodařilo načíst. Zkus to prosím znovu."
+                               QCoreApplication.translate("BackendBridge", "Profily se nepodařilo načíst. Zkus to prosím znovu.")
                                if name == "library:channels" else
-                               "Detail se nepodařilo načíst. Zkus to prosím znovu."
+                               QCoreApplication.translate("BackendBridge", "Detail se nepodařilo načíst. Zkus to prosím znovu.")
                                if name == "detail" else f"{type(exc).__name__}: {exc}")
                 self._errorReady.emit(name, message)
                 return
@@ -5154,12 +5162,12 @@ class BackendBridge(QObject):
                     "z_to_a": QCoreApplication.translate("BackendBridge", "Z–A"),
                 }.get(self._liked_order, QCoreApplication.translate("BackendBridge", "Výchozí YTM"))
                 self._set_status(
-                    QCoreApplication.translate("BackendBridge", "Oblíbená hudba · {count} skladeb · {order}").format(count=len(visible_items), order=label)
+                    QCoreApplication.translate("BackendBridge", "Oblíbená hudba · {count} · {order}").format(count=self._song_count_text(len(visible_items)), order=label)
                 )
 
             elif name == "history":
                 self._history_model.set_items(result)
-                self._set_status(QCoreApplication.translate("BackendBridge", "Historie · {count} položek").format(count=len(result)))
+                self._set_status(QCoreApplication.translate("BackendBridge", "Historie · Počet položek: {count}").format(count=len(result)))
 
             elif name == "playlists":
                 result = [x for x in result if x.get("playlistId") not in self._deleted_playlists]
@@ -5223,8 +5231,11 @@ class BackendBridge(QObject):
                 self._upload_artist_radio_ids.update(result.get("uploadArtistRadioIds", {}))
                 self._detail_tracks_model.set_items(tracks)
                 self.detailTitleChanged.emit()
-                label = (QCoreApplication.translate("BackendBridge", "položek") if self._detail_meta.get("section") in ("albums", "singles", "videos", "playlists") else QCoreApplication.translate("BackendBridge", "skladeb"))
-                self._set_status(QCoreApplication.translate("BackendBridge", "{title} · {count} {label}").format(title=title, count=len(tracks), label=label))
+                if self._detail_meta.get("section") in ("albums", "singles", "videos", "playlists"):
+                    status = QCoreApplication.translate("BackendBridge", "{title} · Počet položek: {count}").format(title=title, count=len(tracks))
+                else:
+                    status = QCoreApplication.translate("BackendBridge", "{title} · {count}").format(title=title, count=self._song_count_text(len(tracks)))
+                self._set_status(status)
                 if result.get("playlistLoad"):
                     load = result["playlistLoad"]
                     load["items"] = list(tracks)
@@ -5266,9 +5277,9 @@ class BackendBridge(QObject):
         if name == "album_library_action":
             self._update_album_library_views(self._album_library_target, None)
         if name.startswith("playlist_save_"):
-            message = ("Playlisty se nepodařilo načíst. Zkus to prosím znovu."
+            message = (QCoreApplication.translate("BackendBridge", "Playlisty se nepodařilo načíst. Zkus to prosím znovu.")
                        if name == "playlist_save_choices" else
-                       "Operaci se nepodařilo dokončit. Zkontroluj stav playlistu ve webovém YTM.")
+                       QCoreApplication.translate("BackendBridge", "Operaci se nepodařilo dokončit. Zkontroluj stav playlistu ve webovém YTM."))
             self._playlist_save_state = dict(self._playlist_save_state, pending=False, error=True, message=message)
             self.playlistSaveChanged.emit()
         if name == "song_library_action":
@@ -5290,14 +5301,14 @@ class BackendBridge(QObject):
             self._ytmusic = None
             self._set_connected(False)
             self._set_status(QCoreApplication.translate("BackendBridge", "Backend nepřipojen"))
-            message = "Připojení k YouTube Music se nepodařilo ověřit. Zkontroluj připojení k síti, případně použij tlačítko Účet → Přihlásit / obnovit přihlášení."
+            message = QCoreApplication.translate("BackendBridge", "Připojení k YouTube Music se nepodařilo ověřit. Zkontroluj připojení k síti, případně použij tlačítko Účet → Přihlásit / obnovit přihlášení.")
         else:
             self._set_status(QCoreApplication.translate("BackendBridge", "Chyba při načítání"), error=True)
         self.errorOccurred.emit(message)
 
     def _require_ytmusic(self):
         if self._ytmusic is None:
-            raise RuntimeError("YouTube Music backend ještě není připojený.")
+            raise RuntimeError(QCoreApplication.translate("BackendBridge", "YouTube Music backend ještě není připojený."))
         return self._ytmusic
 
     # ------------------------------------------------------------------
@@ -5425,7 +5436,12 @@ class BackendBridge(QObject):
             description = " · ".join(str(x) for x in description if x)
         subtitle = str(description).strip()
         if not subtitle and count not in (None, ""):
-            subtitle = f"{count} skladeb"
+            if isinstance(count, str) and len(count) <= 10 and count.isdecimal():
+                count = int(count)
+            if type(count) is int and 0 <= count <= 2**31 - 1:
+                subtitle = cls._song_count_text(count)
+            else:
+                subtitle = QCoreApplication.translate("BackendBridge", "{count} skladeb").format(count=count)
         return {
             "kind": kind,
             "title": str(item.get("title") or "Bez názvu"),
@@ -5652,7 +5668,7 @@ class BackendBridge(QObject):
                 pass
             return {"ytmusic": ytmusic, "account": account, "auth_headers": headers}
 
-        self._submit("initialize", "Připojuji k YouTube Music…", task)
+        self._submit("initialize", QCoreApplication.translate("BackendBridge", "Připojuji k YouTube Music…"), task)
 
     @Slot()
     def loadMixes(self):
@@ -5674,7 +5690,7 @@ class BackendBridge(QObject):
                     mixes.append(normalized)
             return mixes
 
-        self._submit("mixes", "Načítám mixy pro vás…", task)
+        self._submit("mixes", QCoreApplication.translate("BackendBridge", "Načítám mixy pro vás…"), task)
 
     @Property(bool, notify=likedLoadChanged)
     def likedLoading(self):
@@ -5726,7 +5742,7 @@ class BackendBridge(QObject):
         self._library_items_model.clear()
         self.clearDetail()
         self.uploadSongsLoadChanged.emit()
-        self._submit("upload_songs_first_page", f"Načítám: {title}…",
+        self._submit("upload_songs_first_page", QCoreApplication.translate("BackendBridge", "Načítám: {title}…").format(title=title),
                      lambda: self._read_upload_songs_page(load, first=True))
 
     def _read_upload_songs_page(self, load, first=False):
@@ -5784,7 +5800,7 @@ class BackendBridge(QObject):
         if visible:
             if result["first"]:
                 self._library_items_model.set_items(load["items"])
-                self._set_status(QCoreApplication.translate("BackendBridge", "{title} · {count} položek načteno").format(title=load.get('title', QCoreApplication.translate("BackendBridge", "Nahrané skladby")), count=len(load['items'])))
+                self._set_status(QCoreApplication.translate("BackendBridge", "{title} · Počet načtených položek: {count}").format(title=load.get('title', QCoreApplication.translate("BackendBridge", "Nahrané skladby")), count=len(load['items'])))
             else:
                 self._library_items_model.append_items(result["items"])
         if bound:
@@ -5818,7 +5834,7 @@ class BackendBridge(QObject):
         self._liked_load_state = "loading"
         self.clearTrackSelection()
         self.likedLoadChanged.emit()
-        self._submit("liked_first_page", "Načítám oblíbenou hudbu…",
+        self._submit("liked_first_page", QCoreApplication.translate("BackendBridge", "Načítám oblíbenou hudbu…"),
                      lambda: self._read_liked_page(pager, revision, first=True))
 
     def _read_liked_page(self, pager, revision, first=False):
@@ -5961,7 +5977,7 @@ class BackendBridge(QObject):
             "z_to_a": QCoreApplication.translate("BackendBridge", "Z–A"),
         }.get(order, QCoreApplication.translate("BackendBridge", "Výchozí YTM"))
         self._set_status(
-            QCoreApplication.translate("BackendBridge", "Oblíbená hudba · {count} skladeb · {order}").format(count=len(items), order=label)
+            QCoreApplication.translate("BackendBridge", "Oblíbená hudba · {count} · {order}").format(count=self._song_count_text(len(items)), order=label)
         )
 
     @Slot()
@@ -5970,7 +5986,7 @@ class BackendBridge(QObject):
             tracks = core.usable_tracks(self._require_ytmusic().get_history() or [])
             return [self._track(x) for x in tracks]
 
-        self._submit("history", "Načítám historii…", task)
+        self._submit("history", QCoreApplication.translate("BackendBridge", "Načítám historii…"), task)
 
     @Slot(str, str)
     def loadLibrarySection(self, section, order):
@@ -5978,15 +5994,15 @@ class BackendBridge(QObject):
         order = (order or "").strip() or None
 
         labels = {
-            "playlists": "playlisty",
-            "songs": "skladby",
-            "albums": "alba",
-            "artists": "interprety",
-            "channels": "profily",
-            "podcasts": "podcasty",
-            "upload_songs": "nahrané skladby",
-            "upload_albums": "nahraná alba",
-            "upload_artists": "nahrané interprety",
+            "playlists": QCoreApplication.translate("BackendBridge", "Načítám playlisty…"),
+            "songs": QCoreApplication.translate("BackendBridge", "Načítám skladby…"),
+            "albums": QCoreApplication.translate("BackendBridge", "Načítám alba…"),
+            "artists": QCoreApplication.translate("BackendBridge", "Načítám interprety…"),
+            "channels": QCoreApplication.translate("BackendBridge", "Načítám profily…"),
+            "podcasts": QCoreApplication.translate("BackendBridge", "Načítám podcasty…"),
+            "upload_songs": QCoreApplication.translate("BackendBridge", "Načítám nahrané skladby…"),
+            "upload_albums": QCoreApplication.translate("BackendBridge", "Načítám nahraná alba…"),
+            "upload_artists": QCoreApplication.translate("BackendBridge", "Načítám nahrané interprety…"),
         }
         if section not in labels:
             return
@@ -6053,7 +6069,7 @@ class BackendBridge(QObject):
         self.clearDetail()
         self._submit(
             f"library:{section}",
-            f"Načítám {labels[section]}…",
+            labels[section],
             task,
         )
 
@@ -6090,7 +6106,7 @@ class BackendBridge(QObject):
 
             if kind == "album":
                 if not browse_id:
-                    raise RuntimeError("Album nemá browseId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Album nemá browseId."))
                 data = load_catalog_album(ytmusic, browse_id)
                 album_artist_links = self._track(data)["artistLinks"]
                 detail_title = data.get("title") or title
@@ -6102,7 +6118,7 @@ class BackendBridge(QObject):
 
             elif kind == "artist":
                 if not browse_id:
-                    raise RuntimeError("Interpret nemá browseId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Interpret nemá browseId."))
                 data = ytmusic.get_artist(browse_id)
                 detail_title = data.get("name") or title
                 tracks = core.usable_tracks(
@@ -6140,7 +6156,7 @@ class BackendBridge(QObject):
 
             elif kind == "profile":
                 if not browse_id:
-                    raise RuntimeError("Profil nemá browseId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Profil nemá browseId."))
                 data = load_profile(ytmusic, browse_id)
                 detail_title = data["name"]
                 sections = {
@@ -6159,14 +6175,14 @@ class BackendBridge(QObject):
             elif kind == "podcast":
                 podcast_id = playlist_id or browse_id
                 if not podcast_id:
-                    raise RuntimeError("Podcast nemá podcastId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Podcast nemá podcastId."))
                 data = ytmusic.get_podcast(podcast_id, limit=None)
                 detail_title = data.get("title") or title
                 tracks = core.usable_tracks(data.get("episodes") or [])
 
             elif kind == "upload_album":
                 if not browse_id:
-                    raise RuntimeError("Nahrané album nemá browseId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nahrané album nemá browseId."))
                 data = load_upload_album(ytmusic, browse_id)
                 detail_title = data.get("title") or title
                 album_thumbnail = self._thumbnail(data, allow_video_fallback=False)
@@ -6176,7 +6192,7 @@ class BackendBridge(QObject):
 
             elif kind == "upload_artist":
                 if not browse_id:
-                    raise RuntimeError("Nahraný interpret nemá browseId.")
+                    raise RuntimeError(QCoreApplication.translate("BackendBridge", "Nahraný interpret nemá browseId."))
                 if browse_id.startswith("FEmusic_library_privately_owned_artist") and browse_id not in upload_radio_ids:
                     try:
                         for item in ytmusic.get_library_upload_artists(limit=None) or []:
@@ -6203,7 +6219,7 @@ class BackendBridge(QObject):
 
             else:
                 raise RuntimeError(
-                    f"Detail typu {kind or '?'} zatím není podporovaný."
+                    QCoreApplication.translate("BackendBridge", "Detail typu {detail} zatím není podporovaný.").format(detail=kind or '?')
                 )
 
             return {
@@ -6223,7 +6239,7 @@ class BackendBridge(QObject):
                 ],
             }
 
-        self._submit("detail", f"Načítám: {title}", task)
+        self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám: {title}").format(title=title), task)
 
     @Slot()
     def loadPlaylists(self):
@@ -6231,7 +6247,7 @@ class BackendBridge(QObject):
             playlists = self._require_ytmusic().get_library_playlists(limit=500) or []
             return [self._playlist(x) for x in playlists]
 
-        self._submit("playlists", "Načítám playlisty…", task)
+        self._submit("playlists", QCoreApplication.translate("BackendBridge", "Načítám playlisty…"), task)
 
     @Slot(int)
     def openSearchResult(self, index):
@@ -6287,7 +6303,7 @@ class BackendBridge(QObject):
             return
 
         self.errorOccurred.emit(
-            f"Výsledek typu {kind or '?'} zatím neumím otevřít."
+            QCoreApplication.translate("BackendBridge", "Výsledek typu {detail} zatím neumím otevřít.").format(detail=kind or '?')
         )
 
     @Slot(str)
@@ -6335,8 +6351,8 @@ class BackendBridge(QObject):
 
         scope_label = {
             "catalog": "YT Music",
-            "library": "Knihovna",
-            "uploads": "Nahrané soubory",
+            "library": QCoreApplication.translate("BackendBridge", "Knihovna"),
+            "uploads": QCoreApplication.translate("BackendBridge", "Nahrané soubory"),
         }.get(scope, "YT Music")
 
         def task():
@@ -6358,7 +6374,7 @@ class BackendBridge(QObject):
 
         self._submit(
             "search",
-            f"Hledám · {scope_label}: {query}",
+            QCoreApplication.translate("BackendBridge", "Hledám · {scope_label}: {query}").format(scope_label=scope_label, query=query),
             task,
         )
 
@@ -6383,7 +6399,7 @@ class BackendBridge(QObject):
                 "tracks": [self._track(x) for x in tracks],
             }
 
-        self._submit("detail", f"Načítám: {title}", task)
+        self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám: {title}").format(title=title), task)
 
     @Slot(str, str)
     def loadPlaylistTracks(self, playlist_id, title):
@@ -6428,8 +6444,9 @@ class BackendBridge(QObject):
                         if not core.usable_tracks(tracks) and more:
                             raise RuntimeError("Empty mix preview")
                 except Exception as exc:
-                    raise RuntimeError("První blok playlistu se nepodařilo načíst ("
-                                       + type(exc).__name__ + ").") from None
+                    raise RuntimeError(QCoreApplication.translate(
+                        "BackendBridge", "První blok playlistu se nepodařilo načíst ({error})."
+                    ).format(error=type(exc).__name__)) from None
                 data = {} if dynamic else load["pager"].metadata
                 load["title"] = data.get("title") or title
                 load["raw_ids"] = [x.get("setVideoId") for x in tracks]
@@ -6447,7 +6464,7 @@ class BackendBridge(QObject):
                 if not more and not dynamic:
                     result.update(playlistOccurrenceIds=load["raw_ids"], playlistMovesCaughtUp=True)
                 return result
-            self._submit("detail", f"Načítám: {title}", first_page)
+            self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám: {title}").format(title=title), first_page)
             return
         def task():
             data = self._require_ytmusic().get_playlist(
@@ -6466,7 +6483,7 @@ class BackendBridge(QObject):
                 "tracks": [self._track(x) for x in tracks],
             }
 
-        self._submit("detail", f"Načítám: {title}", task)
+        self._submit("detail", QCoreApplication.translate("BackendBridge", "Načítám: {title}").format(title=title), task)
 
     @Property(bool, notify=detailTitleChanged)
     def detailLoading(self):

@@ -1,14 +1,11 @@
 # Překlady FelisMusic Desktop
 
-Příprava překladů ponechává češtinu jako zdrojový jazyk. Po kroku L3
-(0.3.98-dev) je označeno 287 různých textů: navigace, dialogy, pevné nabídky
-skladeb/kolekcí, základní ovladače a přímé stavové hlášky backendu.
-Proměnné stavové věty používají celé šablony s pojmenovanými parametry.
-V QML jsou celé šablony také pro připojení, počet vybraných a název výstupu.
-
-Zatím zbývají zejména hlášky připravované v API úlohách (dialogové stavy,
-přihlášení, texty chyb), skládané bannery načítání a množné číslo.
-Nedistribuuje se anglický katalog a žádný kompletní druhý jazyk není hotový.
+Čeština je zdrojový jazyk. Po kroku L4 (0.3.99-dev) katalog zahrnuje
+476 textů včetně přihlášení, chyb, výsledků operací s playlisty a hlášek
+při načítání. Texty s proměnnými hodnotami používají šablony.
+Počty skladeb a položek používají Qt numerus nebo formulaci „Počet …“.
+Bez katalogu zůstávají k dispozici české tvary pro 1, 2–4 a ostatní počty.
+Anglický katalog se zatím nedistribuuje.
 
 ## Volba jazyka
 
@@ -34,8 +31,8 @@ env/bin/python tools/update_translations.py
 
 Skript používá dostupné `pyside6-lupdate`, `lupdate6` nebo `lupdate`.
 Jde o vývojový nástroj Qt Linguist; běh aplikace jej nepotřebuje.
-Český `.ts` je zatím zdrojový inventář s nedokončenými překlady. Čeština je
-přímo ve zdrojových textech, takže pro její použití není nutný český `.qm`.
+Český `.ts` obsahuje zdrojové texty a vyplněné tvary Qt numerus.
+Český `.qm` aplikace ke spuštění nepotřebuje.
 
 Volitelné sestavení dokončených překladů (nedokončené se nezahrnují):
 
@@ -58,7 +55,7 @@ Anglický katalog pro testy vzniká jen dočasně v testovacím adresáři.
   Python používá například `translate(..., "Přehrávám · {title}").format(title=title)`;
   názvy parametrů musí zůstat v překladu zachované. QML používá `%1` a `.arg()`.
   Názvy zadané uživatelem mohou samy obsahovat `{count}` nebo `%1`; berou se jako data.
-- Počty a množné číslo řešit samostatně podle Qt numerus, s testy češtiny.
+- Pro počty používat Qt numerus a zachovat české tvary i bez katalogu.
 - Před převodem zkontrolovat vazby na obsah textu. Barva obecné chyby načítání
   už používá příznak `statusIsError` místo hledání českého slova `Chyba`.
   `_set_status()` příznak předává explicitně; nový běžný stav jej vynuluje.

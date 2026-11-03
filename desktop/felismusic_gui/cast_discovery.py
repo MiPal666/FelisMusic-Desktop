@@ -1,6 +1,8 @@
 """Opt-in discovery metadata only: never create a Chromecast/media controller."""
 from threading import Event, Thread, Lock
 from time import monotonic
+
+from PySide6.QtCore import QCoreApplication
 from pychromecast.discovery import CastBrowser, SimpleCastListener
 from zeroconf import Zeroconf
 import pychromecast
@@ -13,7 +15,7 @@ def device_rows(infos):
         if info.cast_type not in ("audio", "group") or info.uuid is None:
             continue
         key = str(info.uuid)
-        rows[key] = dict(id=key, name=str(info.friendly_name or "Cast zařízení"), kind=info.cast_type)
+        rows[key] = dict(id=key, name=str(info.friendly_name or QCoreApplication.translate("CastDiscovery", "Cast zařízení")), kind=info.cast_type)
     return sorted(rows.values(), key=lambda row: (row["name"].casefold(), row["id"]))
 
 
@@ -80,7 +82,7 @@ class CastDiscovery:
                 self.stopped.wait(self.poll_interval)
         except Exception as exc:
             print(f"FelisMusic hledání Cast: {type(exc).__name__}")
-            self._notify([], False, "Cast zařízení se nepodařilo vyhledat. Zkontroluj síť a zkus hledání znovu.")
+            self._notify([], False, QCoreApplication.translate("CastDiscovery", "Cast zařízení se nepodařilo vyhledat. Zkontroluj síť a zkus hledání znovu."))
         finally:
             with self.lock:
                 self.browser = None

@@ -164,6 +164,28 @@ ApplicationWindow {
             backend.search(searchField.text, currentSearchMode, currentSearchScope)
     }
 
+    // A missing catalog returns the Czech singular source with %n replaced.
+    function songCountText(count) {
+        const translated = qsTr("%n skladba", "", count)
+        if (translated !== count + " skladba" || count === 1)
+            return translated
+        return count + (count >= 2 && count <= 4 ? " skladby" : " skladeb")
+    }
+
+    function itemCountText(count) {
+        const translated = qsTr("%n položka", "", count)
+        if (translated !== count + " položka" || count === 1)
+            return translated
+        return count + (count >= 2 && count <= 4 ? " položky" : " položek")
+    }
+
+    function loadedSongCountText(count) {
+        const translated = qsTr("Vše načteno · %n skladba", "", count)
+        if (translated !== "Vše načteno · " + count + " skladba" || count === 1)
+            return translated
+        return "Vše načteno · " + count + (count >= 2 && count <= 4 ? " skladby" : " skladeb")
+    }
+
     function formatTime(value) {
         var total = Math.max(0, Math.floor(value || 0))
         var hours = Math.floor(total / 3600)
@@ -870,7 +892,7 @@ ApplicationWindow {
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label { text: playlistBatchRemove.title; color: "white"; font.pixelSize: 19; padding: 18 }
         contentItem: Label {
-            text: qsTr("Odebrat %1 vybraných skladeb z playlistu „%2“?")
+            text: qsTr("Odebrat vybrané skladby z playlistu „%2“? Počet: %1.")
                   .arg(playlistBatchRemove.itemCount).arg(playlistBatchRemove.playlistTitle)
             color: "#eeeeee"
             wrapMode: Text.Wrap
@@ -1763,10 +1785,11 @@ ApplicationWindow {
                 objectName: "collectionHeaderSummary"
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                text: backend.detailHeaderSummary || backend.detailTracksModel.count +
+                text: backend.detailHeaderSummary ||
                       ((backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs")
                        || backend.detailMeta.kind === "profile"
-                       ? " položek" : " skladeb")
+                       ? root.itemCountText(backend.detailTracksModel.count)
+                       : root.songCountText(backend.detailTracksModel.count))
                 elide: Text.ElideRight
                 HoverHandler { id: headerSummaryHover }
                 ToolTip.visible: headerSummaryHover.hovered
@@ -2014,9 +2037,9 @@ ApplicationWindow {
                         ? (backend.detailMeta.playlistLoadState === "error" ? qsTr("Další část mixu se nepodařila načíst")
                            : backend.detailLoading ? qsTr("Načítám další doporučení…")
                            : backend.detailMeta.playlistLoadState === "complete" ? qsTr("Mix už nenabízí další pokračování")
-                           : "Dynamický mix · " + backend.detailTracksModel.count + " načtených skladeb")
+                           : qsTr("Dynamický mix · Počet načtených skladeb: %1").arg(backend.detailTracksModel.count))
                         : backend.detailLoading ? qsTr("Načítám další skladby…")
-                        : backend.detailComplete ? "Vše načteno · " + backend.detailTracksModel.count + " skladeb"
+                        : backend.detailComplete ? root.loadedSongCountText(backend.detailTracksModel.count)
                         : qsTr("Načítání se nepodařilo dokončit")
                     color: "#eeeeee"
                     font.bold: true
@@ -2071,7 +2094,7 @@ ApplicationWindow {
             wrapMode: Text.WordWrap
             color: "#aaaaaa"
             text: backend.detailTracksModel.count === 0 ? qsTr("V této části nejsou dostupné žádné položky.")
-                  : "Načteno " + backend.detailTracksModel.count + " položek. Přehrávání používá načtená videa."
+                  : qsTr("Počet načtených položek: %1. Přehrávání používá načtená videa.").arg(backend.detailTracksModel.count)
         }
     }
 
@@ -2351,7 +2374,7 @@ ApplicationWindow {
                 }
             }
             Label {
-                text: tracks.count + " položek"
+                text: root.itemCountText(tracks.count)
                 color: "#999999"
                 font.pixelSize: 13
             }
@@ -2389,10 +2412,11 @@ ApplicationWindow {
                         wrapMode: Text.Wrap
                         color: "#eeeeee"
                         text: backend.librarySongsLoading
-                            ? "Načítám další skladby… · " + trackPage.tracks.count + " načteno\nSkladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; akce nad celým seznamem až po dokončení."
-                            : backend.librarySongsComplete ? "Vše načteno · " + trackPage.tracks.count + " skladeb"
-                            : "Načítání se nepodařilo dokončit. Seznam není úplný; otevři "
-                              + (root.currentLibrarySection === "songs" ? qsTr("Skladby") : qsTr("Nahrané skladby")) + " znovu."
+                            ? qsTr("Načítám další skladby… · %1 načteno\nSkladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akce nad celým seznamem budou dostupné po dokončení.").arg(trackPage.tracks.count)
+                            : backend.librarySongsComplete ? root.loadedSongCountText(trackPage.tracks.count)
+                            : (root.currentLibrarySection === "songs"
+                               ? qsTr("Načítání se nepodařilo dokončit. Seznam není úplný. Otevři Skladby znovu.")
+                               : qsTr("Načítání se nepodařilo dokončit. Seznam není úplný. Otevři Nahrané skladby znovu."))
                     }
                 }
             }
@@ -2488,7 +2512,7 @@ ApplicationWindow {
                     }
                 }
                 Label {
-                    text: items.count + " položek"
+                    text: root.itemCountText(items.count)
                     color: "#888888"
                 }
             }
@@ -2633,7 +2657,7 @@ ApplicationWindow {
                 Item { Layout.fillHeight: true }
 
                 Label {
-                    text: "Desktop GUI · " + fcmVersion
+                    text: qsTr("Desktop GUI · %1").arg(fcmVersion)
                     color: "#777777"
                     font.pixelSize: 12
                     Layout.leftMargin: 10
@@ -3043,7 +3067,7 @@ ApplicationWindow {
                             }
 
                             Label {
-                                text: backend.likedModel.count + " položek"
+                                text: root.itemCountText(backend.likedModel.count)
                                 color: "#999999"
                                 font.pixelSize: 13
                             }
@@ -3075,7 +3099,7 @@ ApplicationWindow {
                                             Layout.fillWidth: true
                                             wrapMode: Text.Wrap
                                             text: backend.likedLoading ? qsTr("Načítám další skladby…")
-                                                : backend.likedComplete ? "Vše načteno · " + backend.likedModel.count + " skladeb"
+                                                : backend.likedComplete ? root.loadedSongCountText(backend.likedModel.count)
                                                 : qsTr("Načítání se nepodařilo dokončit")
                                             font.pixelSize: 16
                                             font.bold: true
@@ -3183,10 +3207,10 @@ ApplicationWindow {
                                     objectName: "queuePosition"
                                     Layout.fillWidth: true
                                     text: (backend.playerHasTrack ? (backend.playerQueueIndex + 1) + " / " + backend.playerQueueCount : "0 / 0")
-                                          + (backend.playerWaitingForTracks ? " · Čekám na další skladby…"
-                                             : backend.playerQueueLoading ? " · Načítám další skladby…"
-                                             : backend.playerQueueIncomplete ? " · Seznam není úplný"
-                                             : backend.playerQueueDynamic ? " · Dynamický mix" : "")
+                                          + (backend.playerWaitingForTracks ? qsTr(" · Čekám na další skladby…")
+                                             : backend.playerQueueLoading ? qsTr(" · Načítám další skladby…")
+                                             : backend.playerQueueIncomplete ? qsTr(" · Seznam není úplný")
+                                             : backend.playerQueueDynamic ? qsTr(" · Dynamický mix") : "")
                                     wrapMode: Text.Wrap
                                     color: "#b9b0ff"
                                     font.pixelSize: 16
