@@ -1,11 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## Doladění GUI – řazení Knihovny
+
+- Společný přepínač všech sekcí má popisek „Řadit podle“ / „Sort by“. Vpravo vedle záložek, pokud se vejde, jinak vpravo pod nimi. Volby a obsluha řazení zachovány.
+- Ověřeno v QML v obou jazycích při šířkách 900, 1280 a 1600 px, včetně přechodu zpět na 900 px a zobrazení volby A–Z ve všech sekcích. Sedm testů překladů prošlo. Michal ručně ověřil.
+
 ## 0.3.100-dev – anglický katalog a výchozí jazyk
 
 - Anglický katalog obsahuje všech 490 aktivních položek. Oba sestavené katalogy jsou součástí aplikace a při spuštění nepotřebují Qt Linguist.
 - Ověřen skutečný start QML bez přihlášení k YouTube Music v rozměrech 900×600 a 1280×800. Čeština s preferencí `cs:en`, britská angličtina, angličtina s českým číselným locale a anglický výchozí text pro nepodporované francouzské prostředí. Kontrolovány počty 0, 1, 2, 4, 5 a 21.
 - Regresní test porovnává sestavený anglický katalog se zdrojovým inventářem včetně množného čísla. Celá sada: 753 prošlo, 2 testy D-Bus přeskočené. Po doplnění názvu rádia interpreta znovu prošly cílené testy překladů a přehrávání interpreta.
-- Michal potvrdil ruční ověření angličtiny a návratu do češtiny. Na jeho podnět je angličtina výchozí, pokud žádný preferovaný jazyk nemá použitelný katalog. Michal ověřil francouzské nastavení i návrat do češtiny. Připraveno ke commitu.
+- Michal potvrdil ruční ověření angličtiny a návratu do češtiny. Na jeho podnět je angličtina výchozí, pokud žádný preferovaný jazyk nemá použitelný katalog. Michal ověřil francouzské nastavení i návrat do češtiny. Uloženo v b939c79.
 
 ## 0.3.99-dev – překlady, krok L4, ručně ověřeno
 

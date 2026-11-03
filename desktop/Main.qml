@@ -2174,82 +2174,120 @@ ApplicationWindow {
     component LibraryNavigation: ColumnLayout {
         spacing: 12
 
-        Flow {
+        GridLayout {
+            id: libraryToolbar
             Layout.fillWidth: true
-            Layout.preferredHeight: childrenRect.height
-            spacing: 8
+            columns: 2
+            columnSpacing: 12
+            rowSpacing: 8
 
-            Label {
-                text: qsTr("Knihovna")
-                color: "white"
-                font.pixelSize: 28
-                font.bold: true
-                width: implicitWidth + 10
-                height: libraryOrder.height
-                verticalAlignment: Text.AlignVCenter
-            }
+            readonly property bool sortOnOwnRow: width < libraryTabs.singleRowWidth
+                + librarySort.implicitWidth + columnSpacing
 
-            Button {
-                text: qsTr("Playlisty")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "playlists"
-                onClicked: root.selectLibrarySection("playlists", qsTr("Playlisty"))
-            }
-            Button {
-                text: qsTr("Skladby")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "songs"
-                onClicked: root.selectLibrarySection("songs", qsTr("Skladby"))
-            }
-            Button {
-                text: qsTr("Alba")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "albums"
-                onClicked: root.selectLibrarySection("albums", qsTr("Alba"))
-            }
-            Button {
-                text: qsTr("Interpreti")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "artists"
-                onClicked: root.selectLibrarySection("artists", qsTr("Interpreti"))
-            }
-            Button {
-                text: qsTr("Profily")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "channels"
-                onClicked: root.selectLibrarySection("channels", qsTr("Profily"))
-            }
-            Button {
-                text: qsTr("Podcasty")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection === "podcasts"
-                onClicked: root.selectLibrarySection("podcasts", qsTr("Podcasty"))
-            }
-            Button {
-                objectName: "uploadsNavigationButton"
-                text: qsTr("Nahrané")
-                checkable: true
-                checked: root.currentPage === 1 && root.currentLibrarySection.indexOf("upload_") === 0
-                onClicked: root.openUploads()
-            }
+            Flow {
+                id: libraryTabs
+                objectName: "libraryTabs"
+                Layout.row: 0
+                Layout.column: 0
+                Layout.columnSpan: libraryToolbar.sortOnOwnRow ? 2 : 1
+                Layout.fillWidth: true
+                Layout.minimumWidth: 0
+                Layout.preferredHeight: childrenRect.height
+                spacing: 8
 
-            ComboBox {
-                id: libraryOrder
-                visible: root.currentPage === 1
-                width: 170
-                model: root.libraryOrderLabels()
-                currentIndex: {
-                    var values = root.libraryOrderValues()
-                    var index = values.indexOf(root.currentLibraryOrder)
-                    return index >= 0 ? index : 0
+                readonly property real singleRowWidth: children.reduce(
+                    (total, item) => total + item.width, 0) + (children.length - 1) * spacing
+
+                Label {
+                    text: qsTr("Knihovna")
+                    color: "white"
+                    font.pixelSize: 28
+                    font.bold: true
+                    width: implicitWidth + 10
+                    height: libraryOrder.height
+                    verticalAlignment: Text.AlignVCenter
                 }
-                onActivated: {
-                    var values = root.libraryOrderValues()
-                    root.currentLibraryOrder = values[currentIndex]
-                    backend.loadLibrarySection(
-                        root.currentLibrarySection,
-                        root.currentLibraryOrder
-                    )
+
+                Button {
+                    text: qsTr("Playlisty")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "playlists"
+                    onClicked: root.selectLibrarySection("playlists", qsTr("Playlisty"))
+                }
+                Button {
+                    text: qsTr("Skladby")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "songs"
+                    onClicked: root.selectLibrarySection("songs", qsTr("Skladby"))
+                }
+                Button {
+                    text: qsTr("Alba")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "albums"
+                    onClicked: root.selectLibrarySection("albums", qsTr("Alba"))
+                }
+                Button {
+                    text: qsTr("Interpreti")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "artists"
+                    onClicked: root.selectLibrarySection("artists", qsTr("Interpreti"))
+                }
+                Button {
+                    text: qsTr("Profily")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "channels"
+                    onClicked: root.selectLibrarySection("channels", qsTr("Profily"))
+                }
+                Button {
+                    text: qsTr("Podcasty")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection === "podcasts"
+                    onClicked: root.selectLibrarySection("podcasts", qsTr("Podcasty"))
+                }
+                Button {
+                    objectName: "uploadsNavigationButton"
+                    text: qsTr("Nahrané")
+                    checkable: true
+                    checked: root.currentPage === 1 && root.currentLibrarySection.indexOf("upload_") === 0
+                    onClicked: root.openUploads()
+                }
+
+            }
+
+            RowLayout {
+                id: librarySort
+                objectName: "librarySort"
+                Layout.row: libraryToolbar.sortOnOwnRow ? 1 : 0
+                Layout.column: libraryToolbar.sortOnOwnRow ? 0 : 1
+                Layout.columnSpan: libraryToolbar.sortOnOwnRow ? 2 : 1
+                Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                visible: root.currentPage === 1
+                spacing: 8
+
+                Label {
+                    id: libraryOrderLabel
+                    text: qsTr("Řadit podle")
+                    color: "#aaaaaa"
+                }
+                ComboBox {
+                    id: libraryOrder
+                    objectName: "libraryOrder"
+                    Accessible.name: libraryOrderLabel.text
+                    Layout.preferredWidth: 170
+                    model: root.libraryOrderLabels()
+                    currentIndex: {
+                        var values = root.libraryOrderValues()
+                        var index = values.indexOf(root.currentLibraryOrder)
+                        return index >= 0 ? index : 0
+                    }
+                    onActivated: {
+                        var values = root.libraryOrderValues()
+                        root.currentLibraryOrder = values[currentIndex]
+                        backend.loadLibrarySection(
+                            root.currentLibrarySection,
+                            root.currentLibraryOrder
+                        )
+                    }
                 }
             }
         }
