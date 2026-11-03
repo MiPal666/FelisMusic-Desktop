@@ -6,6 +6,8 @@
 - Dialog má název, interpreta a album vedle obalu. Pod nimi jsou délka, hodnocení a údaje o frontě. Posouvání zůstává dostupné pro delší obsah.
 - Ověřeno v QML v češtině i angličtině při šířkách 900, 1280 a 1600 px. Běžný dialog včetně názvu fronty se vešel při výšce okna 600 px. Sedm testů překladů prošlo. Michal ručně ověřil a schválil.
 
+- Michal ověřil v KDE společnou bublinu „Skladba — Interpret · Album“ při zkrácení některého z řádků spodní lišty.
+
 ## Doladění GUI – hlavička detailů
 
 - Horní řazení Knihovny se v detailu skryje a po návratu se zobrazí s původní volbou. Ověřeno v QML v češtině i angličtině a ručně Michalem.

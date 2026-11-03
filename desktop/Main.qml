@@ -3480,7 +3480,13 @@ ApplicationWindow {
                             Layout.fillWidth: true
                             Layout.preferredWidth: 300
                             Layout.maximumWidth: 420
+                            id: nowPlayingMetadata
                             spacing: 3
+
+                            readonly property bool showTrackDetails: backend.playerHasTrack
+                                && (nowPlayingTitle.truncated || nowPlayingSubtitle.truncated)
+                            readonly property string trackDetails: backend.playerSubtitle
+                                ? backend.playerTitle + " — " + backend.playerSubtitle : backend.playerTitle
 
                             Label {
                                 id: nowPlayingTitle
@@ -3493,10 +3499,12 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                                 Layout.minimumWidth: 0
                                 HoverHandler { id: nowPlayingTitleHover }
-                                ToolTip.visible: nowPlayingTitle.truncated && nowPlayingTitleHover.hovered
-                                ToolTip.text: nowPlayingTitle.text
+                                ToolTip.visible: nowPlayingMetadata.showTrackDetails && nowPlayingTitleHover.hovered
+                                ToolTip.text: nowPlayingMetadata.trackDetails
                             }
                             Label {
+                                id: nowPlayingSubtitle
+                                objectName: "nowPlayingSubtitle"
                                 text: backend.castState.disconnected ? qsTr("Cast odpojený · vyber jiný výstup")
                                       : backend.playerHasTrack
                                       ? (backend.playerState === "loading"
@@ -3509,6 +3517,10 @@ ApplicationWindow {
                                 font.pixelSize: 13
                                 elide: Text.ElideRight
                                 Layout.fillWidth: true
+                                Layout.minimumWidth: 0
+                                HoverHandler { id: nowPlayingSubtitleHover }
+                                ToolTip.visible: nowPlayingMetadata.showTrackDetails && nowPlayingSubtitleHover.hovered
+                                ToolTip.text: nowPlayingMetadata.trackDetails
                             }
 
                             RowLayout {

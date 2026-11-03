@@ -2562,12 +2562,12 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+19"/>
         <source>Nic se nepřehrává</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+14"/>
         <source>Cast odpojený · vyber jiný výstup</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2587,7 +2587,7 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+53"/>
         <source>Připravuji skladbu…</source>
         <translation type="unfinished"></translation>
     </message>

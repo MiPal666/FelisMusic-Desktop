@@ -2563,12 +2563,12 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>Show playing list</translation>
     </message>
     <message>
-        <location line="+13"/>
+        <location line="+19"/>
         <source>Nic se nepřehrává</source>
         <translation>Nothing is playing</translation>
     </message>
     <message>
-        <location line="+12"/>
+        <location line="+14"/>
         <source>Cast odpojený · vyber jiný výstup</source>
         <translation>Cast disconnected · Select another output</translation>
     </message>
@@ -2588,7 +2588,7 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>GStreamer is unavailable in this virtual environment</translation>
     </message>
     <message>
-        <location line="+49"/>
+        <location line="+53"/>
         <source>Připravuji skladbu…</source>
         <translation>Preparing track…</translation>
     </message>
