@@ -1302,7 +1302,7 @@ ApplicationWindow {
                                     || (sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs") && !backend.librarySongsComplete)
         property bool selectedTrack: backend.selectionSource === sourceKey && backend.selectedTrackIndices.indexOf(index) >= 0
         property bool multipleSelection: selectedTrack && backend.selectedTrackIndices.length > 1
-        property var navigationArtists: artistLinks.filter(function(artist) {
+        property var navigationArtists: Array.from(artistLinks || []).filter(function(artist) {
             var currentKind = kind === "upload_song" ? "upload_artist" : "artist"
             return sourceKey !== "detail" || backend.detailMeta.kind !== currentKind
                 || String(artist.id).replace(/^MPLA/, "") !== String(backend.detailMeta.browseId || "").replace(/^MPLA/, "")
@@ -1747,85 +1747,121 @@ ApplicationWindow {
         }
     }
 
-    component CollectionHeader: RowLayout {
+    component HeaderActionsButton: Button {
+        text: qsTr("Akce ▾")
+        font.pixelSize: 11
+        Layout.preferredHeight: 28
+        readonly property int inlineMargin: 10
+        Layout.leftMargin: inlineMargin
+    }
+
+    component CollectionHeader: ColumnLayout {
+        id: collectionHeader
         property string backText: qsTr("← Zpět")
         signal goBack()
         Layout.fillWidth: true
-        spacing: 10
+        spacing: 4
         Button {
             objectName: "collectionBackButton"
-            text: parent.backText
+            text: collectionHeader.backText
+            flat: true
+            font.pixelSize: 12
+            padding: 5
             enabled: !backend.busy
-            onClicked: parent.goBack()
+            onClicked: collectionHeader.goBack()
         }
-        Image {
-            objectName: "collectionHeaderCover"
-            source: backend.detailMeta.header ? backend.detailMeta.header.thumbnail || "" : ""
-            visible: source.toString().length > 0 && status !== Image.Error
-            Layout.preferredWidth: 44
-            Layout.preferredHeight: 44
-            fillMode: Image.PreserveAspectFit
-            asynchronous: true
-        }
-        ColumnLayout {
+        RowLayout {
             Layout.fillWidth: true
-            Layout.minimumWidth: 0
-            spacing: 2
-            Label {
-                objectName: "collectionTitle"
-                text: backend.detailTitle
+            spacing: 10
+            Image {
+                objectName: "collectionHeaderCover"
+                source: backend.detailMeta.header ? backend.detailMeta.header.thumbnail || "" : ""
+                visible: source.toString().length > 0 && status !== Image.Error
+                Layout.preferredWidth: 44
+                Layout.preferredHeight: 44
+                fillMode: Image.PreserveAspectFit
+                asynchronous: true
+            }
+            ColumnLayout {
                 Layout.fillWidth: true
                 Layout.minimumWidth: 0
-                color: "white"
-                font.pixelSize: 24
-                font.bold: true
-                elide: Text.ElideRight
-            }
-            Label {
-                objectName: "collectionHeaderSummary"
-                Layout.fillWidth: true
-                Layout.minimumWidth: 0
-                text: backend.detailHeaderSummary ||
-                      ((backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs")
-                       || backend.detailMeta.kind === "profile"
-                       ? root.itemCountText(backend.detailTracksModel.count)
-                       : root.songCountText(backend.detailTracksModel.count))
-                elide: Text.ElideRight
-                HoverHandler { id: headerSummaryHover }
-                ToolTip.visible: headerSummaryHover.hovered
-                ToolTip.text: text
-                color: "#999999"
-                font.pixelSize: 12
-            }
-        }
-        Button {
-            id: collectionMenuButton
-            objectName: "collectionMenuButton"
-            Layout.preferredWidth: 36
-            Layout.preferredHeight: 36
-            visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
-                     || backend.detailCanAlbumLibrary
-                     || backend.detailCanPlaylistLibrary
-                     || backend.detailPublicLink.length > 0
-                     || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
-            enabled: backend.detailPublicLink.length > 0 || (!backend.busy && backend.connected)
-            hoverEnabled: true
-            ToolTip.visible: hovered
-            ToolTip.text: qsTr("Možnosti kolekce")
-            onClicked: collectionMenu.popup(collectionMenuButton, width - collectionMenu.width, height)
-            background: Rectangle {
-                radius: 4
-                color: collectionMenuButton.hovered ? "#3b3b3b" : "#222222"
-            }
-            contentItem: Canvas {
-                onPaint: {
-                    var ctx = getContext("2d")
-                    ctx.fillStyle = "#dddddd"
-                    for (var i = 0; i < 3; ++i) {
-                        ctx.beginPath()
-                        ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
-                        ctx.fill()
+                spacing: 2
+                GridLayout {
+                    id: collectionTitleRow
+                    Layout.fillWidth: true
+                    columns: 3
+                    columnSpacing: 8
+                    rowSpacing: 4
+
+                    readonly property bool actionsOnOwnRow: collectionMenuButton.visible
+                        && width < collectionTitle.naturalWidth + collectionMenuButton.implicitWidth
+                            + collectionMenuButton.inlineMargin + columnSpacing
+
+                    Label {
+                        id: collectionTitle
+                        Layout.row: 0
+                        Layout.column: 0
+                        Layout.columnSpan: collectionTitleRow.actionsOnOwnRow ? 2 : 1
+                        readonly property real naturalWidth: Math.ceil(titleMetrics.advanceWidth)
+                            + leftPadding + rightPadding + 2
+                        Layout.preferredWidth: naturalWidth
+                        Layout.maximumWidth: naturalWidth
+                        objectName: "collectionTitle"
+                        text: backend.detailTitle
+                        Layout.fillWidth: true
+                        Layout.minimumWidth: 0
+                        color: "white"
+                        font.pixelSize: 24
+                        font.bold: true
+                        elide: Text.ElideRight
+                        TextMetrics {
+                            id: titleMetrics
+                            text: collectionTitle.text
+                            font: collectionTitle.font
+                        }
+                        HoverHandler { id: collectionTitleHover }
+                        ToolTip.visible: collectionTitle.truncated && collectionTitleHover.hovered
+                        ToolTip.text: collectionTitle.text
                     }
+                    HeaderActionsButton {
+                        id: collectionMenuButton
+                        objectName: "collectionMenuButton"
+                        Layout.row: collectionTitleRow.actionsOnOwnRow ? 1 : 0
+                        Layout.column: collectionTitleRow.actionsOnOwnRow ? 0 : 1
+                        Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                        Layout.leftMargin: collectionTitleRow.actionsOnOwnRow ? 0 : inlineMargin
+                        visible: backend.detailCanSavePlaylist || backend.detailCanEditPlaylist || backend.detailCanShuffle || backend.detailCanCollectionRadio
+                                 || backend.detailCanAlbumLibrary
+                                 || backend.detailCanPlaylistLibrary
+                                 || backend.detailPublicLink.length > 0
+                                 || backend.detailMeta.kind === "artist" || backend.detailCanUploadArtistMix
+                        enabled: backend.detailPublicLink.length > 0 || (!backend.busy && backend.connected)
+                        hoverEnabled: true
+                        ToolTip.visible: hovered
+                        ToolTip.text: qsTr("Možnosti kolekce")
+                        onClicked: collectionMenu.popup(collectionMenuButton, 0, height)
+                    }
+                    Item {
+                        Layout.row: 0
+                        Layout.column: 2
+                        Layout.fillWidth: true
+                    }
+                }
+                Label {
+                    objectName: "collectionHeaderSummary"
+                    Layout.fillWidth: true
+                    Layout.minimumWidth: 0
+                    text: backend.detailHeaderSummary ||
+                          ((backend.detailMeta.kind === "artist" && backend.detailMeta.section !== "songs")
+                           || backend.detailMeta.kind === "profile"
+                           ? root.itemCountText(backend.detailTracksModel.count)
+                           : root.songCountText(backend.detailTracksModel.count))
+                    elide: Text.ElideRight
+                    HoverHandler { id: headerSummaryHover }
+                    ToolTip.visible: headerSummaryHover.hovered
+                    ToolTip.text: text
+                    color: "#999999"
+                    font.pixelSize: 12
                 }
             }
         }
@@ -2138,28 +2174,39 @@ ApplicationWindow {
                     }
                 }
             }
-            ComboBox {
-                id: artistOrder
-                objectName: "artistOrder"
-                width: Math.min(240, parent.width)
-                enabled: !backend.busy
-                textRole: "label"
-                valueRole: "key"
-                model: backend.detailMeta.section === "songs"
-                       ? [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
-                          {key: "default", label: backend.detailMeta.kind === "upload_artist" ? qsTr("Původní pořadí") : qsTr("Původní pořadí YTM")}]
-                       : [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
-                          {key: "default", label: qsTr("Původní pořadí YTM")},
-                          {key: "newest", label: qsTr("Od nejnovějších")},
-                          {key: "oldest", label: qsTr("Od nejstarších")}]
-                currentIndex: {
-                    var meta = backend.detailMeta
-                    var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
-                    for (var i = 0; i < model.length; ++i)
-                        if (model[i].key === order) return i
-                    return 0
+            Row {
+                spacing: 8
+                Label {
+                    id: artistOrderLabel
+                    height: artistOrder.height
+                    verticalAlignment: Text.AlignVCenter
+                    text: qsTr("Řadit podle")
+                    color: "#aaaaaa"
                 }
-                onActivated: backend.setArtistOrder(currentValue)
+                ComboBox {
+                    id: artistOrder
+                    objectName: "artistOrder"
+                    width: 170
+                    Accessible.name: artistOrderLabel.text
+                    enabled: !backend.busy
+                    textRole: "label"
+                    valueRole: "key"
+                    model: backend.detailMeta.section === "songs"
+                           ? [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
+                              {key: "default", label: backend.detailMeta.kind === "upload_artist" ? qsTr("Původní pořadí") : qsTr("Původní pořadí YTM")}]
+                           : [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
+                              {key: "default", label: qsTr("Původní pořadí YTM")},
+                              {key: "newest", label: qsTr("Od nejnovějších")},
+                              {key: "oldest", label: qsTr("Od nejstarších")}]
+                    currentIndex: {
+                        var meta = backend.detailMeta
+                        var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
+                        for (var i = 0; i < model.length; ++i)
+                            if (model[i].key === order) return i
+                        return 0
+                    }
+                    onActivated: backend.setArtistOrder(currentValue)
+                }
             }
         }
         Label {
@@ -2340,35 +2387,22 @@ ApplicationWindow {
                 Label {
                     Layout.fillWidth: true
                     Layout.minimumWidth: 0
+                    Layout.maximumWidth: implicitWidth + 2
                     text: heading
                     color: "white"
                     font.pixelSize: 28
                     font.bold: true
                     elide: Text.ElideRight
                 }
-                Button {
+                HeaderActionsButton {
                     id: uploadMenuButton
                     objectName: root.currentLibrarySection === "songs" ? "librarySongsMenuButton" : "uploadSongsMenuButton"
                     visible: trackPage.sourceKey === "library" && (root.currentLibrarySection === "songs" || root.currentLibrarySection === "upload_songs")
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
                     enabled: backend.connected && !backend.busy
                     hoverEnabled: true
                     ToolTip.visible: hovered
                     ToolTip.text: root.currentLibrarySection === "songs" ? qsTr("Možnosti skladeb") : qsTr("Možnosti nahraných skladeb")
-                    onClicked: uploadMenu.popup(uploadMenuButton, width - uploadMenu.width, height)
-                    background: Rectangle { color: uploadMenuButton.hovered ? "#3b3b3b" : "#222222"; radius: 4 }
-                    contentItem: Canvas {
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.fillStyle = "#dddddd"
-                            for (var i = 0; i < 3; ++i) {
-                                ctx.beginPath()
-                                ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
-                                ctx.fill()
-                            }
-                        }
-                    }
+                    onClicked: uploadMenu.popup(uploadMenuButton, 0, height)
                     Menu {
                         id: uploadMenu
                         objectName: "uploadSongsMenu"
@@ -2410,6 +2444,7 @@ ApplicationWindow {
                         }
                     }
                 }
+                Item { Layout.fillWidth: true }
             }
             Label {
                 text: root.itemCountText(tracks.count)
@@ -2505,33 +2540,15 @@ ApplicationWindow {
                     font.pixelSize: 28
                     font.bold: true
                 }
-                Item { Layout.fillWidth: true }
-                Button {
+                HeaderActionsButton {
                     id: libraryMenuButton
                     objectName: "libraryPlaylistMenuButton"
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
                     visible: !isMix && root.currentPage === 1 && root.currentLibrarySection === "playlists"
                     enabled: backend.connected && !backend.busy
                     hoverEnabled: true
                     ToolTip.visible: hovered
                     ToolTip.text: qsTr("Možnosti playlistů")
-                    onClicked: libraryMenu.popup(libraryMenuButton, width - libraryMenu.width, height)
-                    background: Rectangle {
-                        radius: 4
-                        color: libraryMenuButton.hovered ? "#3b3b3b" : "#222222"
-                    }
-                    contentItem: Canvas {
-                        onPaint: {
-                            var ctx = getContext("2d")
-                            ctx.fillStyle = "#dddddd"
-                            for (var i = 0; i < 3; ++i) {
-                                ctx.beginPath()
-                                ctx.arc(width / 2, height / 2 + (i - 1) * 6, 2, 0, Math.PI * 2)
-                                ctx.fill()
-                            }
-                        }
-                    }
+                    onClicked: libraryMenu.popup(libraryMenuButton, 0, height)
                     Menu {
                         id: libraryMenu
                         objectName: "libraryPlaylistMenu"
@@ -2549,6 +2566,7 @@ ApplicationWindow {
                         }
                     }
                 }
+                Item { Layout.fillWidth: true }
                 Label {
                     text: root.itemCountText(items.count)
                     color: "#888888"
@@ -3218,7 +3236,7 @@ ApplicationWindow {
                                     anchors.fill: parent
                                     anchors.margins: 22
                                     CollectionHeader {
-                                        backText: "← Mixy"
+                                        backText: qsTr("← Mixy")
                                         onGoBack: backend.clearDetail()
                                     }
                                     PlaylistLoadBanner { Layout.fillWidth: true }

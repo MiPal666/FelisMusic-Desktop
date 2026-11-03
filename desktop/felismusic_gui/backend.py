@@ -6176,9 +6176,18 @@ class BackendBridge(QObject):
                 podcast_id = playlist_id or browse_id
                 if not podcast_id:
                     raise RuntimeError(QCoreApplication.translate("BackendBridge", "Podcast nemá podcastId."))
-                data = ytmusic.get_podcast(podcast_id, limit=None)
+                episode_list_id = podcast_id.removeprefix("VL")
+                if episode_list_id == "SE":
+                    data = ytmusic.get_saved_episodes(limit=None)
+                    episodes = data.get("tracks")
+                elif episode_list_id == "RDPN":
+                    data = ytmusic.get_episodes_playlist(episode_list_id)
+                    episodes = data.get("episodes")
+                else:
+                    data = ytmusic.get_podcast(podcast_id, limit=None)
+                    episodes = data.get("episodes")
                 detail_title = data.get("title") or title
-                tracks = core.usable_tracks(data.get("episodes") or [])
+                tracks = core.usable_tracks(episodes or [])
 
             elif kind == "upload_album":
                 if not browse_id:

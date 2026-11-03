@@ -1,5 +1,14 @@
 # FelisMusic Desktop – aktuální stav
 
+## Doladění GUI – hlavička detailů
+
+- Společná hlavička s menším tlačítkem Zpět, obalem podle dostupnosti a nabídkou Akce u názvu. Když se název s nabídkou nevejdou vedle sebe, nabídka přejde na další řádek. Řazení interpreta má popisek Řadit podle.
+- Ověřeny QML detaily alba, interpreta, playlistu, nahraného alba a nahraného interpreta v češtině i angličtině, včetně dlouhého názvu, otevření nabídky a tlačítka Zpět. Prošlo sedm testů hlaviček a sedm testů překladů.
+- Po ručním testu opraveno předčasné zkracování názvů podle měřené šířky textu. Skladby, Nahrané skladby i přehled playlistů používají nad seznamem stejnou pojmenovanou nabídku Akce. Třítečkové nabídky jednotlivých řádků jsou oddělené.
+- QML převádí seznam interpretů na pole před filtrováním. Podcastové seznamy SE a RDPN mají vlastní API volání, běžné podcasty používají původní volání. Regresní test pokrývá i prázdný seznam SE. Michal potvrdil funkčnost po opravách.
+
+- Podle následné vizuální připomínky má společné tlačítko Akce výšku 28 px, písmo 11 px a větší odstup od názvu. QML ověřeno v češtině i angličtině včetně otevření nabídek. Michal vzhled ručně ověřil a schválil.
+
 ## Doladění GUI – akce Oblíbené hudby
 
 - Přímá tlačítka Přehrát náhodně a Spustit mix, doplněný popisek Řadit podle. Původní podmínky dostupnosti akcí zachovány.
