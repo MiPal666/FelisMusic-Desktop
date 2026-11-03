@@ -1,11 +1,14 @@
 # Překlady FelisMusic Desktop
 
-Příprava překladů ponechává češtinu jako zdrojový jazyk. Po kroku L2
-(0.3.97-dev) je označeno 105 různých textů: hlavní navigace, vybrané nabídky a
-přehrávací ovladače, dialogy výstupů/účtu/playlistů/informací a několik textů
-backendu. Dvě hlášky dialogů s počtem položek používají celé šablony s parametry.
-Zbytek stavových hlášek, dalších nabídek a počtů čeká na další kroky. Zatím se
-nedistribuuje anglický katalog a žádný kompletní druhý jazyk není hotový.
+Příprava překladů ponechává češtinu jako zdrojový jazyk. Po kroku L3
+(0.3.98-dev) je označeno 287 různých textů: navigace, dialogy, pevné nabídky
+skladeb/kolekcí, základní ovladače a přímé stavové hlášky backendu.
+Proměnné stavové věty používají celé šablony s pojmenovanými parametry.
+V QML jsou celé šablony také pro připojení, počet vybraných a název výstupu.
+
+Zatím zbývají zejména hlášky připravované v API úlohách (dialogové stavy,
+přihlášení, texty chyb), skládané bannery načítání a množné číslo.
+Nedistribuuje se anglický katalog a žádný kompletní druhý jazyk není hotový.
 
 ## Volba jazyka
 
@@ -52,6 +55,9 @@ Anglický katalog pro testy vzniká jen dočasně v testovacím adresáři.
   `album`, `LIKE`, cesty ani data dodaná uživatelem/serverem.
 - Další skládané věty převádět na celé překládané šablony s parametry;
   neobalovat až výsledný dynamický text a neupravovat uživatelské hodnoty.
+  Python používá například `translate(..., "Přehrávám · {title}").format(title=title)`;
+  názvy parametrů musí zůstat v překladu zachované. QML používá `%1` a `.arg()`.
+  Názvy zadané uživatelem mohou samy obsahovat `{count}` nebo `%1`; berou se jako data.
 - Počty a množné číslo řešit samostatně podle Qt numerus, s testy češtiny.
 - Před převodem zkontrolovat vazby na obsah textu. Barva obecné chyby načítání
   už používá příznak `statusIsError` místo hledání českého slova `Chyba`.

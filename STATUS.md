@@ -1,5 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.98-dev – překlady, krok L3: nabídky a přímé stavové hlášky, ručně ověřeno
+
+- L2 uložené v 52cc8d6. Michal potvrdil zavřenou aplikaci a povolil pokračování. Bez skutečného EN katalogu; české výchozí texty zachované.
+- Označené zbývající pevné položky nabídek skladeb/kolekcí a hromadných akcí, hodnocení, popisky typů a ovládání, tooltipy a statické nápovědy/bannerové věty. Doplněné i dříve neoznačené ASCII popisky některých dialogů. Interní názvy rolí, akce, IDs, LIKE/DISLIKE a ostatní stavy se nemění. QML šablony pro Připojeno, Vybráno a Výstup vloží hodnoty přes .arg().
+- Přímé _set_status hlášky používají QCoreApplication.translate se stabilním kontextem BackendBridge. F-stringové stavy převedené na celé věty s pojmenovanými parametry (skladba/účet/výstup, počty hledání/kolekcí/fronty, doplnění Mixu a enqueue). Překládané jsou také odvozené zobrazované labely, nikoli jejich strojové klíče. Hlásky dodané jako message z API úloh a ostatní chyby/přihlašovací texty jsou další krok.
+- Katalog 287 textů (182 nových oproti L2). Zachováno dnešní české znění včetně dosavadních počtových tvarů; úplné numerus řešení a zbývající skládané bannery následují samostatně.
+- Čtyři nové testy s reálně sestaveným zkušebním EN katalogem: příprava/přehrávání/Stop a nepřekládaný název s {count}/%1/Chyba; počty 0/1 v hledání všech tří rozsahů a neměnné query/scope; enqueue next/append s přesnými výskyty a zachovaným audiem/pozicí; přeložený popisek knihovny a nedotčený název skladby. Prošly samostatně i v celé sadě: 752 testů, 750 prošlo, 2 D-Bus přeskočené.
+- Main.qml offscreen 900×600/1280×800 bez překladu i s dočasným zkušebním katalogem: menu skladeb/hodnocení/fronty, hromadný výběr, celé šablony s uživatelským %1/{name}, zachování audia. Navíc nabídky editace/smazání kolekce bez zápisu, skutečný callback přesunu výskytu při zachování aktuální skladby, explicitní hodnocení se správným API klíčem, handoff na simulovaný Cast a Stop. Metadata a ID zachované; malá česká nabídka vizuálně zkontrolovaná.
+- Strojová revize: po odebrání překladových obalů a normalizaci tří QML šablon je QML shodné s předchozí verzí; AST backendu po normalizaci argumentů _set_status a hodnot display-labelů shodné s předchozí verzí. Žádný zásah do ostatní řídicí logiky. Extrakce katalogu a git diff --check bez chyb; po posledních 12 čistě statických QML obalech znovu prošla celá QML kontrola.
+- Michal potvrdil, že ruční ověření L3 v aplikaci proběhlo v pořádku. Změny jsou připravené ke commitu. Následuje L4: zbývající API/dialogové/chybové hlášky, bannery a počty; skutečnou angličtinu ještě nezapínat. Necommitováno.
+
 ## 0.3.97-dev – překlady, krok L2: dialogy a nezávislá barva chyby, Michalem přijato
 
 - L1 a oprava hledání uložené v 3d171a4. Michal potvrdil zavřenou aplikaci a povolil další krok. Čeština i automatický výběr prostředí zůstávají výchozím chováním; skutečná angličtina se stále nedodává.

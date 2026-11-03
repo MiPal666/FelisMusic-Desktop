@@ -114,15 +114,15 @@ ApplicationWindow {
     }
 
     function openUploads() {
-        var labels = {upload_albums: "Nahraná alba", upload_artists: "Nahraní interpreti",
-                      upload_songs: "Nahrané skladby"}
+        var labels = {upload_albums: qsTr("Nahraná alba"), upload_artists: qsTr("Nahraní interpreti"),
+                      upload_songs: qsTr("Nahrané skladby")}
         selectLibrarySection(lastUploadSection, labels[lastUploadSection])
     }
 
     function libraryOrderLabels() {
         if (currentLibrarySection === "playlists")
-            return ["Výchozí YTM", "A–Z", "Z–A"]
-        return ["Nedávno přidané", "A–Z", "Z–A"]
+            return [qsTr("Výchozí YTM"), qsTr("A–Z"), qsTr("Z–A")]
+        return [qsTr("Nedávno přidané"), qsTr("A–Z"), qsTr("Z–A")]
     }
 
     function libraryOrderValues() {
@@ -473,7 +473,7 @@ ApplicationWindow {
         readonly property string privacyValue: ["PRIVATE", "UNLISTED", "PUBLIC"][currentIndex] || ""
         Layout.fillWidth: true
         model: [qsTr("Soukromý"), qsTr("Neveřejný (přístup přes odkaz)"), qsTr("Veřejný")]
-        Accessible.name: "Viditelnost playlistu"
+        Accessible.name: qsTr("Viditelnost playlistu")
     }
 
     Dialog {
@@ -487,7 +487,7 @@ ApplicationWindow {
         onClosed: backend.cancelPlaylistDelete()
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
-            text: "Smazat playlist?"
+            text: qsTr("Smazat playlist?")
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -534,7 +534,7 @@ ApplicationWindow {
             background: Item { }
             PlayerTextButton {
                 objectName: "playlistDeleteSubmit"
-                text: "Smazat playlist"
+                text: qsTr("Smazat playlist")
                 implicitWidth: 140
                 enabled: !backend.busy && !backend.playlistDeleteState.pending
                          && !backend.playlistDeleteState.locked && !!backend.playlistDeleteState.playlistId
@@ -568,7 +568,7 @@ ApplicationWindow {
         padding: 18
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
-            text: "Upravit playlist"
+            text: qsTr("Upravit playlist")
             color: "white"
             font.pixelSize: 19
             font.bold: true
@@ -668,7 +668,7 @@ ApplicationWindow {
                 enabled: !backend.busy && !backend.emptyPlaylistState.locked
             }
             Label {
-                text: "Playlist vznikne bez skladeb."
+                text: qsTr("Playlist vznikne bez skladeb.")
                 color: "#aaaaaa"
                 Layout.fillWidth: true
                 wrapMode: Text.WordWrap
@@ -804,7 +804,7 @@ ApplicationWindow {
             Label {
                 text: backend.playlistSaveState.collection
                       ? qsTr("Vybrané skladby se uloží v zobrazeném pořadí, bez duplicit.")
-                      : "Playlist bude obsahovat vybranou skladbu."
+                      : qsTr("Playlist bude obsahovat vybranou skladbu.")
                 visible: !playlistSave.duplicateResult && playlistSave.newMode && !backend.playlistSaveState.completed
                 color: "#aaaaaa"
                 wrapMode: Text.WordWrap
@@ -1029,8 +1029,8 @@ ApplicationWindow {
         ToolTip.visible: hovered
         ToolTip.delay: 450
         ToolTip.text: iconKind === "like"
-                      ? (active ? "Zrušit oblíbenou" : "Oblíbená")
-                      : (active ? "Zrušit neoblíbenou" : "Neoblíbená")
+                      ? (active ? qsTr("Zrušit oblíbenou") : qsTr("Oblíbená"))
+                      : (active ? qsTr("Zrušit neoblíbenou") : qsTr("Neoblíbená"))
 
         onActiveChanged: ratingCanvas.requestPaint()
         onIconKindChanged: ratingCanvas.requestPaint()
@@ -1295,14 +1295,14 @@ ApplicationWindow {
 
         function kindCaption(value) {
             var labels = {
-                "song": "Skladba", "video": "Video",
-                "album": "Album", "single": "Single", "ep": "EP",
-                "artist": "Interpret", "playlist": "Playlist",
-                "podcast": "Podcast", "channel": "Profil",
-                "profile": "Profil", "upload_song": "Nahraná skladba",
-                "upload_album": "Nahrané album", "upload_artist": "Nahraný interpret"
+                "song": qsTr("Skladba"), "video": qsTr("Video"),
+                "album": qsTr("Album"), "single": qsTr("Single"), "ep": qsTr("EP"),
+                "artist": qsTr("Interpret"), "playlist": qsTr("Playlist"),
+                "podcast": qsTr("Podcast"), "channel": qsTr("Profil"),
+                "profile": qsTr("Profil"), "upload_song": qsTr("Nahraná skladba"),
+                "upload_album": qsTr("Nahrané album"), "upload_artist": qsTr("Nahraný interpret")
             }
-            var label = labels[value] || value || "Položka"
+            var label = labels[value] || value || qsTr("Položka")
             return label
         }
 
@@ -1368,9 +1368,9 @@ ApplicationWindow {
 
             Label {
                 visible: currentTrack
-                text: backend.playerState === "loading" ? "Připravuji…"
-                      : (backend.playerState === "playing" ? "Hraje"
-                         : (backend.playerState === "paused" ? "Pozastaveno" : "Zastaveno"))
+                text: backend.playerState === "loading" ? qsTr("Připravuji…")
+                      : (backend.playerState === "playing" ? qsTr("Hraje")
+                         : (backend.playerState === "paused" ? qsTr("Pozastaveno") : qsTr("Zastaveno")))
                 color: "#b9b0ff"
                 font.pixelSize: 12
                 font.bold: true
@@ -1443,7 +1443,7 @@ ApplicationWindow {
                 trackMenu.popup(menuButton, menuButton.width - trackMenu.width, menuButton.height)
             }
             ToolTip.visible: hovered
-            ToolTip.text: "Možnosti skladby"
+            ToolTip.text: qsTr("Možnosti skladby")
             background: Rectangle {
                 radius: 4
                 color: menuButton.hovered ? "#3b3b3b" : "transparent"
@@ -1581,21 +1581,21 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "itemCopyLinkAction"
-                text: "Kopírovat odkaz"
+                text: qsTr("Kopírovat odkaz")
                 visible: !trackDelegate.multipleSelection && trackMenu.publicLink.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: backend.copyPublicLink(trackMenu.publicLink)
             }
             MenuItem {
                 objectName: "itemOpenLinkAction"
-                text: "Otevřít v prohlížeči"
+                text: qsTr("Otevřít v prohlížeči")
                 visible: !trackDelegate.multipleSelection && trackMenu.publicLink.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: backend.openPublicLink(trackMenu.publicLink)
             }
             MenuItem {
                 objectName: "trackRatingAction"
-                text: "Hodnocení…"
+                text: qsTr("Hodnocení…")
                 visible: !trackDelegate.multipleSelection && videoId.length > 0
                          && (kind === "song" || kind === "video" || kind === "upload_song")
                 height: visible ? implicitHeight : 0
@@ -1604,7 +1604,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "queueMoveUpAction"
-                text: "Posunout nahoru"
+                text: qsTr("Posunout nahoru")
                 visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
                 height: visible ? implicitHeight : 0
                 enabled: backend.playerCanMoveQueue && trackDelegate.index > 0
@@ -1612,7 +1612,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "queueMoveDownAction"
-                text: "Posunout dolů"
+                text: qsTr("Posunout dolů")
                 visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
                 height: visible ? implicitHeight : 0
                 enabled: backend.playerCanMoveQueue && trackDelegate.index + 1 < backend.playerQueueCount
@@ -1620,9 +1620,9 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "queueRemoveItemAction"
-                text: trackDelegate.currentTrack && backend.playerRemovalPending ? "Odebere se po dohrání"
+                text: trackDelegate.currentTrack && backend.playerRemovalPending ? qsTr("Odebere se po dohrání")
                       : trackDelegate.currentTrack && (backend.playerState === "playing" || backend.playerState === "paused")
-                        ? "Odebrat z fronty po dohrání" : "Odebrat z fronty"
+                        ? qsTr("Odebrat z fronty po dohrání") : qsTr("Odebrat z fronty")
                 visible: trackDelegate.sourceKey === "playing" && !trackDelegate.multipleSelection
                 height: visible ? implicitHeight : 0
                 enabled: backend.playerCanEditQueue && !(trackDelegate.currentTrack && backend.playerRemovalPending)
@@ -1630,7 +1630,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "playlistMoveUpAction"
-                text: "Posunout nahoru"
+                text: qsTr("Posunout nahoru")
                 visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail"
                          && backend.detailCanEditPlaylist && videoId.length > 0 && setVideoId.length > 0
                 height: visible ? implicitHeight : 0
@@ -1639,7 +1639,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "playlistMoveDownAction"
-                text: "Posunout dolů"
+                text: qsTr("Posunout dolů")
                 visible: !trackDelegate.multipleSelection && trackDelegate.sourceKey === "detail"
                          && backend.detailCanEditPlaylist && videoId.length > 0 && setVideoId.length > 0
                 height: visible ? implicitHeight : 0
@@ -1648,7 +1648,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "playlistRemoveItemAction"
-                text: trackDelegate.multipleSelection ? "Odebrat vybrané z playlistu…" : "Odebrat z tohoto playlistu"
+                text: trackDelegate.multipleSelection ? qsTr("Odebrat vybrané z playlistu…") : qsTr("Odebrat z tohoto playlistu")
                 visible: trackDelegate.multipleSelection ? backend.selectionCanRemovePlaylist
                          : (trackDelegate.sourceKey === "detail" && backend.detailCanEditPlaylist
                             && videoId.length > 0 && setVideoId.length > 0)
@@ -1660,7 +1660,7 @@ ApplicationWindow {
             // Append the delayed action so existing menu rows do not move.
             MenuItem {
                 objectName: "songLibraryMenuAction"
-                text: backend.songLibraryMenuState.inLibrary ? "Odebrat z knihovny" : "Přidat do knihovny"
+                text: backend.songLibraryMenuState.inLibrary ? qsTr("Odebrat z knihovny") : qsTr("Přidat do knihovny")
                 visible: !trackDelegate.multipleSelection && (kind === "song" || kind === "video") && trackMenu.libraryMatches
                          && backend.songLibraryMenuState.available && !backend.songLibraryMenuState.pending
                 height: visible ? implicitHeight : 0
@@ -1681,19 +1681,19 @@ ApplicationWindow {
             background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
             MenuItem {
                 objectName: "trackRateLike"
-                text: "Oblíbená" + (trackDelegate.likeStatus === "LIKE" ? " ✓" : "")
+                text: qsTr("Oblíbená") + (trackDelegate.likeStatus === "LIKE" ? " ✓" : "")
                 enabled: backend.connected && !backend.trackRatingBusy
                 onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "LIKE")
             }
             MenuItem {
                 objectName: "trackRateDislike"
-                text: "Neoblíbená" + (trackDelegate.likeStatus === "DISLIKE" ? " ✓" : "")
+                text: qsTr("Neoblíbená") + (trackDelegate.likeStatus === "DISLIKE" ? " ✓" : "")
                 enabled: backend.connected && !backend.trackRatingBusy
                 onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "DISLIKE")
             }
             MenuItem {
                 objectName: "trackRateClear"
-                text: "Zrušit hodnocení"
+                text: qsTr("Zrušit hodnocení")
                 enabled: backend.connected && !backend.trackRatingBusy
                 onTriggered: backend.rateTrackFrom(trackDelegate.sourceKey, trackDelegate.index, "INDIFFERENT")
             }
@@ -1726,7 +1726,7 @@ ApplicationWindow {
     }
 
     component CollectionHeader: RowLayout {
-        property string backText: "← Zpět"
+        property string backText: qsTr("← Zpět")
         signal goBack()
         Layout.fillWidth: true
         spacing: 10
@@ -1788,7 +1788,7 @@ ApplicationWindow {
             enabled: backend.detailPublicLink.length > 0 || (!backend.busy && backend.connected)
             hoverEnabled: true
             ToolTip.visible: hovered
-            ToolTip.text: "Možnosti kolekce"
+            ToolTip.text: qsTr("Možnosti kolekce")
             onClicked: collectionMenu.popup(collectionMenuButton, width - collectionMenu.width, height)
             background: Rectangle {
                 radius: 4
@@ -1819,14 +1819,14 @@ ApplicationWindow {
             background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
             MenuItem {
                 objectName: "collectionCopyLinkAction"
-                text: "Kopírovat odkaz"
+                text: qsTr("Kopírovat odkaz")
                 visible: collectionMenu.publicLink.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: backend.copyPublicLink(collectionMenu.publicLink)
             }
             MenuItem {
                 objectName: "collectionOpenLinkAction"
-                text: "Otevřít v prohlížeči"
+                text: qsTr("Otevřít v prohlížeči")
                 visible: collectionMenu.publicLink.length > 0
                 height: visible ? implicitHeight : 0
                 onTriggered: backend.openPublicLink(collectionMenu.publicLink)
@@ -1875,7 +1875,7 @@ ApplicationWindow {
             MenuItem {
                 objectName: "albumLibraryAction"
                 text: backend.detailMeta.albumLibrary && backend.detailMeta.albumLibrary.inLibrary
-                      ? "Odebrat album z knihovny" : "Přidat album do knihovny"
+                      ? qsTr("Odebrat album z knihovny") : qsTr("Přidat album do knihovny")
                 visible: backend.detailCanAlbumLibrary
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1884,7 +1884,7 @@ ApplicationWindow {
             MenuItem {
                 objectName: "playlistLibraryAction"
                 text: backend.detailMeta.playlistLibrary && backend.detailMeta.playlistLibrary.inLibrary
-                      ? "Odebrat playlist z knihovny" : "Přidat playlist do knihovny"
+                      ? qsTr("Odebrat playlist z knihovny") : qsTr("Přidat playlist do knihovny")
                 visible: backend.detailCanPlaylistLibrary
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1893,7 +1893,7 @@ ApplicationWindow {
             MenuItem {
                 objectName: "artistSubscriptionAction"
                 text: backend.detailMeta.artistSubscription && backend.detailMeta.artistSubscription.subscribed
-                      ? "Zrušit odběr" : "Odebírat"
+                      ? qsTr("Zrušit odběr") : qsTr("Odebírat")
                 visible: backend.detailCanArtistSubscription
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1901,7 +1901,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "collectionPlaylistSave"
-                text: "Přidat seznam do playlistu…"
+                text: qsTr("Přidat seznam do playlistu…")
                 visible: backend.detailCanSavePlaylist
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && backend.detailCanSavePlaylist && !backend.busy
@@ -1957,7 +1957,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "collectionPlaylistEdit"
-                text: "Upravit playlist…"
+                text: qsTr("Upravit playlist…")
                 visible: backend.detailCanEditPlaylist
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -1965,7 +1965,7 @@ ApplicationWindow {
             }
             MenuItem {
                 objectName: "collectionPlaylistDelete"
-                text: "Smazat playlist…"
+                text: qsTr("Smazat playlist…")
                 visible: backend.detailCanDeletePlaylist
                 height: visible ? implicitHeight : 0
                 enabled: backend.connected && !backend.busy
@@ -2011,13 +2011,13 @@ ApplicationWindow {
                     Layout.fillWidth: true
                     wrapMode: Text.Wrap
                     text: backend.detailMeta.dynamicMix === true
-                        ? (backend.detailMeta.playlistLoadState === "error" ? "Další část mixu se nepodařila načíst"
-                           : backend.detailLoading ? "Načítám další doporučení…"
-                           : backend.detailMeta.playlistLoadState === "complete" ? "Mix už nenabízí další pokračování"
+                        ? (backend.detailMeta.playlistLoadState === "error" ? qsTr("Další část mixu se nepodařila načíst")
+                           : backend.detailLoading ? qsTr("Načítám další doporučení…")
+                           : backend.detailMeta.playlistLoadState === "complete" ? qsTr("Mix už nenabízí další pokračování")
                            : "Dynamický mix · " + backend.detailTracksModel.count + " načtených skladeb")
-                        : backend.detailLoading ? "Načítám další skladby…"
+                        : backend.detailLoading ? qsTr("Načítám další skladby…")
                         : backend.detailComplete ? "Vše načteno · " + backend.detailTracksModel.count + " skladeb"
-                        : "Načítání se nepodařilo dokončit"
+                        : qsTr("Načítání se nepodařilo dokončit")
                     color: "#eeeeee"
                     font.bold: true
                 }
@@ -2027,11 +2027,11 @@ ApplicationWindow {
                     wrapMode: Text.Wrap
                     text: backend.detailMeta.dynamicMix === true
                         ? (backend.detailMeta.playlistLoadState === "error"
-                           ? "Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu."
-                           : "Další skladby se načtou podle postupu přehrávání.")
+                           ? qsTr("Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu.")
+                           : qsTr("Další skladby se načtou podle postupu přehrávání."))
                         : backend.detailLoading
-                        ? "Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; ostatní akce až po dokončení."
-                        : "Seznam není úplný. Otevři playlist znovu."
+                        ? qsTr("Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; ostatní akce až po dokončení.")
+                        : qsTr("Seznam není úplný. Otevři playlist znovu.")
                     color: "#bbbbbb"
                 }
             }
@@ -2056,7 +2056,7 @@ ApplicationWindow {
             }
             Button {
                 objectName: "profileLoadMore"
-                text: "Načíst další"
+                text: qsTr("Načíst další")
                 visible: {
                     var meta = backend.detailMeta
                     var state = meta.profilePages && meta.profilePages[meta.section]
@@ -2070,7 +2070,7 @@ ApplicationWindow {
             Layout.fillWidth: true
             wrapMode: Text.WordWrap
             color: "#aaaaaa"
-            text: backend.detailTracksModel.count === 0 ? "V této části nejsou dostupné žádné položky."
+            text: backend.detailTracksModel.count === 0 ? qsTr("V této části nejsou dostupné žádné položky.")
                   : "Načteno " + backend.detailTracksModel.count + " položek. Přehrávání používá načtená videa."
         }
     }
@@ -2095,14 +2095,14 @@ ApplicationWindow {
                     textRole: "label"
                     valueRole: "key"
                     model: [{key: "library", label: qsTr("Skladby")},
-                            {key: "all", label: "Všechny skladby"}]
+                            {key: "all", label: qsTr("Všechny skladby")}]
                     currentIndex: backend.detailMeta.songScope === "all" ? 1 : 0
                     onActivated: backend.selectArtistSongScope(currentValue)
                 }
                 Repeater {
                     model: [{key: "songs", label: qsTr("Skladby")},
                             {key: "albums", label: qsTr("Alba")},
-                            {key: "singles", label: "Singly a EP"}]
+                            {key: "singles", label: qsTr("Singly a EP")}]
                     Button {
                         required property var modelData
                         visible: modelData.key !== "songs" || !backend.detailMeta.songScopes
@@ -2123,12 +2123,12 @@ ApplicationWindow {
                 textRole: "label"
                 valueRole: "key"
                 model: backend.detailMeta.section === "songs"
-                       ? [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
-                          {key: "default", label: backend.detailMeta.kind === "upload_artist" ? "Původní pořadí" : "Původní pořadí YTM"}]
-                       : [{key: "a_to_z", label: "A–Z"}, {key: "z_to_a", label: "Z–A"},
-                          {key: "default", label: "Původní pořadí YTM"},
-                          {key: "newest", label: "Od nejnovějších"},
-                          {key: "oldest", label: "Od nejstarších"}]
+                       ? [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
+                          {key: "default", label: backend.detailMeta.kind === "upload_artist" ? qsTr("Původní pořadí") : qsTr("Původní pořadí YTM")}]
+                       : [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
+                          {key: "default", label: qsTr("Původní pořadí YTM")},
+                          {key: "newest", label: qsTr("Od nejnovějších")},
+                          {key: "oldest", label: qsTr("Od nejstarších")}]
                 currentIndex: {
                     var meta = backend.detailMeta
                     var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
@@ -2141,7 +2141,7 @@ ApplicationWindow {
         }
         Label {
             visible: backend.detailTracksModel.count === 0
-            text: "V této části nejsou dostupné žádné položky."
+            text: qsTr("V této části nejsou dostupné žádné položky.")
             color: "#aaaaaa"
             wrapMode: Text.WordWrap
             Layout.fillWidth: true
@@ -2235,7 +2235,7 @@ ApplicationWindow {
             visible: root.currentPage === 1 && root.currentLibrarySection.indexOf("upload_") === 0
             spacing: 8
             Label {
-                text: "Nahrané soubory:"
+                text: qsTr("Nahrané soubory:")
                 color: "#999999"
             }
             Button {
@@ -2243,21 +2243,21 @@ ApplicationWindow {
                 text: qsTr("Alba")
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection === "upload_albums"
-                onClicked: root.selectLibrarySection("upload_albums", "Nahraná alba")
+                onClicked: root.selectLibrarySection("upload_albums", qsTr("Nahraná alba"))
             }
             Button {
                 objectName: "uploadArtistsTab"
                 text: qsTr("Interpreti")
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection === "upload_artists"
-                onClicked: root.selectLibrarySection("upload_artists", "Nahraní interpreti")
+                onClicked: root.selectLibrarySection("upload_artists", qsTr("Nahraní interpreti"))
             }
             Button {
                 objectName: "uploadSongsTab"
                 text: qsTr("Skladby")
                 checkable: true
                 checked: root.currentPage === 1 && root.currentLibrarySection === "upload_songs"
-                onClicked: root.selectLibrarySection("upload_songs", "Nahrané skladby")
+                onClicked: root.selectLibrarySection("upload_songs", qsTr("Nahrané skladby"))
             }
             Item { Layout.fillWidth: true }
         }
@@ -2294,7 +2294,7 @@ ApplicationWindow {
                     enabled: backend.connected && !backend.busy
                     hoverEnabled: true
                     ToolTip.visible: hovered
-                    ToolTip.text: root.currentLibrarySection === "songs" ? "Možnosti skladeb" : "Možnosti nahraných skladeb"
+                    ToolTip.text: root.currentLibrarySection === "songs" ? qsTr("Možnosti skladeb") : qsTr("Možnosti nahraných skladeb")
                     onClicked: uploadMenu.popup(uploadMenuButton, width - uploadMenu.width, height)
                     background: Rectangle { color: uploadMenuButton.hovered ? "#3b3b3b" : "#222222"; radius: 4 }
                     contentItem: Canvas {
@@ -2343,7 +2343,7 @@ ApplicationWindow {
                             objectName: "uploadSongsPlaylistSave"
                             visible: root.currentLibrarySection === "upload_songs"
                             height: visible ? implicitHeight : 0
-                            text: "Přidat seznam do playlistu…"
+                            text: qsTr("Přidat seznam do playlistu…")
                             enabled: backend.connected && !backend.busy && trackPage.tracks.count > 0 && backend.uploadSongsComplete
                             onTriggered: backend.openUploadSongsPlaylistSave()
                         }
@@ -2392,7 +2392,7 @@ ApplicationWindow {
                             ? "Načítám další skladby… · " + trackPage.tracks.count + " načteno\nSkladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; akce nad celým seznamem až po dokončení."
                             : backend.librarySongsComplete ? "Vše načteno · " + trackPage.tracks.count + " skladeb"
                             : "Načítání se nepodařilo dokončit. Seznam není úplný; otevři "
-                              + (root.currentLibrarySection === "songs" ? qsTr("Skladby") : "Nahrané skladby") + " znovu."
+                              + (root.currentLibrarySection === "songs" ? qsTr("Skladby") : qsTr("Nahrané skladby")) + " znovu."
                     }
                 }
             }
@@ -2453,7 +2453,7 @@ ApplicationWindow {
                     enabled: backend.connected && !backend.busy
                     hoverEnabled: true
                     ToolTip.visible: hovered
-                    ToolTip.text: "Možnosti playlistů"
+                    ToolTip.text: qsTr("Možnosti playlistů")
                     onClicked: libraryMenu.popup(libraryMenuButton, width - libraryMenu.width, height)
                     background: Rectangle {
                         radius: 4
@@ -2481,7 +2481,7 @@ ApplicationWindow {
                         background: Rectangle { color: "#242424"; border.color: "#555555"; radius: 5 }
                         MenuItem {
                             objectName: "newEmptyPlaylistAction"
-                            text: "Nový playlist…"
+                            text: qsTr("Nový playlist…")
                             enabled: backend.connected && !backend.busy
                             onTriggered: backend.beginEmptyPlaylist()
                         }
@@ -2678,7 +2678,7 @@ ApplicationWindow {
                             text: backend.busy
                                   ? backend.status
                                   : (backend.connected
-                                     ? "Připojeno · " + backend.accountName
+                                     ? qsTr("Připojeno · %1").arg(backend.accountName)
                                      : backend.status)
                             color: backend.statusIsError ? "#ff8a80" : "#999999"
                             font.pixelSize: 13
@@ -2801,10 +2801,10 @@ ApplicationWindow {
                                     objectName: "searchInput"
                                     Layout.fillWidth: true
                                     placeholderText: root.currentSearchScope === "uploads"
-                                                     ? "Hledat v nahraných souborech…"
+                                                     ? qsTr("Hledat v nahraných souborech…")
                                                      : (root.currentSearchScope === "library"
-                                                        ? "Hledat v knihovně…"
-                                                        : "Hledat v YT Music…")
+                                                        ? qsTr("Hledat v knihovně…")
+                                                        : qsTr("Hledat v YT Music…"))
                                     onAccepted: backend.search(
                                         text, root.currentSearchMode, root.currentSearchScope
                                     )
@@ -3028,7 +3028,7 @@ ApplicationWindow {
                                     id: likedOrder
                                     enabled: backend.likedComplete
                                     Layout.preferredWidth: 170
-                                    model: ["Výchozí YTM", "A–Z", "Z–A"]
+                                    model: [qsTr("Výchozí YTM"), qsTr("A–Z"), qsTr("Z–A")]
                                     currentIndex: {
                                         var values = ["", "a_to_z", "z_to_a"]
                                         var index = values.indexOf(root.currentLikedOrder)
@@ -3074,9 +3074,9 @@ ApplicationWindow {
                                             objectName: "likedLoadTitle"
                                             Layout.fillWidth: true
                                             wrapMode: Text.Wrap
-                                            text: backend.likedLoading ? "Načítám další skladby…"
+                                            text: backend.likedLoading ? qsTr("Načítám další skladby…")
                                                 : backend.likedComplete ? "Vše načteno · " + backend.likedModel.count + " skladeb"
-                                                : "Načítání se nepodařilo dokončit"
+                                                : qsTr("Načítání se nepodařilo dokončit")
                                             font.pixelSize: 16
                                             font.bold: true
                                             color: "#eeeeee"
@@ -3086,8 +3086,8 @@ ApplicationWindow {
                                             visible: !backend.likedComplete
                                             wrapMode: Text.Wrap
                                             text: backend.likedLoading
-                                                ? "Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; řazení a ostatní akce až po dokončení."
-                                                : "Seznam není úplný. Otevři Oblíbenou hudbu znovu."
+                                                ? qsTr("Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty; řazení a ostatní akce až po dokončení.")
+                                                : qsTr("Seznam není úplný. Otevři Oblíbenou hudbu znovu.")
                                             color: "#bbbbbb"
                                             font.pixelSize: 13
                                         }
@@ -3198,12 +3198,12 @@ ApplicationWindow {
                                     hoverEnabled: true
                                     ToolTip.visible: hovered
                                     ToolTip.text: backend.playerCanShuffle
-                                                  ? "Zamíchat frontu; aktuální skladba pokračuje"
-                                                  : "Tuto frontu nyní nelze zamíchat"
+                                                  ? qsTr("Zamíchat frontu; aktuální skladba pokračuje")
+                                                  : qsTr("Tuto frontu nyní nelze zamíchat")
                                     onClicked: backend.shuffleQueue()
                                 }
                                 Button {
-                                    text: "Na aktuální"
+                                    text: qsTr("Na aktuální")
                                     enabled: backend.playerHasTrack
                                     onClicked: root.revealQueueRow()
                                 }
@@ -3216,7 +3216,7 @@ ApplicationWindow {
                             }
                             Label {
                                 visible: !backend.playerHasTrack
-                                text: "Fronta je prázdná. Vyber skladbu v knihovně nebo hledání."
+                                text: qsTr("Fronta je prázdná. Vyber skladbu v knihovně nebo hledání.")
                                 Layout.fillWidth: true
                                 wrapMode: Text.Wrap
                                 color: "#aaaaaa"
@@ -3266,7 +3266,7 @@ ApplicationWindow {
                     spacing: 12
                     Label {
                         objectName: "selectedTrackCount"
-                        text: "Vybráno: " + backend.selectedTrackIndices.length
+                        text: qsTr("Vybráno: %1").arg(backend.selectedTrackIndices.length)
                         color: "#dddddd"
                     }
                     Button {
@@ -3308,7 +3308,7 @@ ApplicationWindow {
                         }
                         MenuItem {
                             objectName: "selectedPlaylistRemoveAction"
-                            text: "Odebrat z playlistu…"
+                            text: qsTr("Odebrat z playlistu…")
                             visible: backend.selectionCanRemovePlaylist
                             height: visible ? implicitHeight : 0
                             enabled: backend.connected && !backend.busy && backend.selectionCanRemovePlaylist
@@ -3362,7 +3362,7 @@ ApplicationWindow {
                             spacing: 3
 
                             Label {
-                                text: backend.playerHasTrack ? backend.playerTitle : "Nic se nepřehrává"
+                                text: backend.playerHasTrack ? backend.playerTitle : qsTr("Nic se nepřehrává")
                                 color: "white"
                                 font.pixelSize: 15
                                 font.bold: true
@@ -3370,14 +3370,14 @@ ApplicationWindow {
                                 Layout.fillWidth: true
                             }
                             Label {
-                                text: backend.castState.disconnected ? "Cast odpojený · vyber jiný výstup"
+                                text: backend.castState.disconnected ? qsTr("Cast odpojený · vyber jiný výstup")
                                       : backend.playerHasTrack
                                       ? (backend.playerState === "loading"
-                                         ? "Připravuji lokální audio…"
+                                         ? qsTr("Připravuji lokální audio…")
                                          : backend.playerSubtitle)
                                       : (backend.playbackOutputAvailable
-                                         ? "Klikni na skladbu"
-                                         : "GStreamer není dostupný v tomto virtualenv")
+                                         ? qsTr("Klikni na skladbu")
+                                         : qsTr("GStreamer není dostupný v tomto virtualenv"))
                                 color: "#999999"
                                 font.pixelSize: 13
                                 elide: Text.ElideRight
@@ -3459,7 +3459,7 @@ ApplicationWindow {
                                     hoverEnabled: true
                                     onClicked: backend.stopPlayback()
                                     ToolTip.visible: hovered
-                                    ToolTip.text: "Zastavit; Play spustí skladbu od začátku"
+                                    ToolTip.text: qsTr("Zastavit; Play spustí skladbu od začátku")
                                 }
                                 PlayerTextButton {
                                     objectName: "repeatButton"
@@ -3573,7 +3573,7 @@ ApplicationWindow {
                                 spacing: 6
 
                                 PlayerTextButton {
-                                    text: backend.playerMuted ? "Zapnout" : qsTr("Ztlumit")
+                                    text: backend.playerMuted ? qsTr("Zapnout") : qsTr("Ztlumit")
                                     enabled: backend.playbackOutputAvailable
                                     implicitWidth: 58
                                     onClicked: backend.toggleMute()
@@ -3611,7 +3611,7 @@ ApplicationWindow {
 
                             Label {
                                 objectName: "outputStatusLabel"
-                                text: "Výstup: " + backend.outputName
+                                text: qsTr("Výstup: %1").arg(backend.outputName)
                                 color: backend.playbackOutputAvailable ? "#aaaaaa" : "#ff8a80"
                                 font.pixelSize: 13
                                 Layout.alignment: Qt.AlignRight
