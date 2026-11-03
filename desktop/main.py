@@ -9,15 +9,17 @@ from PySide6.QtQml import QQmlApplicationEngine
 
 from felismusic_gui.backend import BackendBridge
 from felismusic_gui.diagnostics import configure_debug
+from felismusic_gui.i18n import install_translation
 
 
-VERSION = "0.3.94-dev"
+VERSION = "0.3.96-dev"
 
 
 def main():
     app = QGuiApplication(configure_debug(sys.argv))
     app.setApplicationName("FelisMusic")
     app.setOrganizationName("FelisCatus")
+    app._felismusic_translator = install_translation(app)
 
     engine = QQmlApplicationEngine()
     # Backend je potomkem QML enginu, takže při ukončení zůstane živý,

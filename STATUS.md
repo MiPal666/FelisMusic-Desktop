@@ -1,5 +1,34 @@
 # FelisMusic Desktop – aktuální stav
 
+## 0.3.96-dev – prázdné hledání v Knihovně, Michalem přijato
+
+- Michal dodal bezpečný výpis skutečné odpovědi pro Skladby/Alba/Interprety: tři tabs, selected=true na druhé, ta obsahuje itemSectionRenderer/messageRenderer; první a třetí jsou pouze reload placeholders s continuations a bez contents. Upstream filtr nutí parser číst první tab, takže vzniká KeyError v navigation.py. Nejde o síťové selhání ani o pouhé přejmenování hlášky.
+- Nový search.py na mělké kopii API klienta upraví pouze pořadí tabs v odpovědi filtrovaného hledání Knihovny (songs/albums/artists), aby původní parser četl serverem označený selected tab. Nemění sdílenou metodu klienta, vstupní response ani instalovaný ytmusicapi. Zbytek parsování/stránkování provádí původní API, další požadavky nepřidává. Backend používá tento adaptér při hledání; katalog/Nahrané/nefiltrují se stávající přímou cestou.
+- Žádné chytání KeyError jako prázdného úspěchu. Poškozená odpověď, nejednoznačná volba či síťová chyba zůstávají chybou. Úspěšný prázdný výsledek běžně nastaví nulový model; žádný nový prázdný banner ani dialog. Předchozí výsledky zmizí, audio/fronta/pozice se nemění.
+- Sedm nových regresí s reálným instalovaným SearchMixin parserem: skutečná prázdná struktura pro všechny tři filtry (přímý upstream prokazatelně selže, adaptér vrátí []); vybraný tab s výsledky místo katalogových řádků; continuation přes původní parser; selected tab již první/legacy single tab; katalog/Nahrané/nefiltrující hledání beze změny; poškozené/nejednoznačné/síťové chyby se nepotlačí; backend vyčistí staré výsledky bez errorOccurred při zachovaném audiu. Prošlo samostatně i v celé sadě: 744 testů, 742 prošlo, 2 D-Bus přeskočené.
+- Main.qml offscreen 900×600/1280×800 s toutéž strukturou: prázdné Skladby/Alba/Interpreti bez dialogu a bez změny audia; nové neprázdné hledání po prázdném funguje. Malé prázdné zobrazení vizuálně zkontrolované, QML/diff bez chyb. Katalog L1 aktualizovaný kvůli posunu zdrojových řádků, stále 46 textů.
+- tools/diagnose_library_search.py zachovává čtecí diagnostiku upstreamu; --adapted umožňuje ověřit nový adaptér na stejném dotazu. Ověřené --help a sanitizace výpisu, žádné response texty/tokeny. První přímý serverový pokus asistenta skončil timeoutem; Michal následně potvrdil skutečný test opravy proti YTM jako funkční.
+- Michal 2026-11-03 potvrdil opravu hledání v Knihovně jako funkční. Překladový základ L1 i oprava 0.3.96 přijaty a připravené ke společnému commitu; dosud necommitované. Následuje další malý krok přípravy překladů při zachované češtině.
+
+## Hledání bez výsledků v Knihovně – diagnostika 2026-11-03
+
+- Michal při testu L1 hlásí chybový dialog při prázdném hledání Knihovna → Skladby/Alba/Interpreti. Požadovaný výsledek: pouze prázdný seznam, bez nové hlášky či dialogu. Skutečné síťové/serverové chyby musí zůstat odlišené.
+- Překladový pilot byl podle uživatele v pořádku; přijetí L1 není založené na odstranění této dosud neprokázané parserové chyby. Nové úpravy hledání zatím nebyly provedené.
+- Michal potvrdil zavřenou aplikaci a povolil opravu. Instalovaný ytmusicapi parser má několik míst předpokládajících neprázdné shelves/konkrétní strukturu, ale konkrétní tvar jeho prázdné odpovědi zatím není potvrzený.
+- Čtecí pokus vůči skutečnému YTM z prostředí asistenta skončil ReadTimeout už při inicializaci, bez získané odpovědi. Nevydávat podezřelé místo za potvrzenou příčinu a nepřevádět libovolné výjimky na prázdný výsledek.
+- Připraven tools/diagnose_library_search.py: čtecí dotaz pro tři knihovní filtry, omezené timeouty, pouze struktura/počty a typ/místo chyby. Nevypisuje hlavičky, tokeny, text odpovědi ani názvy skladeb. Nápověda a odstranění citlivých údajů z výpisu ověřené. Michal následně dodal výpis, podle kterého je příčina potvrzená a opravená v 0.3.96 výše. Žádný automatický zásah do instalovaného ytmusicapi.
+
+## 0.3.95-dev – překlady, krok L1: základ při zachované češtině, Michalem ověřeno
+
+- Výchozí čistý stav fbafe42 (6–3 přijaté a uložené). Michal odsouhlasil přípravu vícejazyčnosti při vypnuté aplikaci a automatickou volbu podle prostředí Linuxu. Postup po malých přijatých krocích; tento krok ještě nedodává angličtinu.
+- Nový i18n.py načítá QTranslator podle QLocale.system() před vznikem backendu a QML. Respektuje systémové pořadí jazyků/regionální fallback Qt, drží se lokálních .qm a při chybějícím/neplatném katalogu ponechá české zdrojové texty. Nemění formátovací locale, jazyk API/účtu ani audio; volba jazyka při startu.
+- První sada 46 různých textů je označená: hlavní navigace, vybrané akce skladeb/kolekcí, základní přehrávací ovladače, počáteční stav backendu a název místního výstupu. QML qsTr, Python QCoreApplication.translate. Interní klíče/stavy a podmínky beze změny. Po odstranění překladových obalů je Main.qml shodný s výchozím souborem a AST backendu se shoduje s výchozím AST (bez nového importu).
+- desktop/translations/felismusic_cs.ts obsahuje zdrojový inventář, zatím bez dokončených překladů. Nástroj tools/update_translations.py aktualizuje katalogy a volitelně sestaví .qm přes dostupný Qt Linguist; runtime jej nepotřebuje. Postup a omezení v desktop/translations/README.md. Žádný anglický katalog se zatím nedistribuuje; další texty, šablony, počty a skutečná angličtina jsou další samostatné kroky.
+- Audit zachytil vazbu barvy stavu na české slovo Chyba; toto místo není v pilotu překládáno a musí se vyřešit při převodu stavových hlášek. Změna textové vrstvy nebyla spojena s refaktorem přehrávání/Castu/fronty.
+- Pět nových testů používá skutečný sestavený zkušební katalog: regionální en_GB→en, QML/Python kontexty a nepřeložené texty; cs/fr/C a chybějící/poškozený katalog; neměnné formátovací locale; izolované linuxové LANG/LANGUAGE včetně en:cs preference. Prošlo samostatně i v celé sadě 737 testů: 735 prošlo, 2 D-Bus přeskočené.
+- Main.qml offscreen ověřený při 900×600/1280×800 bez překladu i s dočasným zkušebním EN katalogem: navigace a hledání přes skutečné klíče API, Fronta, Play/Pause, Repeat, odznačování, Next/Previous/Stop. Fronta zachovaná, bez síťového/API účtu či skutečného audio zařízení. České i zkušební zobrazení vizuálně zkontrolované, QML bez chyb. Extrakce a kompilace katalogu ověřené; sestavený prázdný CS katalog pouze v /tmp. git diff --check bez chyb.
+- Michal 2026-11-03 po skutečném testu uvedl, že vše vypadá OK. Překladový základ L1 ověřený; samostatně nahlášené hledání Knihovny bez výsledků je v diagnostice výše. Necommitováno. Po uložení pokračovat v označování zbývajících textů před dodáním kompletní angličtiny.
+
 ## 0.3.94-dev – checklist 6–3, srozumitelné chyby hledání a spojení, Michalem přijato
 
 - Navigace 0.3.93 a 6–2 uložené v c3c689e. Michal potvrdil zavřenou aplikaci a povolil další krok.

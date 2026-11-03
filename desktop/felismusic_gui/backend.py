@@ -7,6 +7,7 @@ from typing import Any
 
 from PySide6.QtCore import (
     QAbstractListModel,
+    QCoreApplication,
     QByteArray,
     QModelIndex,
     QObject,
@@ -36,6 +37,7 @@ from .cast_output import handoff, handoff_to_local, dispose
 from .cast_streams import CastStreamCache
 from .profiles import load_library_profiles, load_profile, load_profile_page
 from .network_errors import is_network_failure
+from .search import search_music
 from .diagnostics import DiagnosticExecutor as ThreadPoolExecutor, current_trace, instrument_ytmusic
 
 
@@ -263,7 +265,7 @@ class BackendBridge(QObject):
         self._playlist_load_revision = 0
         self._playlistPageReady.connect(self._apply_playlist_page, Qt.ConnectionType.QueuedConnection)
         self._ytmusic = None
-        self._status = "Připravuji backend…"
+        self._status = QCoreApplication.translate("BackendBridge", "Připravuji backend…")
         self._account_name = "YouTube Music"
         self._busy = False
         self._connected = False
@@ -512,7 +514,7 @@ class BackendBridge(QObject):
     def outputName(self):
         if self._cast_output:
             return str(self._cast_output.cast_info.friendly_name or "Cast") + (" · odpojeno" if self._cast_lost else "")
-        return "Toto zařízení"
+        return QCoreApplication.translate("BackendBridge", "Toto zařízení")
 
     @Property(bool, notify=playerChanged)
     def playbackOutputAvailable(self):
@@ -6337,7 +6339,7 @@ class BackendBridge(QObject):
                 kwargs["filter"] = search_filter
             if search_scope is not None:
                 kwargs["scope"] = search_scope
-            results = self._require_ytmusic().search(query, **kwargs) or []
+            results = search_music(self._require_ytmusic(), query, **kwargs) or []
             normalized = [
                 self._search_item(
                     dict(x, resultType="upload_song")
