@@ -2729,7 +2729,22 @@ ApplicationWindow {
                 NavButton { pageIndex: 4; pageText: qsTr("Mixy pro vás") }
                 NavButton { pageIndex: 5; pageText: qsTr("Fronta") + (backend.playerQueueCount > 0 ? " (" + backend.playerQueueCount + ")" : ""); objectName: "queueButton" }
 
-                Item { Layout.fillHeight: true }
+                Item {
+                    Layout.fillWidth: true
+                    Layout.fillHeight: true
+
+                    Image {
+                        objectName: "sidebarAppIcon"
+                        anchors.centerIn: parent
+                        width: Math.max(0, Math.min(192, parent.width, parent.height - 12))
+                        height: width
+                        visible: width >= 36
+                        source: "felismusic.svg"
+                        fillMode: Image.PreserveAspectFit
+                        sourceSize.width: 192
+                        sourceSize.height: 192
+                    }
+                }
 
                 Label {
                     text: qsTr("Desktop GUI · %1").arg(fcmVersion)

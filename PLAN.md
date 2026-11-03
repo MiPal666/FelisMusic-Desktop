@@ -1,6 +1,6 @@
 # FelisMusic Desktop – aktuální plán do 1.0
 
-**Doladění GUI před 1.0:** Řazení v Knihovně má popisek „Řadit podle“ a přesouvá se podle šířky okna. Michal ručně ověřil, uloženo v c14be14. Přímé akce v Oblíbené hudbě také ručně ověřeny. Společná hlavička detailů včetně nahraných alb a interpretů je ručně ověřená. Čitelnost názvu ve spodní liště a dialog Informace o skladbě ručně ověřeny. Další krok: ikona aplikace.
+**Doladění GUI před 1.0:** Řazení v Knihovně má popisek „Řadit podle“ a přesouvá se podle šířky okna. Michal ručně ověřil, uloženo v c14be14. Přímé akce v Oblíbené hudbě také ručně ověřeny. Společná hlavička detailů včetně nahraných alb a interpretů je ručně ověřená. Čitelnost názvu ve spodní liště a dialog Informace o skladbě ručně ověřeny. Ikona aplikace je ručně ověřená v postranním panelu, v titulku okna i v panelu KDE. Další krok: instalace a spouštěč.
 
 **0.3.100-dev / L5 – angličtina podle prostředí:** Přeloženo 490 textů. Sestavené české a anglické katalogy se načítají při spuštění podle preferencí Linuxu. Michal potvrdil angličtinu i návrat k češtině. Michal také ověřil angličtinu s francouzským nastavením a následný návrat k češtině. Uloženo v b939c79.
 

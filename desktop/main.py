@@ -4,7 +4,7 @@ import sys
 from pathlib import Path
 
 from PySide6.QtCore import QTimer, QUrl
-from PySide6.QtGui import QGuiApplication
+from PySide6.QtGui import QGuiApplication, QIcon
 from PySide6.QtQml import QQmlApplicationEngine
 
 from felismusic_gui.backend import BackendBridge
@@ -18,6 +18,8 @@ VERSION = "0.3.100-dev"
 def main():
     app = QGuiApplication(configure_debug(sys.argv))
     app.setApplicationName("FelisMusic")
+    app.setDesktopFileName("felismusic")
+    app.setWindowIcon(QIcon(str(Path(__file__).with_name("felismusic.svg"))))
     app.setOrganizationName("FelisCatus")
     app._felismusic_translator = install_translation(app)
 

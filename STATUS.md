@@ -1,5 +1,10 @@
 # FelisMusic Desktop – aktuální stav
 
+## Doladění GUI – ikona FelisMusic
+
+- Schválený motiv převedený do SVG. Stejná ikona se načítá jako ikona aplikace a zobrazuje se pod Frontou v postranním panelu. Panel zmenšuje obrázek podle volné výšky.
+- Ověřeno vykreslení ikony v Qt při 16, 32 a 64 px a v QML při velikostech okna 1280 × 800 a 900 × 600. Identifikátor aplikace pro budoucí spouštěč je felismusic. Michal ověřil motiv pod Frontou, v titulku okna i v panelu KDE. Ikona v nabídce aplikací se ověří se spouštěčem.
+
 ## Doladění GUI – název přehrávané skladby a informace
 
 - Název ve spodní liště dostává více místa v širším okně a při zkrácení se zobrazí celý po najetí myší. V testu při šířce okna 1280 px vzrostla šířka názvu ze 159 na 185 px, při 1600 px z 246 na 327 px.
