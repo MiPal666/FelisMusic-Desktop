@@ -47,7 +47,7 @@ class LibraryArtistTests(support.AudioPlaybackTestCase):
     def test_library_default_catalog_switch_and_sort_without_network(self):
         self.open();self.assertEqual(self.ids(),['L','L']);self.assertEqual(self.b.detailMeta['songScope'],'library')
         self.api._send_request.assert_called_once_with('browse',{'browseId':'MPLAUCartist'})
-        self.b.selectArtistSongScope('all');self.assertEqual(self.ids(),['A','C'])
+        self.b.selectArtistSongScope('all');self.assertEqual(self.ids(),['C','A'])
         self.b.setArtistOrder('z_to_a');self.assertEqual(self.ids(),['C','A'])
         self.b.selectArtistSongScope('library');self.assertEqual(self.ids(),['L','L'])
         self.b.selectArtistSongScope('all');self.assertEqual(self.ids(),['C','A'])
@@ -65,7 +65,7 @@ class LibraryArtistTests(support.AudioPlaybackTestCase):
         self.assertIs(self.b._queue,queue);self.assertEqual(self.played,played)
 
     def test_normal_catalog_has_no_library_scope(self):
-        self.open('UCartist');self.assertEqual(self.ids(),['A','C'])
+        self.open('UCartist');self.assertEqual(self.ids(),['C','A'])
         self.assertNotIn('songScopes',self.b.detailMeta);self.api._send_request.assert_not_called()
         state=self.b._detail_state();self.b.selectArtistSongScope('library');self.assertEqual(self.b._detail_state(),state)
 

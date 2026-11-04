@@ -1,7 +1,9 @@
 """Cast transport adapter and explicit Local / Cast handoffs."""
 from threading import Event, Lock
 from time import monotonic
+from contextlib import nullcontext
 from . import legacy_core as core
+from .direct_audio import DirectCastURL
 from .diagnostics import current_trace
 
 
@@ -45,10 +47,42 @@ class CastController:
             response["type"] = data.get("type") if isinstance(data, dict) else None
             ready.set()
         self.pending = (ready, response, url, paused)
-        self.controller.play_media(url, content_type, current_time=position, autoplay=not paused,
-                                   callback_function=accepted, **kwargs)
+        self._load_options = dict(position=position, paused=paused, **kwargs)
+        try:
+            self.controller.play_media(url, content_type, current_time=position, autoplay=not paused,
+                                       callback_function=accepted, **kwargs)
+        except Exception:
+            if not isinstance(url, DirectCastURL):
+                raise
+            # Resolve a fallback in block_until_active, outside the GUI's load lock.
+            response["ok"] = False
+            ready.set()
 
-    def block_until_active(self, timeout=15, cancelled=None):
+    def block_until_active(self, timeout=15, cancelled=None, load_lock=None):
+        url = self.pending[2]
+        options = self._load_options
+        try:
+            self._wait_until_active(timeout, cancelled)
+            return
+        except core.AudioPreparationCancelled:
+            raise
+        except Exception:
+            if not isinstance(url, DirectCastURL):
+                raise
+            self.check_connection()
+            if cancelled and cancelled():
+                raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+        trace = current_trace()
+        if trace:
+            trace.event("cast.direct_load_fallback")
+        fallback_url, content_type = core.get_yt_dlp_audio_stream(url.video_id)
+        with load_lock if load_lock is not None else nullcontext():
+            if cancelled and cancelled():
+                raise core.AudioPreparationCancelled("Přepnutí zrušeno")
+            self.play_media_at(fallback_url, content_type, **options)
+        self._wait_until_active(timeout, cancelled)
+
+    def _wait_until_active(self, timeout, cancelled):
         ready, response, url, paused = self.pending
         deadline = monotonic() + timeout
         previous = None

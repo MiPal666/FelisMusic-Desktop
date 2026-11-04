@@ -21,8 +21,12 @@ from ytmusicapi import LikeStatus, YTMusic
 
 if __package__:
     from .direct_audio import download_audio as download_direct_audio
+    from .direct_audio import resolve_cast_url
+    from .diagnostics import current_trace
 else:
     from direct_audio import download_audio as download_direct_audio
+    from direct_audio import resolve_cast_url
+    from diagnostics import current_trace
 
 try:
     import gi
@@ -45,7 +49,7 @@ except Exception as exc:
     GST_IMPORT_ERROR = exc
 
 
-VERSION = "1.0.1-dev"
+VERSION = "1.0.1"
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
@@ -3281,6 +3285,21 @@ def content_type_from_ext(ext):
 
 
 def get_audio_stream(video_id):
+    """Resolve a Cast URL directly, retaining the authenticated yt-dlp fallback."""
+    trace = current_trace()
+    started = time.monotonic()
+    try:
+        url = resolve_cast_url(video_id)
+        if trace:
+            trace.event("cast.direct_ready", seconds=round(time.monotonic() - started, 3))
+        return url, "audio/mp4"
+    except Exception as exc:
+        if trace:
+            trace.event("cast.direct_fallback", error=type(exc).__name__)
+        return get_yt_dlp_audio_stream(video_id)
+
+
+def get_yt_dlp_audio_stream(video_id):
     """
     Přímá URL pro Chromecast.
 

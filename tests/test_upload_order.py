@@ -26,8 +26,10 @@ class UploadOrderTests(support.AudioPlaybackTestCase):
     def titles(self):
         return [x['title'] for x in self.b.detailTracksModel.snapshot()]
 
-    def test_initial_a_to_z_reverse_and_original_order_preserve_all_metadata_and_duplicates(self):
+    def test_initial_original_a_to_z_reverse_and_original_order_preserve_all_metadata_and_duplicates(self):
         self.load()
+        self.assertEqual(self.titles(), ['Zulu', 'Alpha', 'Alpha', 'beta'])
+        self.b.setArtistOrder('a_to_z')
         self.assertEqual(self.titles(), ['Alpha', 'Alpha', 'beta', 'Zulu'])
         self.b.setArtistOrder('z_to_a')
         self.assertEqual(self.titles(), ['Zulu', 'beta', 'Alpha', 'Alpha'])
@@ -84,7 +86,7 @@ class UploadOrderTests(support.AudioPlaybackTestCase):
         with patch.object(support.backend.random, 'shuffle', side_effect=hold):
             self.assertTrue(self.b.shuffleDetail()); self.until(entered.is_set)
             # Simulate a source-state change before delivery of the worker result.
-            self.b._detail_meta['orders']['songs'] = 'default'
+            self.b._detail_meta['orders']['songs'] = 'a_to_z'
             self.release.set(); self.ready()
         self.assertFalse(self.b.playerHasTrack)
         self.api.get_library_upload_artist.return_value = []

@@ -1,5 +1,87 @@
 # FelisMusic Desktop – aktuální stav
 
+## Desktop 1.0.1 – připraveno k vydání (2026-11-04)
+
+- Přímá příprava lokálního audia i Cast URL se zachovaným yt-dlp fallbackem,
+  dialog O aplikaci a původní výchozí pořadí detailů interpretů.
+- Michal ověřil lokální přehrávání, samostatný Cast i skupinu a instalační
+  ZIP na openSUSE Tumbleweed i Debianu. Celá sada: 790 testů bez selhání,
+  3 D-Bus testy přeskočeny; QML ověřeno.
+- Verze GUI a jádra sjednocené na 1.0.1, oba návody aktualizované. Finální
+  `dist/FelisMusic-1.0.1-linux-installer.zip` sestaven a obsah ověřen.
+  Commit, tag a publikace na GitHubu zatím čekají na Michala.
+- Minimalizace do tray zůstává v TODO pro další verzi.
+
+## Příprava instalačního testu 1.0.1-dev
+
+- Michal přijal řazení i Cast na skupině. Minimalizace do tray přidaná do PLAN.md.
+- Nový `dist/FelisMusic-1.0.1-dev-linux-installer.zip` obsahuje aktuální
+  desktop včetně přímého resolveru, oba návody, licenci a install/uninstall.
+  Zachovaná složka FelisMusic-Installer a spustitelnost skriptů.
+  Ověřená integrita archivu a shoda všech souborů se zdroji; bez env,
+  přihlašovacích údajů, cache či generovaných obrázků. Michal potvrdil
+  úspěšný instalační test na openSUSE i Debianu.
+
+## 1.0.1-dev – výchozí původní pořadí
+
+- Detail interpreta nyní ve skladbách, albech a singlech začíná v pořadí
+  vráceném YTM (Původní pořadí YTM). Nahraný interpret používá Původní
+  pořadí. Tyto volby jsou první v nabídce; výslovně zvolené A–Z, Z–A
+  či řazení podle roku se nadále zachovává pro danou sekci.
+- Ostatní seznamy již mají jako výchozí Výchozí YTM nebo Nedávno přidané,
+  žádné další výchozí A–Z v desktopovém kódu nenalezeno.
+- Regresní testy ověřují původní pořadí, výslovné abecední řazení,
+  duplicity a přehrávání/frontu. QML ověřeno se skutečným modelem nabídky
+  pro skladby/alba/singly i nahraného interpreta: výchozí původní pořadí
+  a přepnutí na explicitní A–Z. Celá sada: 790 testů bez selhání,
+  3 D-Bus testy přeskočeny. Michal potvrdil funkčnost řazení.
+
+## 1.0.1-dev – samostatný test přímé URL na Castu
+
+- `DirectResolver.resolve()` vrací kandidáty audia odděleně od stahování.
+  Lokální cesta používá stejné rozlišení i dosavadní ověřený přenos.
+- `tools/probe_direct_cast.py --device "Audio Pracovna"` hledá přesný název
+  audio zařízení nebo skupiny. Výchozí dva videoId odpovídají lokálnímu
+  testu. Na zvoleném Castu přehraje pět sekund, provede seek na 30 s a
+  přehraje dalších pět sekund. Potvrzení sleduje PLAYING a postupující
+  pozici; slyšitelný zvuk musí potvrdit Michal.
+- Cast sám stahuje přímou URL, bez stažení audia do počítače. Při chybě
+  přímého resolveru, LOAD, přehrávání či seeku zkusí původní Cast resolver
+  přes yt-dlp. Na konci zastaví obsah patřící testu a odpojí spojení.
+  `--yt-dlp-only` umožní srovnání. Log neobsahuje podepsané URL.
+- Prošlo 15 testů lokální přímé cesty a 4 nové testy Cast diagnostiky,
+  včetně odmítnutí URL a přerušení. Skutečný test na zařízení čeká na Michala.
+  Michal následně ověřil dva videoId na Audio Obývák i skupině Music
+  se slyšitelným zvukem před i po seeku. Audio Obývák získal URL
+  za 0,26 / 0,08 s a rozběhl přehrávání za 3,17 / 1,29 s.
+  Music získal URL za 0,19 / 0,09 s a rozběhl přehrávání za 2,79 / 0,89 s.
+  Všechny čtyři vzorky prošly přímo, bez fallbacku.
+
+## 1.0.1-dev – integrace přímého resolveru pro Cast
+
+- `get_audio_stream` nejprve získá přímou AAC URL přes InnerTube a při
+  chybě se vrací na původní `get_yt_dlp_audio_stream`. Přímá URL nese
+  videoId pro případné opakování LOAD a metadata zachovává i cache URL.
+- CastController při odmítnutí nebo timeoutu přímého LOAD vyzkouší jednou
+  yt-dlp URL se stejnou pozicí, pauzou a metadaty. Odpojení či zrušení
+  operace zastaví opakování. Při normálním přehrávání se opakovaný LOAD
+  chrání stejným transportním zámkem a kontrolou generace jako první LOAD.
+  Příprava URL probíhá mimo tento zámek, aby Stop zůstal dostupný.
+- Stejný postup obslouží běžné přehrávání, přednačtené URL a přepojování
+  mezi lokálním výstupem, samostatným Castem a skupinou. Audio stahuje Cast.
+- Diagnostika přidává `cast.direct_ready`, `cast.direct_fallback` a
+  `cast.direct_load_fallback`. Obsah omezený přihlášením používá yt-dlp.
+- Prošlo 95 dosavadních Cast testů a 12 nových regresí. Nové testy
+  pokrývají cache, fallback, pauzu/pozici při přepnutí a Stop během
+  přípravy náhradní URL. Neúspěšný fallback přednačtené přímé URL již
+  znovu neopakuje celý přímý pokus. Michal ověřil integraci v GUI na
+  samostatném zařízení i skupině Music, včetně slyšitelného přehrávání.
+  Skupinový log `/tmp/felismusic-direct-cast-gui.log` obsahuje devět
+  přímých URL za 0,151–0,261 s, čtyři přechody na yt-dlp a žádné
+  `audio.failed`, tracebacky ani fallbacky po odmítnutí přímého LOAD.
+- Závěrečná celá sada proběhla bez selhání, 790 testů, 3 testy vyžadující
+  izolovaný D-Bus byly přeskočeny.
+
 ## 1.0.1-dev – O aplikaci
 
 - Horní Info otevírá nabídku Informace o skladbě / O aplikaci.
@@ -9,7 +91,7 @@
 - České a anglické texty doplněny do katalogů včetně sestavených QM.
   Sedm testů překladů prošlo. Skutečné QML otevření přes akci nabídky
   ověřeno v obou jazycích při 1280 × 800 a 900 × 600.
-  Uživatelská kontrola čeká na Michala.
+  Michal potvrdil QML i překlady; uloženo v commitu `8a17638`.
 
 ## 1.0.1-dev – přímá příprava lokálního audia
 

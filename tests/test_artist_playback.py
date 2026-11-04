@@ -77,13 +77,13 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
     def test_shuffle_uses_loaded_artist_songs_locally_and_is_finite(self):
         self.open_artist(); self.play('shuffle')
         self.api.get_watch_playlist.assert_not_called()
-        self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
+        self.assertEqual(self.ids(), ['X', 'Y', 'Z'])
         self.assertTrue(self.b._queue.shuffle_active); self.assertFalse(self.b._queue.radio_active)
         self.assertEqual(self.b.playingListTitle, 'Artist - Náhodně')
         self.assertFalse(self.b._maybe_refill_radio())
-        self.until(lambda: 'X' in support.core.LOCAL_AUDIO_CACHE)
+        self.until(lambda: 'Y' in support.core.LOCAL_AUDIO_CACHE)
         self.eos(); self.until(lambda: self.b.playerState == 'playing')
-        self.assertEqual(self.played, ['Y', 'X'])
+        self.assertEqual(self.played, ['X', 'Y'])
 
     def test_radio_filters_unavailable_missing_and_duplicate_ids(self):
         self.radio_block = [self.song('A'), self.song('A'), dict(self.song('bad'), isAvailable=False),
@@ -106,7 +106,7 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertEqual(self.b.detailMeta['browseId'], 'UCartist')
         self.assertEqual(self.b.detailMeta['section'], 'albums')
         self.assertIs(self.b._queue, queue)
-        self.assertEqual(self.b.playerVideoId, 'Y')
+        self.assertEqual(self.b.playerVideoId, 'X')
         self.b.playFrom('playing', 1); self.until(lambda: self.b.playerState == 'playing')
         self.assertEqual(self.b.playerSourceContext['page'], 1)
 
@@ -120,7 +120,7 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.artist['shuffleId'] = None
         self.open_artist(); self.assertTrue(self.b.detailCanArtistShuffle)
         self.play('shuffle')
-        self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
+        self.assertEqual(self.ids(), ['X', 'Y', 'Z'])
         self.api.get_watch_playlist.assert_not_called()
 
     def test_full_catalog_loaded_once_and_not_limited_to_mix_block(self):
@@ -217,7 +217,7 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertIs(self.b._queue, old); self.assertEqual(self.played, ['old'])
         self.assertEqual(self.b.playerRepeatMode, 'all')
         self.release.set(); self.ready(); self.until(lambda: self.b.playerState == 'playing')
-        self.assertIsNot(self.b._queue, old); self.assertEqual(self.played, ['old', 'Y'])
+        self.assertIsNot(self.b._queue, old); self.assertEqual(self.played, ['old', 'X'])
         self.assertEqual(self.b.playerRepeatMode, 'off'); self.assertTrue(self.stops[-1])
 
     def test_network_or_empty_response_keeps_old_audio_queue_and_repeat(self):
@@ -266,7 +266,7 @@ class ArtistPlaybackTests(support.AudioPlaybackTestCase):
         self.assertTrue(self.b.startArtistPlayback('shuffle'))
         self.release.set(); self.until(lambda: not self.b._radio_refill_pending); self.ready()
         self.until(lambda: self.b.playerState == 'playing')
-        self.assertEqual(old.count(), 8); self.assertEqual(self.ids(), ['Y', 'X', 'Z'])
+        self.assertEqual(old.count(), 8); self.assertEqual(self.ids(), ['X', 'Y', 'Z'])
         self.assertFalse(self.b._queue.radio_active)
 
     def test_radio_cover_restores_visible_artist_tab(self):

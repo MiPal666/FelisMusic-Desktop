@@ -20,6 +20,15 @@ class DirectAudioError(RuntimeError):
     """The anonymous direct path cannot provide a complete audio file."""
 
 
+class DirectCastURL(str):
+    """A string URL carrying the track ID needed for a rejected Cast LOAD retry."""
+
+    def __new__(cls, url, video_id):
+        instance = super().__new__(cls, url)
+        instance.video_id = video_id
+        return instance
+
+
 class Transport:
     def __init__(self):
         self.connections = {}
@@ -117,7 +126,7 @@ class DirectResolver:
             raise DirectAudioError("No visitor ID returned")
         self.headers["X-Goog-Visitor-Id"] = visitor
 
-    def download(self, video_id, directory):
+    def resolve(self, video_id):
         self.deadline = time.monotonic() + 30
         self.check()
         if not re.fullmatch(r"[A-Za-z0-9_-]{11}", video_id):
@@ -135,6 +144,12 @@ class DirectResolver:
             raise DirectAudioError("PLAYER refused this track")
         candidates = audio_formats(response)
         self.log("PLAYER {:.2f} s; {} candidate formats".format(time.monotonic() - started, len(candidates)))
+        if not candidates:
+            raise DirectAudioError("No plain audio URLs")
+        return candidates
+
+    def download(self, video_id, directory):
+        candidates = self.resolve(video_id)
         # Try one transfer per codec family before the authenticated fallback.
         families = set()
         for item in candidates:
@@ -213,5 +228,22 @@ def download_audio(video_id, directory, *, check_cancelled, log=None):
     resolver = DirectResolver(check_cancelled=check_cancelled, log=log)
     try:
         return str(resolver.download(video_id, Path(directory)))
+    finally:
+        resolver.close()
+
+
+def resolve_cast_url(video_id):
+    proxies = getproxies()
+    if any(proxies.get(scheme) for scheme in ("http", "https", "all")):
+        raise DirectAudioError("Proxy configured; use yt-dlp transport")
+    resolver = DirectResolver()
+    try:
+        for item in resolver.resolve(video_id):
+            if item["mimeType"].startswith("audio/mp4"):
+                parsed = urlsplit(item["url"])
+                if (parsed.scheme == "https" and parsed.port in (None, 443)
+                        and (parsed.hostname or "").endswith(".googlevideo.com")):
+                    return DirectCastURL(item["url"], video_id)
+        raise DirectAudioError("No direct AAC URL for Cast")
     finally:
         resolver.close()

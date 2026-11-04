@@ -12,7 +12,7 @@ from felismusic_gui.diagnostics import configure_debug
 from felismusic_gui.i18n import install_translation
 
 
-VERSION = "1.0.1-dev"
+VERSION = "1.0.1"
 
 
 def main():

@@ -35,6 +35,7 @@ from .login import LoginCandidate, remove_login
 from .cast_discovery import CastDiscovery
 from .cast_output import handoff, handoff_to_local, dispose
 from .cast_streams import CastStreamCache
+from .direct_audio import DirectCastURL
 from .profiles import load_library_profiles, load_profile, load_profile_page
 from .network_errors import is_network_failure
 from .search import search_music
@@ -1597,7 +1598,7 @@ class BackendBridge(QObject):
     def _artist_sorted_items(cls, meta):
         section = meta["section"]
         items = meta["sections"].get(section, [])
-        order = meta.get("orders", {}).get(section, "a_to_z")
+        order = meta.get("orders", {}).get(section, "default")
         if order not in ("newest", "oldest"):
             return cls._sort_normalized(items, order)
         # Missing dates stay last in both directions; equal years retain YTM order.
@@ -2510,7 +2511,10 @@ class BackendBridge(QObject):
                     mc.play_media(url, content_type,
                                   title=f"{core.artist_names(song)} - {song.get('title', '?')}",
                                   stream_type="BUFFERED")
-                mc.block_until_active(timeout=15, cancelled=cancelled)
+                if getattr(output, "is_local", True):
+                    mc.block_until_active(timeout=15, cancelled=cancelled)
+                else:
+                    mc.block_until_active(timeout=15, cancelled=cancelled, load_lock=self._transport_lock)
                 if trace:
                     trace.event("audio.output_ready", seconds=round(monotonic() - output_started, 3),
                                 prepared=prepared)
@@ -2537,7 +2541,7 @@ class BackendBridge(QObject):
                     try:
                         load(source, song, prepared)
                     except Exception:
-                        if not prepared or cancelled():
+                        if not prepared or cancelled() or isinstance(source[0], DirectCastURL):
                             raise
                         trace = current_trace()
                         if trace:

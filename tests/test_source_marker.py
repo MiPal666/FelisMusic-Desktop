@@ -32,6 +32,8 @@ class SourceMarkerTests(support.AudioPlaybackTestCase):
         else:
             self.b.openLibraryItem(kind, 'artist-source', '', 'Artist')
         self.ready()
+        if kind in ('artist', 'upload_artist'):
+            self.b.setArtistOrder('a_to_z')
         return 'library' if kind in ('songs', 'upload_songs') else 'detail'
 
     def order(self, kind, order):

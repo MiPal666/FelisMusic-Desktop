@@ -2301,15 +2301,15 @@ ApplicationWindow {
                     textRole: "label"
                     valueRole: "key"
                     model: backend.detailMeta.section === "songs"
-                           ? [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
-                              {key: "default", label: backend.detailMeta.kind === "upload_artist" ? qsTr("Původní pořadí") : qsTr("Původní pořadí YTM")}]
-                           : [{key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
-                              {key: "default", label: qsTr("Původní pořadí YTM")},
+                           ? [{key: "default", label: backend.detailMeta.kind === "upload_artist" ? qsTr("Původní pořadí") : qsTr("Původní pořadí YTM")},
+                              {key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")}]
+                           : [{key: "default", label: qsTr("Původní pořadí YTM")},
+                              {key: "a_to_z", label: qsTr("A–Z")}, {key: "z_to_a", label: qsTr("Z–A")},
                               {key: "newest", label: qsTr("Od nejnovějších")},
                               {key: "oldest", label: qsTr("Od nejstarších")}]
                     currentIndex: {
                         var meta = backend.detailMeta
-                        var order = (meta.orders && meta.orders[meta.section]) || "a_to_z"
+                        var order = (meta.orders && meta.orders[meta.section]) || "default"
                         for (var i = 0; i < model.length; ++i)
                             if (model[i].key === order) return i
                         return 0

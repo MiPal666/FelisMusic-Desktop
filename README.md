@@ -13,7 +13,13 @@ while keeping the current queue, track, playback position, and pause state.
 - Control playback with desktop media keys through MPRIS.
 - Use the app in English or Czech.
 
-## Install FelisMusic Desktop 1.0.0
+## New in 1.0.1
+
+- Faster local and Cast audio preparation through a direct InnerTube resolver, with yt-dlp fallback for uploads and other unavailable content.
+- About dialog with version, license, and project links.
+- Artist details use the original YouTube Music order by default.
+
+## Install FelisMusic Desktop 1.0.1
 
 Installation, launch from the application menu, and local playback were tested on
 openSUSE Tumbleweed with KDE and Debian 13.7 with GNOME 48.
@@ -22,7 +28,7 @@ openSUSE Tumbleweed with KDE and Debian 13.7 with GNOME 48.
    On Debian, install `python3-venv` if virtual environment support is missing.
 2. Install Deno 2.3 or newer. A system RPM was tested on Tumbleweed and a
    per-user installation on Debian. See the [Deno installation guide](https://docs.deno.com/runtime/getting_started/installation/).
-3. Download `FelisMusic-1.0.0-linux-installer.zip` from [GitHub Releases](https://github.com/MiPal666/FelisMusic-Desktop/releases).
+3. Download `FelisMusic-1.0.1-linux-installer.zip` from [GitHub Releases](https://github.com/MiPal666/FelisMusic-Desktop/releases).
    Extract it and run `bash install.sh` from the `FelisMusic-Installer` directory without `sudo`.
 4. Open FelisMusic from the application menu and sign in. You can delete the extracted folder after installation.
 

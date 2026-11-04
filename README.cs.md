@@ -12,7 +12,13 @@ počítačem a výstupem Cast.
 - **Obnovení přehrávání po restartu** včetně fronty, rozehrané skladby a její pozice.
 - **Přehrávání hudby přes Chromecast připojený k televizi** jako další zvukový výstup.
 
-## Instalace desktopové verze 1.0.0
+## Novinky v 1.0.1
+
+- Rychlejší příprava lokálního i Cast audia přes přímý InnerTube resolver, se zachovaným yt-dlp fallbackem pro vlastní nahrávky a další nedostupný obsah.
+- Dialog O aplikaci s verzí, licencí a odkazy na projekt.
+- Detaily interpretů mají jako výchozí původní pořadí z YouTube Music.
+
+## Instalace desktopové verze 1.0.1
 
 Instalace, spuštění z nabídky a lokální přehrávání byly ověřeny na
 openSUSE Tumbleweed s KDE a na Debianu 13.7 s GNOME 48.
@@ -22,7 +28,7 @@ openSUSE Tumbleweed s KDE a na Debianu 13.7 s GNOME 48.
 2. Připrav Deno 2.3 nebo novější. Na Tumbleweedu byl ověřen systémový RPM
    balíček a na Debianu uživatelská instalace podle
    [návodu Deno](https://docs.deno.com/runtime/getting_started/installation/).
-3. Rozbal `FelisMusic-1.0.0-linux-installer.zip` a ve složce
+3. Rozbal `FelisMusic-1.0.1-linux-installer.zip` a ve složce
    `FelisMusic-Installer` spusť `bash install.sh` bez `sudo`.
 4. Spusť FelisMusic z nabídky aplikací a přihlas se. Rozbalený adresář můžeš smazat.
 
@@ -72,7 +78,7 @@ Příprava náhodné fronty už nekopíruje celý původní seznam pro každou s
 
 „Přehrát náhodně“ v detailu playlistu i alba zamíchá všechny již načtené přehratelné výskyty lokálně, bez dalšího stahování seznamu a bez serverové náhodné fronty. Duplicity a původní pořadí prohlíženého playlistu zachovává. Stejné lokální zamíchání nyní používají také Oblíbené z hlavního menu po dokončení načítání celého seznamu, se zachováním coveru a řazení prohlížení. Interpret nyní také lokálně míchá svůj načtený seznam skladeb (i při spuštění z Alb/Singlů), bez dalšího stahování a limitu velikosti Mixu. „Zamíchat“ v aktuální frontě nyní také míchá lokálně všechny ostatní výskyty včetně ručně přidaných; aktuální skladba zůstává první, čas/pauza/Repeat pokračují. Funguje i u front bez playlistového ID; Mix/Rádio se nemění.
 
-- Desktop GUI: **1.0.0**
+- Desktop GUI: **1.0.1**
 - Aktuální stav a předání projektu: [STATUS.md](STATUS.md). Základ včetně oprav z 2026-10-24 byl uživatelem přijat jako otestovaný.
 - Aktuální stav bodů 1–11 a pořadí dalších prací do desktopové 1.0: [PLAN.md](PLAN.md).
 - Porovnání funkcí původní CLI a dnešního GUI: [CLI-GUI.md](CLI-GUI.md) (audit 2026-10-26).

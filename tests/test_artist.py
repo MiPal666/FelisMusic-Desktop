@@ -121,6 +121,8 @@ class ArtistTests(support.AudioPlaybackTestCase):
         self.open_artist()
         def titles():
             return [x['title'] for x in self.b.detailTracksModel.snapshot()]
+        self.assertEqual(titles(), ['Zulu', 'Alpha', 'Beta'])
+        self.b.setArtistOrder('a_to_z')
         self.assertEqual(titles(), ['Alpha', 'Beta', 'Zulu'])
         self.b.setArtistOrder('z_to_a')
         self.assertEqual(titles(), ['Zulu', 'Beta', 'Alpha'])
@@ -139,7 +141,7 @@ class ArtistTests(support.AudioPlaybackTestCase):
         self.b.selectArtistSection('albums'); self.until(lambda: not self.b.busy)
         def ids():
             return [x['browseId'] for x in self.b.detailTracksModel.snapshot()]
-        self.assertEqual(ids(), ['a', 'u', 'z'])
+        self.assertEqual(ids(), ['z', 'u', 'a'])
         self.b.setArtistOrder('newest'); self.assertEqual(ids(), ['a', 'z', 'u'])
         self.b.setArtistOrder('oldest'); self.assertEqual(ids(), ['z', 'a', 'u'])
         self.b.selectArtistSection('songs')
@@ -155,7 +157,7 @@ class ArtistTests(support.AudioPlaybackTestCase):
         self.open_artist(); self.b.selectArtistSection('singles'); self.until(lambda: not self.b.busy)
         self.assertEqual(self.b.detailMeta['section'], 'songs')
         self.b.selectArtistSection('singles'); self.until(lambda: not self.b.busy)
-        self.assertEqual([x['browseId'] for x in self.b.detailTracksModel.snapshot()], ['a', 'z'])
+        self.assertEqual([x['browseId'] for x in self.b.detailTracksModel.snapshot()], ['z', 'a'])
         self.api.get_artist_albums.assert_called_with('singlesId', 'singlesParam', limit=None)
         self.b.selectArtistSection('songs'); self.b.selectArtistSection('singles')
         self.assertEqual(self.api.get_artist_albums.call_count, 2)
