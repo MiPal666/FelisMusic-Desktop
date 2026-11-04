@@ -1,5 +1,51 @@
 # FelisMusic Desktop – aktuální stav
 
+## 2026-11-04 – ověření přímého InnerTube resolveru
+
+- Referencí je `/home/michal/src/FelisMusic-SFOS/MIGRATION.md` a
+  `tools/probe_direct.py` ze Sailfish projektu. Přímý PLAYER s klientem
+  visionOS má na Jolle ověřený přenos jedné skladby. Michal v navazujícím
+  předání potvrdil i slyšitelný zvuk při obou pokusech.
+- Desktopový `tools/probe_direct_audio.py` měří anonymní přímý PLAYER,
+  úplné stažení a volitelně pět sekund přehrávání. Při chybě resolveru nebo
+  přenosu se vrací na yt-dlp se stejnou preferencí audio formátů jako desktop.
+  Přepínač `--yt-dlp-only` umožní porovnání; opakované `--video-id` zkouší
+  různé skladby. Soubory jsou dočasné, log neobsahuje podepsané URL ani cookies.
+- Šest offline testů pokrývá výběr formátů, úspěch přímé cesty, návrat na
+  yt-dlp, přenos neúplného audia, selhání fallbacku a přerušení uživatelem.
+  Přímá větev ve Work selhala při DNS; yt-dlp fallback skutečně připravil
+  soubor za 23,92 s od požadavku. Work používá HTTP proxy, kterou přímý
+  diagnostický transport nepřebírá. Toto měření proto neporovnává rychlost
+  obou cest. GUI zatím používá vydanou cestu přes yt-dlp.
+- Michalův desktopový test dvou skladeb, každá dvakrát, získal pro
+  `ojvldIzbaMo` přímý soubor za 0,57 / 0,33 s a kladnou pozici přehrávače
+  za 0,97 / 0,44 s. Samostatné yt-dlp mělo 8,52 / 8,93 s do kladné pozice.
+  U `b-OLFNSSYco` přímá cesta odmítla oba kodeky a fallback dokončil
+  přípravu i rozběh přehrávače, 8,48 / 6,92 s. Samostatné yt-dlp mělo
+  7,87 / 8,04 s. Diagnostika doplněna o HTTP stav a číselný Content-Range,
+  aby rozlišila odmítnutí serverem a vlastní kontrolu rozsahu souboru.
+- Opakovaný test `b-OLFNSSYco` prošel přímo. HTTP 206, rozsah
+  0–4664685 / 4664686 a délka celého souboru odpovídaly metadatům.
+  Soubor byl připraven za 1,57 s, přehrávač postoupil za 1,82 s.
+  Michal potvrdil slyšitelný zvuk u obou skladeb v předchozích testech
+  i u tohoto opakování. Příčinu předchozího odmítnutí nemáme zachycenou;
+  pozdější úspěch ji neurčuje. Ověřená přímá cesta i funkční fallback
+  umožňují navázat integrací pro lokální přehrávání a přednačítání.
+  Anonymní test nepotvrzuje přístup k nahranému nebo omezenému obsahu
+  ani přehrání URL na Cast zařízení.
+
+Spuštění s krátkým poslechem dvou různých skladeb
+
+```bash
+cd /home/michal/src/FelisMusic && env/bin/python tools/probe_direct_audio.py --video-id ojvldIzbaMo --video-id b-OLFNSSYco --play
+```
+
+Porovnání stejného obsahu přes yt-dlp
+
+```bash
+cd /home/michal/src/FelisMusic && env/bin/python tools/probe_direct_audio.py --video-id ojvldIzbaMo --video-id b-OLFNSSYco --play --yt-dlp-only
+```
+
 ## Doladění GUI – ikona FelisMusic
 
 - Schválený motiv převedený do SVG. Stejná ikona se načítá jako ikona aplikace a zobrazuje se pod Frontou v postranním panelu. Panel zmenšuje obrázek podle volné výšky.
