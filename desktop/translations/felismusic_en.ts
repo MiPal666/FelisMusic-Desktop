@@ -2642,5 +2642,29 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <source>Výstup: %1</source>
         <translation>Output: %1</translation>
     </message>
+    <message>
+        <source>O aplikaci</source>
+        <translation>About</translation>
+    </message>
+    <message>
+        <source>Verze %1</source>
+        <translation>Version %1</translation>
+    </message>
+    <message>
+        <source>Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.</source>
+        <translation>A YouTube Music player for Linux with support for Chromecast Audio and Google Cast speaker groups.</translation>
+    </message>
+    <message>
+        <source>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</source>
+        <translation>Licensed under GPL version 3 or later (GPL-3.0-or-later).</translation>
+    </message>
+    <message>
+        <source>Projekt na GitHubu</source>
+        <translation>Project on GitHub</translation>
+    </message>
+    <message>
+        <source>Nahlásit chybu</source>
+        <translation>Report an issue</translation>
+    </message>
 </context>
 </TS>

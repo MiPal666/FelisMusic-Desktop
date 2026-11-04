@@ -1,5 +1,16 @@
 # FelisMusic Desktop – aktuální stav
 
+## 1.0.1-dev – O aplikaci
+
+- Horní Info otevírá nabídku Informace o skladbě / O aplikaci.
+  O aplikaci je dostupné i před zahájením poslechu. Dialog obsahuje
+  ikonu, název, skutečnou běžící verzi, popis podpory Cast, licenci
+  GPL-3.0-or-later a odkazy na projekt a Issues na GitHubu.
+- České a anglické texty doplněny do katalogů včetně sestavených QM.
+  Sedm testů překladů prošlo. Skutečné QML otevření přes akci nabídky
+  ověřeno v obou jazycích při 1280 × 800 a 900 × 600.
+  Uživatelská kontrola čeká na Michala.
+
 ## 1.0.1-dev – přímá příprava lokálního audia
 
 - Lokální přehrávání a přednačítání nejdřív zkouší anonymní InnerTube PLAYER

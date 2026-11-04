@@ -2641,5 +2641,29 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
         <source>Výstup: %1</source>
         <translation type="unfinished"></translation>
     </message>
+    <message>
+        <source>O aplikaci</source>
+        <translation>O aplikaci</translation>
+    </message>
+    <message>
+        <source>Verze %1</source>
+        <translation>Verze %1</translation>
+    </message>
+    <message>
+        <source>Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.</source>
+        <translation>Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.</translation>
+    </message>
+    <message>
+        <source>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</source>
+        <translation>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</translation>
+    </message>
+    <message>
+        <source>Projekt na GitHubu</source>
+        <translation>Projekt na GitHubu</translation>
+    </message>
+    <message>
+        <source>Nahlásit chybu</source>
+        <translation>Nahlásit chybu</translation>
+    </message>
 </context>
 </TS>

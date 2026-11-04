@@ -902,6 +902,96 @@ ApplicationWindow {
     }
 
     Dialog {
+        id: aboutDialog
+        objectName: "aboutDialog"
+        title: qsTr("O aplikaci")
+        modal: true
+        anchors.centerIn: parent
+        width: Math.min(root.width - 48, 520)
+        height: Math.min(root.height - 48, 350)
+        padding: 18
+        background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
+        header: Label {
+            text: aboutDialog.title
+            color: "white"
+            font.pixelSize: 19
+            font.bold: true
+            padding: 18
+        }
+        footer: DialogButtonBox {
+            background: Item {}
+            PlayerTextButton {
+                text: qsTr("Zavřít")
+                implicitWidth: 85
+                DialogButtonBox.buttonRole: DialogButtonBox.RejectRole
+            }
+            onRejected: aboutDialog.close()
+        }
+        contentItem: ScrollView {
+            id: aboutScroll
+            clip: true
+            contentWidth: availableWidth
+            ColumnLayout {
+                width: aboutScroll.availableWidth
+                spacing: 14
+                RowLayout {
+                    spacing: 16
+                    Image {
+                        source: "felismusic.svg"
+                        sourceSize.width: 64
+                        sourceSize.height: 64
+                        Layout.preferredWidth: 64
+                        Layout.preferredHeight: 64
+                        fillMode: Image.PreserveAspectFit
+                    }
+                    ColumnLayout {
+                        Layout.fillWidth: true
+                        Label {
+                            text: "FelisMusic Desktop"
+                            color: "white"
+                            font.pixelSize: 23
+                            font.bold: true
+                            wrapMode: Text.Wrap
+                            Layout.fillWidth: true
+                        }
+                        Label {
+                            objectName: "aboutVersionLabel"
+                            text: qsTr("Verze %1").arg(fcmVersion)
+                            color: "#bbbbbb"
+                        }
+                    }
+                }
+                Label {
+                    text: qsTr("Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.")
+                    color: "#eeeeee"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Licence GPL verze 3 nebo novější (GPL-3.0-or-later).")
+                    color: "#bbbbbb"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Flow {
+                    Layout.fillWidth: true
+                    spacing: 8
+                    PlayerTextButton {
+                        text: qsTr("Projekt na GitHubu")
+                        implicitWidth: contentItem.implicitWidth + 24
+                        onClicked: Qt.openUrlExternally("https://github.com/MiPal666/FelisMusic-Desktop")
+                    }
+                    PlayerTextButton {
+                        text: qsTr("Nahlásit chybu")
+                        implicitWidth: contentItem.implicitWidth + 24
+                        onClicked: Qt.openUrlExternally("https://github.com/MiPal666/FelisMusic-Desktop/issues")
+                    }
+                }
+            }
+        }
+    }
+
+    Dialog {
         id: trackInfo
         objectName: "trackInfoDialog"
         property var selectedInfo: null
@@ -2829,8 +2919,22 @@ ApplicationWindow {
                         PlayerTextButton {
                             objectName: "infoButton"
                             text: qsTr("Info")
-                            enabled: backend.playerHasTrack
-                            onClicked: { trackInfo.selectedInfo = null; trackInfo.open() }
+                            onClicked: infoMenu.popup(this, width - infoMenu.width, height)
+                            Menu {
+                                id: infoMenu
+                                objectName: "infoMenu"
+                                popupType: Popup.Item
+                                MenuItem {
+                                    text: qsTr("Informace o skladbě")
+                                    enabled: backend.playerHasTrack
+                                    onTriggered: { trackInfo.selectedInfo = null; trackInfo.open() }
+                                }
+                                MenuItem {
+                                    objectName: "aboutAction"
+                                    text: qsTr("O aplikaci")
+                                    onTriggered: aboutDialog.open()
+                                }
+                            }
                         }
                     }
                 }
