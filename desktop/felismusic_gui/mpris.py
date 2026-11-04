@@ -47,12 +47,15 @@ class MprisService(dbus.service.Object):
             context.iteration(False)
 
     def close(self):
+        if self._name is None:
+            return
         self.timer.stop()
         self.backend.playerChanged.disconnect(self.refresh)
         self.backend.playerTrackChanged.disconnect(self._track_changed)
         self.backend.playerSeeked.disconnect(self._seeked)
         self.remove_from_connection()
-        self._bus.release_name(NAME)
+        # BusName releases its name in __del__, while the bus is still open.
+        self._name = None
         self._bus.close()
 
     def _track_id(self):

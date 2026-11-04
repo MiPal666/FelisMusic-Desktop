@@ -16,58 +16,14 @@ def log(message):
 
 
 import argparse
-from copy import deepcopy
-import http.client
-import json
 from pathlib import Path
 import re
 import sys
 import tempfile
-from urllib.parse import parse_qs, urlsplit
 
 
-class Transport:
-    def __init__(self):
-        self.connections = {}
-
-    def request(self, method, url, headers, body=None):
-        parsed = urlsplit(url)
-        if parsed.scheme != "https" or parsed.port not in (None, 443):
-            raise ValueError("Only HTTPS on port 443 is supported")
-        host = parsed.hostname or ""
-        if host != "www.youtube.com" and not host.endswith(".googlevideo.com"):
-            raise ValueError("Unexpected host")
-        connection = self.connections.get(host)
-        if connection is None:
-            # Use IPv4 for both PLAYER and media: signed URLs can be IP-bound.
-            connection = http.client.HTTPSConnection(host, timeout=20, source_address=("0.0.0.0", 0))
-            self.connections[host] = connection
-        target = parsed.path + ("?" + parsed.query if parsed.query else "")
-        connection.request(method, target, body=body, headers=headers)
-        return connection.getresponse()
-
-    def close(self):
-        for connection in self.connections.values():
-            connection.close()
-
-
-def audio_formats(response):
-    selected = []
-    for item in (response.get("streamingData") or {}).get("adaptiveFormats", []):
-        mime = item.get("mimeType", "")
-        url = item.get("url", "")
-        if not mime.startswith(("audio/mp4", "audio/webm")) or not url:
-            continue
-        if item.get("drmFamilies") or item.get("targetDurationSec") or item.get("type") == "FORMAT_STREAM_TYPE_OTF":
-            continue
-        if "n" in parse_qs(urlsplit(url).query):
-            continue  # Needs JS; deliberately outside this diagnostic.
-        selected.append(item)
-    def score(item):
-        track = item.get("audioTrack") or {}
-        language = 2 if "original" in track.get("displayName", "").lower() else int(bool(track.get("audioIsDefault")))
-        return (language, item.get("itag") == 140, item.get("bitrate", 0))
-    return sorted(selected, key=score, reverse=True)
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "desktop"))
+from felismusic_gui.direct_audio import DirectResolver, Transport, audio_formats
 
 
 def play(path, seconds, requested):
@@ -107,120 +63,6 @@ def play(path, seconds, requested):
     finally:
         player.set_state(Gst.State.NULL)
         player.get_state(5 * Gst.SECOND)
-
-
-class DirectResolver:
-    def __init__(self):
-        self.transport = Transport()
-        self.client = None
-        self.headers = None
-
-    def close(self):
-        self.transport.close()
-
-    def post(self, endpoint, payload):
-        body = json.dumps(dict(payload, context={"client": self.client})).encode()
-        response = self.transport.request(
-            "POST", "https://www.youtube.com/youtubei/v1/" + endpoint + "?prettyPrint=false",
-            self.headers, body,
-        )
-        try:
-            data = response.read(8 * 1024 * 1024 + 1)
-            if response.status != 200 or len(data) > 8 * 1024 * 1024:
-                raise RuntimeError("PLAYER response rejected")
-            return json.loads(data)
-        finally:
-            response.close()
-
-    def configure(self):
-        from yt_dlp.extractor.youtube._base import INNERTUBE_CLIENTS
-        config = INNERTUBE_CLIENTS["visionos"]
-        if config.get("REQUIRE_JS_PLAYER", True) or config.get("REQUIRE_AUTH"):
-            raise RuntimeError("Installed visionos client requires JS or authentication")
-        self.client = deepcopy(config["INNERTUBE_CONTEXT"]["client"])
-        self.client.update(hl="en", timeZone="UTC", utcOffsetMinutes=0)
-        self.client.pop("gl", None)
-        self.headers = {
-            "Content-Type": "application/json", "Accept-Encoding": "identity",
-            "User-Agent": self.client["userAgent"], "Origin": "https://www.youtube.com",
-            "X-YouTube-Client-Name": str(config["INNERTUBE_CONTEXT_CLIENT_NAME"]),
-            "X-YouTube-Client-Version": self.client["clientVersion"],
-        }
-        visitor = (self.post("visitor_id", {}).get("responseContext") or {}).get("visitorData")
-        if not visitor:
-            raise RuntimeError("No visitor ID returned")
-        self.headers["X-Goog-Visitor-Id"] = visitor
-
-    def download(self, video_id, directory):
-        if self.headers is None:
-            self.configure()
-        started = time.monotonic()
-        response = self.post("player", {
-            "videoId": video_id, "contentCheckOk": True, "racyCheckOk": True,
-            "playbackContext": {"contentPlaybackContext": {"html5Preference": "HTML5_PREF_WANTS"}},
-        })
-        details = response.get("videoDetails") or {}
-        status = response.get("playabilityStatus") or {}
-        if status.get("status") != "OK" or details.get("videoId") != video_id or details.get("isLive"):
-            raise RuntimeError("PLAYER refused this track")
-        candidates = audio_formats(response)
-        log("PLAYER {:.2f} s; {} candidate formats".format(time.monotonic() - started, len(candidates)))
-        # Bound this probe to one transfer per codec family, as in the SFOS test.
-        families = set()
-        for item in candidates:
-            family = item["mimeType"].split(";", 1)[0]
-            if family in families:
-                continue
-            size = int(item.get("contentLength") or 0)
-            if not 0 < size <= 32 * 1024 * 1024:
-                continue
-            families.add(family)
-            path = directory / ("direct.m4a" if family == "audio/mp4" else "direct.webm")
-            try:
-                return self.transfer(item, size, path)
-            except Exception as error:
-                log("Direct transfer rejected: {}; trying alternate codec".format(type(error).__name__))
-                path.unlink(missing_ok=True)
-                self.transport.close()
-                self.transport = Transport()
-        raise RuntimeError("No verified direct audio file")
-
-    def transfer(self, item, size, path):
-        response = self.transport.request("GET", item["url"], {
-            "User-Agent": self.client["userAgent"], "Accept": "*/*",
-            "Accept-Encoding": "identity", "Range": "bytes=0-{}".format(size - 1),
-        })
-        started = time.monotonic()
-        try:
-            log("Audio response: HTTP {}; expected {} bytes".format(response.status, size))
-            if response.status not in (200, 206):
-                raise RuntimeError("Audio HTTP status rejected")
-            if response.status == 206:
-                content_range = response.getheader("Content-Range") or ""
-                parsed_range = re.fullmatch(r"bytes ([0-9]+)-([0-9]+)/([0-9]+)", content_range)
-                if parsed_range:
-                    log("Audio range: {}-{} / {}".format(*parsed_range.groups()))
-                else:
-                    log("Audio range header missing or malformed")
-                if content_range != "bytes 0-{}/{}".format(size - 1, size):
-                    raise RuntimeError("Unexpected partial audio range")
-            count = 0
-            with path.open("wb") as output:
-                while True:
-                    chunk = response.read(256 * 1024)
-                    if not chunk:
-                        break
-                    count += len(chunk)
-                    if count > size:
-                        raise RuntimeError("Audio larger than declared")
-                    output.write(chunk)
-            if count != size:
-                log("Incomplete audio: {} / {} bytes".format(count, size))
-                raise RuntimeError("Incomplete audio")
-            log("Verified {} bytes, itag {}; transfer {:.2f} s".format(count, item.get("itag"), time.monotonic() - started))
-            return path
-        finally:
-            response.close()
 
 
 class QuietLogger:
@@ -284,7 +126,7 @@ def main():
     log("Importing yt-dlp metadata; anonymous probe, temporary audio")
     import yt_dlp
     log("yt-dlp imported")
-    resolver = DirectResolver()
+    resolver = DirectResolver(log=log)
     try:
         for attempt in range(args.repeat):
             for video in videos:

@@ -169,3 +169,35 @@ class MprisTests(support.AudioPlaybackTestCase):
         self._cleanups.clear()
         self.service = mpris.MprisService(self.b, self.app, Mock())
         self.addCleanup(self.service.close)
+
+    @unittest.skipUnless(os.environ.get('FELISMUSIC_TEST_DBUS') == '1', 'requires isolated dbus-run-session')
+    def test_close_releases_bus_name_without_destructor_error(self):
+        import weakref
+        name = weakref.ref(self.service._name)
+        with patch.object(sys, 'unraisablehook') as unraisable:
+            self.service.close()
+            self.assertIsNone(name())
+            self.service.close()
+        unraisable.assert_not_called()
+
+
+class MprisCloseTests(unittest.TestCase):
+    def test_name_destructor_runs_before_bus_close_and_close_is_repeatable(self):
+        events = []
+        bus = Mock()
+        bus.release_name.side_effect = lambda name: events.append('release')
+        bus.close.side_effect = lambda: events.append('close')
+
+        class Name:
+            def __del__(self):
+                bus.release_name(mpris.NAME)
+
+        service = SimpleNamespace(
+            _name=Name(), _bus=bus, timer=Mock(), backend=Mock(),
+            refresh=Mock(), _track_changed=Mock(), _seeked=Mock(),
+            remove_from_connection=Mock(),
+        )
+        mpris.MprisService.close(service)
+        mpris.MprisService.close(service)
+        self.assertEqual(events, ['release', 'close'])
+        service.remove_from_connection.assert_called_once()

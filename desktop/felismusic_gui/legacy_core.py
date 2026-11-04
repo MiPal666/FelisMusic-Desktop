@@ -19,6 +19,11 @@ import yt_dlp
 import ytmusicapi.continuations as ytmusic_continuations
 from ytmusicapi import LikeStatus, YTMusic
 
+if __package__:
+    from .direct_audio import download_audio as download_direct_audio
+else:
+    from direct_audio import download_audio as download_direct_audio
+
 try:
     import gi
 
@@ -40,7 +45,7 @@ except Exception as exc:
     GST_IMPORT_ERROR = exc
 
 
-VERSION = "1.0.0"
+VERSION = "1.0.1-dev"
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)
@@ -3442,91 +3447,111 @@ def get_local_audio_source(video_id, *, cancelled=None, diagnostics=None):
             ),
         )
 
-    youtube_url = (
-        "https://music.youtube.com/"
-        f"watch?v={video_id}"
-    )
-
-    print(
-        "Připravuji lokální audio..."
-    )
-
-    output_template = os.path.join(
-        LOCAL_CACHE_DIR,
-        f"{video_id}.%(ext)s",
-    )
-
-    options = {
-        "format": (
-            "140/"
-            "bestaudio[ext=m4a]"
-            "/bestaudio"
-        ),
-        "outtmpl": output_template,
-        "quiet": True,
-        "no_warnings": True,
-        "noplaylist": True,
-
-        "cookiefile": COOKIE_FILE,
-        "http_headers": (
-            AUTH.yt_dlp_http_headers()
-        ),
-    }
-
-    if cancelled is not None:
-        options["progress_hooks"] = [check_cancelled]
-
+    path = None
     if diagnostics is not None:
-        diagnostic_options = diagnostics.audio_options()
-        diagnostic_options["progress_hooks"] = options.get("progress_hooks", []) + diagnostic_options["progress_hooks"]
-        options.update(diagnostic_options)
-
+        diagnostics.event("audio.direct_begin")
     try:
-        with yt_dlp.YoutubeDL(options) as ydl:
-            if diagnostics is not None:
-                diagnostics.instrument_downloader(ydl)
-            info = ydl.extract_info(youtube_url, download=True)
-            check_cancelled()
-            path = ydl.prepare_filename(info)
-    except Exception as exc:
+        path = download_direct_audio(
+            video_id, LOCAL_CACHE_DIR, check_cancelled=check_cancelled,
+        )
+        check_cancelled()
         if diagnostics is not None:
-            diagnostics.event("audio.failed", error=type(exc).__name__, host=diagnostics.download_host,
-                              seconds=round(time.monotonic() - diagnostics.audio_started, 3))
+            diagnostics.event("audio.direct_ready", seconds=round(time.monotonic() - diagnostics.audio_started, 3))
+    except AudioPreparationCancelled:
+        if path is not None:
+            Path(path).unlink(missing_ok=True)
         raise
+    except Exception as exc:
+        check_cancelled()
+        if diagnostics is not None:
+            diagnostics.event("audio.direct_fallback", error=type(exc).__name__)
 
-    # Některé extractory mohou vrátit skutečný filepath
-    # přímo v requested_downloads.
-    if not os.path.isfile(
-        path
-    ):
-        requested = (
-            info.get(
-                "requested_downloads"
-            )
-            or []
+    if path is None:
+        youtube_url = (
+            "https://music.youtube.com/"
+            f"watch?v={video_id}"
         )
 
-        for item in requested:
-            candidate = item.get(
-                "filepath"
-            )
+        print(
+            "Připravuji lokální audio..."
+        )
 
-            if (
-                candidate
-                and os.path.isfile(
-                    candidate
+        output_template = os.path.join(
+            LOCAL_CACHE_DIR,
+            f"{video_id}.%(ext)s",
+        )
+
+        options = {
+            "format": (
+                "140/"
+                "bestaudio[ext=m4a]"
+                "/bestaudio"
+            ),
+            "outtmpl": output_template,
+            "quiet": True,
+            "no_warnings": True,
+            "noplaylist": True,
+
+            "cookiefile": COOKIE_FILE,
+            "http_headers": (
+                AUTH.yt_dlp_http_headers()
+            ),
+        }
+
+        if cancelled is not None:
+            options["progress_hooks"] = [check_cancelled]
+
+        if diagnostics is not None:
+            diagnostic_options = diagnostics.audio_options()
+            diagnostic_options["progress_hooks"] = options.get("progress_hooks", []) + diagnostic_options["progress_hooks"]
+            options.update(diagnostic_options)
+
+        try:
+            with yt_dlp.YoutubeDL(options) as ydl:
+                if diagnostics is not None:
+                    diagnostics.instrument_downloader(ydl)
+                info = ydl.extract_info(youtube_url, download=True)
+                check_cancelled()
+                path = ydl.prepare_filename(info)
+        except Exception as exc:
+            if diagnostics is not None:
+                diagnostics.event("audio.failed", error=type(exc).__name__, host=diagnostics.download_host,
+                                  seconds=round(time.monotonic() - diagnostics.audio_started, 3))
+            raise
+
+        # Některé extractory mohou vrátit skutečný filepath
+        # přímo v requested_downloads.
+        if not os.path.isfile(
+            path
+        ):
+            requested = (
+                info.get(
+                    "requested_downloads"
                 )
-            ):
-                path = candidate
-                break
+                or []
+            )
 
-    if not os.path.isfile(
-        path
-    ):
-        raise RuntimeError(
-            "yt-dlp lokální audio stáhlo, "
-            "ale FCM nenašlo výsledný soubor."
-        )
+            for item in requested:
+                candidate = item.get(
+                    "filepath"
+                )
+
+                if (
+                    candidate
+                    and os.path.isfile(
+                        candidate
+                    )
+                ):
+                    path = candidate
+                    break
+
+        if not os.path.isfile(
+            path
+        ):
+            raise RuntimeError(
+                "yt-dlp lokální audio stáhlo, "
+                "ale FCM nenašlo výsledný soubor."
+            )
 
     LOCAL_AUDIO_CACHE[
         video_id

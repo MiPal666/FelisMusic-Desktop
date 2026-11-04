@@ -1,5 +1,43 @@
 # FelisMusic Desktop – aktuální stav
 
+## 1.0.1-dev – přímá příprava lokálního audia
+
+- Lokální přehrávání a přednačítání nejdřív zkouší anonymní InnerTube PLAYER
+  přes nový modul `direct_audio.py`. Diagnostický skript používá tentýž modul.
+  Celá skladba se stále připravuje do souboru pro GStreamer a seek.
+- Při selhání přímé cesty se volá původní yt-dlp se stávajícími cookies,
+  hlavičkami a preferencí formátů. Přímý transport podporuje HTTPS/IPv4;
+  prostředí s nastavenou HTTP proxy přejde rovnou na transport yt-dlp.
+  Anonymně nedostupné nahrávky a omezený obsah řeší také fallback.
+- Každé stahování má vlastní dočasný soubor. Do cache se předává až po
+  kontrole velikosti a případného HTTP rozsahu a atomickém přejmenování.
+  Přerušení po Stop, nové skladbě nebo ukončení aplikace odstraňuje částečný
+  soubor a nespouští fallback. Kontroly jsou mezi síťovými kroky a bloky dat;
+  probíhající blokující síťové volání má timeout 5 s, příprava má limit 30 s
+  kontrolovaný mezi těmito kroky. Soubory nad 256 MiB řeší yt-dlp.
+- Cast používá původní resolver. Přímý PLAYER byl ověřen pro stažení na
+  počítači; přehrání této URL samotným Cast zařízením zatím ověřené není.
+- Diagnostika `--debug` přidává `audio.direct_begin`,
+  `audio.direct_ready` a `audio.direct_fallback`, bez URL a přihlašovacích údajů.
+- Celá sada proběhla bez selhání, 772 testů, 2 D-Bus přeskočeny.
+  Devět nových testů ověřilo přímý přenos, úklid po chybě a zrušení,
+  omezený obsah, proxy, lokální přehrávání, přednačítání a přechod na fallback.
+  Michal následně potvrdil přehrávání v GUI včetně Castu, subjektivně rychlejší
+  start skladeb. Log `/tmp/felismusic-direct-gui.log` obsahuje šest úspěšných
+  přímých příprav za 0,353–1,074 s a sedm použití lokální cache.
+  Tři požadavky přešly na yt-dlp; jeden byl zrušen
+  (`AudioPreparationCancelled`), dva dokončily přípravu za 4,428 / 5,494 s.
+  Cast měl sedm zásahů do cache URL; při chybějící připravené URL trvala
+  příprava a přijetí výstupem přibližně 3,93–5,32 s.
+  Na konci logu byla výjimka destruktoru dbus-python BusName po zavření
+  D-Bus spojení. Úklid MPRIS nyní uvolňuje BusName před zavřením spojení
+  a opakované close je bezpečné. Cílený offline test ověřil pořadí
+  destruktoru a zavření. Následný log
+  `/tmp/felismusic-direct-gui-final.log` po ukončení GUI již neobsahuje
+  traceback ani D-Bus výjimku, proces GUI neběží. Příprava první skladby
+  přes fallback trvala 5,403 s, následující přímé přednačtení 0,511 s.
+  Izolovaný D-Bus nelze ve Work spustit kvůli zákazu vytvoření socketu.
+
 ## 2026-11-04 – ověření přímého InnerTube resolveru
 
 - Referencí je `/home/michal/src/FelisMusic-SFOS/MIGRATION.md` a

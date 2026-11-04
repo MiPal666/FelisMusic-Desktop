@@ -124,6 +124,7 @@ class AudioPlaybackTestCase(unittest.TestCase):
             patch.object(core, 'LOCAL_AUDIO_CACHE', {}),
             patch.object(core, 'LOCAL_CACHE_ORDER', []),
             patch.object(core.yt_dlp, 'YoutubeDL', FakeYoutubeDL),
+            patch.object(core, 'download_direct_audio', side_effect=RuntimeError('direct unavailable in fallback tests')),
             patch.object(core.AUTH, 'yt_dlp_http_headers', return_value={}),
             patch.object(core, 'create_local_output', return_value=output),
         ]
