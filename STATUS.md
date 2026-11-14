@@ -1,5 +1,27 @@
 # FelisMusic Desktop – aktuální stav
 
+## Desktop 1.0.2 – oprava detailů interpretů (2026-11-14)
+
+- Po hlášení Bruna Marse porovnána desktopová cesta s ověřenou SFOS opravou
+  sestavení 100. Desktopový ytmusicapi 1.12.3 vyvolá KeyError při čtení header
+  bezejmenného musicCarouselShelfRenderer; samotná absence skladeb chybou není.
+- Nový desktopový artist_compat.get_artist kopíruje klienta i parser a pouze
+  při rozpoznávání kategorií vynechá karusely bez klíče header. Původní odpověď,
+  sdílený parser a pojmenované sekce/skladby/odběry/radio metadata zachovává.
+  Neopakuje síťový požadavek; jiné vady parseru nadále propadají jako chyba.
+- Adaptér používá detail interpreta i oba ověřovací kroky změny odběru.
+  Debug vypíše jen počet přeskočených karuselů. Prázdné skladby zůstávají
+  prázdnou sekcí s možností přepnout na dostupná alba a singly.
+- Šest nových regresí používá skutečný instalovaný parser a zahrnuje běžnou
+  stránku, chybějící skladby, zachování původního klienta/odpovědi, jiné vady,
+  omezený debug i desktopový detail s alby a ověřenou změnou odběru.
+  Cílená sada 52 testů prošla. Celá sada: 796 testů bez selhání, 3 D-Bus
+  testy přeskočeny. Michal potvrdil funkčnost opravy v desktopové aplikaci.
+- SFOS projekt nebyl upraven. QML ani překlady se nemění.
+- Verze GUI i jádra 1.0.2, oba návody aktualizované. Připravený instalační
+  ZIP 1.0.2 se shoduje se zdroji; samostatný instalační test této verze
+  zatím neproběhl. Commit, tag a publikace čekají na Michala.
+
 ## Desktop 1.0.1 – připraveno k vydání (2026-11-04)
 
 - Přímá příprava lokálního audia i Cast URL se zachovaným yt-dlp fallbackem,

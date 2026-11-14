@@ -29,6 +29,7 @@ from . import legacy_core as core
 from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages, LibraryArtistSongPages
 from .uploads import load_upload_album
 from .album_library import load_catalog_album
+from .artist_compat import get_artist
 from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
@@ -1293,7 +1294,7 @@ class BackendBridge(QObject):
                 self._trace_artist_subscription("cancelled", attempt=attempt)
                 break
             try:
-                fresh = self._artist_subscription_controls(api.get_artist(browse_id))
+                fresh = self._artist_subscription_controls(get_artist(api, browse_id))
             except Exception as exc:
                 self._trace_artist_subscription("read_error", attempt=attempt, error=type(exc).__name__)
                 print(f"FelisMusic ověření odběru: {type(exc).__name__}")
@@ -1320,7 +1321,7 @@ class BackendBridge(QObject):
         self._artist_subscription_target = (browse_id, channel_id)
         api = self._ytmusic
         def task():
-            fresh = self._artist_subscription_controls(api.get_artist(browse_id))
+            fresh = self._artist_subscription_controls(get_artist(api, browse_id))
             self._trace_artist_subscription("preflight", wanted=wanted,
                 controls_valid=fresh is not None,
                 channel_matches=fresh["channelId"] == channel_id if fresh else None,
@@ -6123,7 +6124,7 @@ class BackendBridge(QObject):
             elif kind == "artist":
                 if not browse_id:
                     raise RuntimeError(QCoreApplication.translate("BackendBridge", "Interpret nemá browseId."))
-                data = ytmusic.get_artist(browse_id)
+                data = get_artist(ytmusic, browse_id)
                 detail_title = data.get("name") or title
                 tracks = core.usable_tracks(
                     (data.get("songs") or {}).get("results") or []
