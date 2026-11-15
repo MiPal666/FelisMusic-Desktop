@@ -23,10 +23,12 @@ if __package__:
     from .direct_audio import download_audio as download_direct_audio
     from .direct_audio import resolve_cast_url
     from .diagnostics import current_trace
+    from .host_process import host_environment
 else:
     from direct_audio import download_audio as download_direct_audio
     from direct_audio import resolve_cast_url
     from diagnostics import current_trace
+    from host_process import host_environment
 
 try:
     import gi
@@ -103,7 +105,8 @@ LEGACY_AUTH_FILE = os.path.join(
 
 YTM_ORIGIN = "https://music.youtube.com"
 YTM_LOGIN_URL = (
-    "https://music.youtube.com/library"
+    "https://accounts.google.com/ServiceLogin?service=youtube"
+    "&continue=https%3A%2F%2Fmusic.youtube.com%2F"
 )
 
 RESUME_SESSION_FILE = os.path.join(
@@ -641,7 +644,8 @@ class AuthManager:
 
         try:
             result = subprocess.run(
-                [
+                env=host_environment(),
+                args=[
                     flatpak,
                     "list",
                     "--app",
@@ -748,7 +752,8 @@ class AuthManager:
 
         try:
             result = subprocess.run(
-                [
+                env=host_environment(),
+                args=[
                     xdg_settings,
                     "get",
                     "default-web-browser",
@@ -1240,7 +1245,8 @@ class AuthManager:
 
         try:
             result = subprocess.run(
-                [
+                env=host_environment(),
+                args=[
                     backend["executable"],
                     "--version",
                 ],
@@ -1528,7 +1534,8 @@ class AuthManager:
 
         try:
             result = subprocess.run(
-                command,
+                env=host_environment(),
+                args=command,
                 check=False,
             )
         except Exception as exc:

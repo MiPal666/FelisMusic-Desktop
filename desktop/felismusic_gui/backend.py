@@ -18,6 +18,7 @@ from PySide6.QtCore import (
     QTimer,
     QUrl,
     QProcess,
+    QProcessEnvironment,
 )
 from PySide6.QtGui import QDesktopServices, QGuiApplication
 from ytmusicapi import YTMusic
@@ -30,6 +31,7 @@ from .paging import PlaylistPages, WatchPages, UploadSongPages, LibrarySongPages
 from .uploads import load_upload_album
 from .album_library import load_catalog_album
 from .artist_compat import get_artist
+from .host_process import host_environment
 from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
@@ -759,22 +761,32 @@ class BackendBridge(QObject):
             core.AUTH._ensure_profile_permissions(browser)
             command = core.AUTH._launch_command(browser)
             process = QProcess(self)
+            environment = QProcessEnvironment()
+            for key, value in host_environment().items():
+                environment.insert(key, value)
+            process.setProcessEnvironment(environment)
             process.setStandardOutputFile(QProcess.nullDevice())
             process.setStandardErrorFile(QProcess.nullDevice())
-            process.finished.connect(lambda *args: self._login_browser_finished(generation))
+            process.finished.connect(lambda code, status: self._login_browser_finished(generation, code, status))
             process.errorOccurred.connect(lambda error: self._login_browser_error(generation, error))
             self._login_process = process
             self._login_backend = browser
-            self._set_login_state("browser", QCoreApplication.translate("BackendBridge", "Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno."), canFinish=False)
+            self._set_login_state("browser", QCoreApplication.translate("BackendBridge", "Přihlas se ke Googlu a zavři celé přihlašovací okno. FelisMusic potom účet automaticky ověří."), canFinish=False)
             process.start(command[0], command[1:])
         except Exception:
             self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlašovací prohlížeč se nepodařilo spustit."))
             return False
         return True
 
-    def _login_browser_finished(self, generation):
-        if generation == self._login_generation and self._login_state["phase"] == "browser":
-            self._set_login_state("browser", QCoreApplication.translate("BackendBridge", "Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení."), canFinish=True)
+    def _login_browser_finished(self, generation, exit_code, exit_status):
+        if (self._closing.is_set() or generation != self._login_generation
+                or self._login_state["phase"] != "browser"):
+            return
+        if exit_code != 0 or exit_status != QProcess.ExitStatus.NormalExit:
+            self._set_login_state("error", QCoreApplication.translate("BackendBridge", "Přihlašovací prohlížeč skončil s chybou. Zkus přihlášení znovu. Dosavadní účet zůstává zachován."), canFinish=False)
+            return
+        self._set_login_state("browser", self._login_state["message"], canFinish=True)
+        self.finishLogin()
 
     def _login_browser_error(self, generation, error):
         if generation == self._login_generation and error == QProcess.ProcessError.FailedToStart:

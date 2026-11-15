@@ -4,7 +4,7 @@
 <context>
     <name>BackendBridge</name>
     <message>
-        <location filename="../felismusic_gui/backend.py" line="+268"/>
+        <location filename="../felismusic_gui/backend.py" line="+272"/>
         <source>Připravuji backend…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -106,23 +106,13 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+31"/>
-        <source>Přihlas se do YouTube Music, ověř knihovnu a zavři celé přihlašovací okno.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+3"/>
-        <location line="+10"/>
+        <location line="+38"/>
+        <location line="+16"/>
         <source>Přihlašovací prohlížeč se nepodařilo spustit.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-4"/>
-        <source>Pokud je přihlašovací okno zavřené, potvrď převzetí přihlášení.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+12"/>
+        <location line="+8"/>
         <source>Ověřuji účet YouTube Music…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -334,12 +324,12 @@
     </message>
     <message>
         <location line="+40"/>
-        <location line="+647"/>
+        <location line="+650"/>
         <source>Čekám na další skladby…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-427"/>
+        <location line="-430"/>
         <source>Ukládám hodnocení skladby…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -403,7 +393,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+73"/>
+        <location line="+76"/>
         <source>Nepodařilo se spojit se službou pro přehrávání. Zkontroluj připojení a potom stiskni Play pro opakování této skladby.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -563,7 +553,17 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1781"/>
+        <location line="-2594"/>
+        <source>Přihlas se ke Googlu a zavři celé přihlašovací okno. FelisMusic potom účet automaticky ověří.</source>
+        <translation>Přihlas se ke Googlu a zavři celé přihlašovací okno. FelisMusic potom účet automaticky ověří.</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Přihlašovací prohlížeč skončil s chybou. Zkus přihlášení znovu. Dosavadní účet zůstává zachován.</source>
+        <translation>Přihlašovací prohlížeč skončil s chybou. Zkus přihlášení znovu. Dosavadní účet zůstává zachován.</translation>
+    </message>
+    <message>
+        <location line="+798"/>
         <source>Nahrané</source>
         <translation type="unfinished"></translation>
     </message>
@@ -571,7 +571,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <location line="+164"/>
         <location line="+93"/>
         <location line="+374"/>
-        <location line="+1332"/>
+        <location line="+1335"/>
         <location line="+1877"/>
         <location line="+37"/>
         <location line="+20"/>
@@ -582,7 +582,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3567"/>
+        <location line="-3570"/>
         <source>Oblíbená hudba</source>
         <translation type="unfinished"></translation>
     </message>
@@ -598,7 +598,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     </message>
     <message>
         <location line="+2"/>
-        <location line="+3215"/>
+        <location line="+3218"/>
         <source>Fronta</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1101,15 +1101,15 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3624"/>
+        <location line="-3627"/>
         <location line="+25"/>
-        <location line="+3600"/>
+        <location line="+3603"/>
         <source>Alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3625"/>
-        <location line="+3626"/>
+        <location line="-3628"/>
+        <location line="+3629"/>
         <source>Interpreti</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1132,21 +1132,21 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-4236"/>
-        <location line="+3631"/>
+        <location line="-4239"/>
+        <location line="+3634"/>
         <source>Nahraná alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3631"/>
-        <location line="+3632"/>
+        <location line="-3634"/>
+        <location line="+3635"/>
         <source>Nahraní interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3629"/>
+        <location line="-3632"/>
         <location line="+443"/>
-        <location line="+3187"/>
+        <location line="+3190"/>
         <location line="+885"/>
         <location line="+278"/>
         <source>Knihovna</source>
@@ -1461,56 +1461,56 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <location filename="../Main.qml" line="+19"/>
         <location line="+122"/>
         <location line="+103"/>
-        <location line="+1880"/>
+        <location line="+1962"/>
         <location line="+154"/>
         <location line="+3"/>
         <source>Playlisty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2164"/>
-        <location line="+2256"/>
+        <location line="-2246"/>
+        <location line="+2338"/>
         <source>Nahraná alba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2256"/>
-        <location line="+2263"/>
+        <location line="-2338"/>
+        <location line="+2345"/>
         <source>Nahraní interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2262"/>
-        <location line="+2269"/>
+        <location line="-2344"/>
+        <location line="+2351"/>
         <source>Nahrané skladby</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2263"/>
-        <location line="+3040"/>
+        <location line="-2345"/>
+        <location line="+3136"/>
         <source>Výchozí YTM</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3040"/>
+        <location line="-3136"/>
         <location line="+1"/>
-        <location line="+2089"/>
+        <location line="+2172"/>
         <location line="+2"/>
-        <location line="+948"/>
+        <location line="+961"/>
         <source>A–Z</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3040"/>
+        <location line="-3136"/>
         <location line="+1"/>
-        <location line="+2089"/>
+        <location line="+2172"/>
         <location line="+2"/>
-        <location line="+948"/>
+        <location line="+961"/>
         <source>Z–A</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-3039"/>
+        <location line="-3135"/>
         <source>Nedávno přidané</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1524,7 +1524,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     <message>
         <location line="-2"/>
         <location line="+2"/>
-        <location line="+2035"/>
+        <location line="+2117"/>
         <location line="+6"/>
         <location line="+103"/>
         <location line="+3"/>
@@ -1533,9 +1533,9 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2246"/>
+        <location line="-2328"/>
         <location line="+2"/>
-        <location line="+2042"/>
+        <location line="+2124"/>
         <location line="+108"/>
         <location line="+3"/>
         <location line="+77"/>
@@ -1543,36 +1543,36 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2232"/>
+        <location line="-2314"/>
         <location line="+2"/>
-        <location line="+2156"/>
+        <location line="+2238"/>
         <location line="+3"/>
         <location line="+78"/>
         <source>Interpreti</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2237"/>
-        <location line="+1984"/>
+        <location line="-2319"/>
+        <location line="+2066"/>
         <source>Videa</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1983"/>
-        <location line="+2161"/>
+        <location line="-2065"/>
+        <location line="+2243"/>
         <location line="+3"/>
         <source>Profily</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2164"/>
-        <location line="+2167"/>
+        <location line="-2246"/>
+        <location line="+2249"/>
         <location line="+3"/>
         <source>Podcasty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-2170"/>
+        <location line="-2252"/>
         <source>Epizody</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1645,22 +1645,23 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     </message>
     <message>
         <location line="+7"/>
-        <location line="+188"/>
+        <location line="+180"/>
         <location line="+76"/>
         <location line="+74"/>
         <location line="+150"/>
-        <location line="+60"/>
+        <location line="+48"/>
+        <location line="+102"/>
         <source>Zavřít</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-539"/>
+        <location line="-621"/>
         <source>Odhlásit FelisMusic?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="+10"/>
-        <source>Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také CLI.</source>
+        <source>Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1670,13 +1671,13 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     </message>
     <message>
         <location line="+6"/>
-        <location line="+68"/>
+        <location line="+60"/>
         <location line="+88"/>
         <source>Zrušit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-147"/>
+        <location line="-139"/>
         <source>Přihlášení k YouTube Music</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1688,11 +1689,6 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     <message>
         <location line="+21"/>
         <source>Otevřít přihlašovací okno</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location line="+8"/>
-        <source>Převzít přihlášení</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1861,12 +1857,13 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+20"/>
+        <location line="+110"/>
+        <location line="+1923"/>
         <source>Informace o skladbě</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+57"/>
+        <location line="-1866"/>
         <source>Název</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2038,37 +2035,37 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <location line="+16"/>
         <location line="+16"/>
         <location line="+422"/>
-        <location line="+984"/>
+        <location line="+998"/>
         <source>Přehrát jako další</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1888"/>
+        <location line="-1902"/>
         <location line="+458"/>
         <location line="+16"/>
         <location line="+16"/>
         <location line="+422"/>
-        <location line="+981"/>
+        <location line="+995"/>
         <source>Přidat na konec fronty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1887"/>
-        <location line="+1892"/>
+        <location line="-1901"/>
+        <location line="+1906"/>
         <source>Přidat do playlistu…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1883"/>
+        <location line="-1897"/>
         <location line="+368"/>
         <location line="+16"/>
         <location line="+8"/>
-        <location line="+1203"/>
+        <location line="+1217"/>
         <source>Spustit mix</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1587"/>
+        <location line="-1601"/>
         <source>Otevřít nahrané album</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2180,12 +2177,12 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <location line="+54"/>
         <location line="+17"/>
         <location line="+505"/>
-        <location line="+708"/>
+        <location line="+722"/>
         <source>Přehrát náhodně</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1188"/>
+        <location line="-1202"/>
         <source>Odebrat album z knihovny</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2252,18 +2249,18 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     </message>
     <message>
         <location line="+1"/>
-        <location line="+1115"/>
+        <location line="+1129"/>
         <source>Načítám další skladby…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1113"/>
-        <location line="+1115"/>
+        <location line="-1127"/>
+        <location line="+1129"/>
         <source>Načítání se nepodařilo dokončit</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-1105"/>
+        <location line="-1119"/>
         <source>Načtené skladby můžeš přehrát. Pro nové načtení otevři mix znovu.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2309,7 +2306,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+32"/>
+        <location line="+31"/>
         <source>Původní pořadí</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2320,7 +2317,7 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+1"/>
+        <location line="+2"/>
         <source>Od nejnovějších</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2332,24 +2329,24 @@ GUI virtualenv musí být vytvořen s --system-site-packages, aby viděl systém
     <message>
         <location line="+49"/>
         <location line="+458"/>
-        <location line="+144"/>
+        <location line="+158"/>
         <source>Knihovna</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-555"/>
+        <location line="-569"/>
         <source>Nahrané</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location line="-113"/>
         <location line="+133"/>
-        <location line="+821"/>
+        <location line="+835"/>
         <source>Řadit podle</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-791"/>
+        <location line="-805"/>
         <source>Nahrané soubory:</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2391,37 +2388,37 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
     </message>
     <message>
         <location line="+143"/>
-        <location line="+126"/>
+        <location line="+140"/>
         <location line="+76"/>
         <source>Hledat</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-200"/>
-        <location line="+397"/>
+        <location line="-214"/>
+        <location line="+411"/>
         <source>Oblíbená hudba</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-396"/>
-        <location line="+527"/>
+        <location line="-410"/>
+        <location line="+541"/>
         <source>Historie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-526"/>
-        <location line="+535"/>
+        <location line="-540"/>
+        <location line="+549"/>
         <source>Mixy pro vás</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-534"/>
-        <location line="+581"/>
+        <location line="-548"/>
+        <location line="+595"/>
         <source>Fronta</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="-561"/>
+        <location line="-575"/>
         <source>Desktop GUI · %1</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2456,7 +2453,7 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location line="+46"/>
+        <location line="+60"/>
         <source>Nahrané soubory</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2642,26 +2639,33 @@ Skladby už můžeš přehrávat dvojklikem. Další se doplní i do fronty. Akc
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location line="-2963"/>
+        <location line="+2027"/>
         <source>O aplikaci</source>
         <translation>O aplikaci</translation>
     </message>
     <message>
+        <location line="-1975"/>
         <source>Verze %1</source>
         <translation>Verze %1</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.</source>
         <translation>Přehrávač YouTube Music pro Linux s podporou Chromecast Audio a skupin reproduktorů Google Cast.</translation>
     </message>
     <message>
+        <location line="+6"/>
         <source>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</source>
         <translation>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</translation>
     </message>
     <message>
+        <location line="+9"/>
         <source>Projekt na GitHubu</source>
         <translation>Projekt na GitHubu</translation>
     </message>
     <message>
+        <location line="+5"/>
         <source>Nahlásit chybu</source>
         <translation>Nahlásit chybu</translation>
     </message>

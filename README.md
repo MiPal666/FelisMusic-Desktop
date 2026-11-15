@@ -41,6 +41,14 @@ from the extracted archive before installing. To remove the installed app, run
 `bash "$HOME/.local/opt/felismusic/uninstall.sh"`. Your sign-in and settings
 remain in your user configuration directory, usually `~/.config/felismusic/`.
 
+## Sign-in
+
+Choose a supported browser in the Account dialog. FelisMusic opens Google sign-in
+in its own browser profile. Sign in and close the entire sign-in window; the app
+then verifies and saves the account automatically. Firefox, Chrome, Chromium,
+Brave, Vivaldi, and Edge are supported. Cancelling or a failed verification keeps
+your previously saved credentials.
+
 ## Cast playback
 
 Open **Outputs → Find devices** to discover Chromecast Audio devices and speaker

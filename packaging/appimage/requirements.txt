@@ -1,0 +1,7 @@
+# Versions used for this first Debian 13 x86_64 experiment.
+PySide6==6.12.0
+ytmusicapi==1.12.3
+yt-dlp[default]==2026.10.26
+PyChromecast==14.0.10
+PyInstaller==6.22.3
+# PyGObject and dbus-python come from Debian via --system-site-packages.

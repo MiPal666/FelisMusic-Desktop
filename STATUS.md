@@ -1,5 +1,83 @@
 # FelisMusic Desktop – aktuální stav
 
+## Zjednodušené přihlášení – uživatelsky přijato (2026-11-15)
+
+- Na Michalovu žádost odstraněna zmínka o odhlášení CLI z potvrzovacího
+  dialogu (CS/EN). Společné UI platí pro AppImage i příští ZIP; logika
+  mazání přihlášení se nemění. Katalogy znovu sestavené.
+
+- Michal schválil variantu se systémovým prohlížečem. Všechny současné
+  backendy (Firefox/Chrome/Chromium/Brave/Vivaldi/Edge, native i Flatpak)
+  otevírají rovnou Google ServiceLogin s návratem na music.youtube.com.
+- Po normálním dokončení procesu se automaticky spustí stávající ověření
+  cookies, knihovny a účtu a teprve pak publikace session. Ruční tlačítko
+  Převzít přihlášení odstraněno. Zrušení, opožděné signály, dvojí dokončení,
+  neúspěšné ověření a nenulový/abnormální exit nesmí přepsat původní účet.
+- Texty i sestavené katalogy CS/EN a návody aktualizované. Verze zatím 1.0.2,
+  nový stabilní ZIP nevydáván. SFOS nebyl upraven.
+- 807 testů bez selhání, 3 D-Bus přeskočeny. Nové regrese: příkazy všech
+  12 browser/launcher kombinací, abnormální exit a duplicitní signál; původní
+  testy loginu nyní ověřují automatický postup po skutečném ukončení procesu.
+  QML při 1280×800 a 900×600 v CS/EN ověřilo stav přihlašování, chybějící
+  ruční tlačítko a automatické zavření dialogu po ověřeném úspěchu.
+- Michal potvrdil zjednodušený postup přihlášení i odstranění hlášky o CLI
+  a schválil commit a push. Samostatné reálné ověření všech ostatních
+  prohlížečů/Flatpak variant není doloženo; jejich příkazy pokrývají testy.
+
+
+## Experimentální AppImage – příprava sestavení (2026-11-15)
+
+- Michal potvrdil na čistém Debian2 spuštění, přihlášení přes Firefox a
+  přehrávání. Přímé MPRIS příkazy PlaybackStatus/PlayPause/Next provedly
+  očekávané akce. Cast (plánovaný bridge) a openSUSE/BT čekají na test.
+  Toto ověření se týká sestavení před zjednodušením přihlášení.
+
+- Michalův další build s fix2 úspěšně prošel offline self-testem i vytvořením
+  AppImage. Vznikl dist/FelisMusic-1.0.2-experimental-x86_64.AppImage,
+  SquashFS přibližně 199,1 MiB. Původní SIGSEGV se při této sestavovací
+  kontrole již neprojevil. appimagetool stáhl continuous type2 runtime.
+  Následný test čistého Debian2 je zapsán výše; Cast, openSUSE, BT, seek
+  a yt-dlp fallback zůstávají bez úplného uživatelského ověření. Balík
+  zatím není připravený k veřejnému vydání.
+- Druhý pokus zastavil příliš široký zákaz Qt6Quick3D*: analýza ponechala
+  pouze pomocnou libQt6Quick3DUtils.so.6. Kontrola nyní dovoluje přesně tuto
+  knihovnu jako binární závislost, ale stále zakazuje renderer/XR i celé
+  Quick3D QML moduly a TextToSpeech. Pět testů filtru/politiky prošlo.
+  Následující sestavení prošlo, původní SIGSEGV se už neprojevil.
+- První Debian1 build se sestavil, ale offline start spadl na SIGSEGV.
+  GDB ukázal QtTextToSpeech při vytváření QGuiApplication. Analysis-00.toc
+  potvrdil Core/DBus/TextToSpeech ze stejného PySide6; hypotéza směsi
+  systémového a wheel Qt se tedy nepotvrdila. Upstream QtQml hook sbírá
+  veškeré QML v instalaci, včetně nepotřebného TextToSpeech a Quick3D XR.
+  Nový vlastní hook omezuje QML na používané rodiny QtQml/QtQuick, spec
+  odmítne návrat speech/Quick3D knihoven. Self-test má flushované fáze a
+  faulthandler. Tři počáteční testy filtru prošly; po zpřesnění kontroly
+  na fix2 prošlo sestavení i offline start na Debian1.
+- ZIP zůstává udržovanou distribucí. Michal připravil dvě čisté Debian 13.7
+  GNOME x86_64 VM. Debian1 je sestavovací (Python 3.13.5, glibc 2.41,
+  GStreamer 1.26.2), druhá VM zůstává čistá pro test přenositelnosti.
+- Na Debian1 ověřeny systémové gi/dbus, playbin/pulsesink/qtdemux/avdec_aac/
+  opusdec a importy v .appimage-env: PySide6 6.12.0, PyInstaller 6.22.3,
+  ytmusicapi 1.12.3, yt-dlp 2026.10.26 s EJS a PyChromecast 14.0.10.
+- packaging/appimage obsahuje onedir spec, runtime hook, AppRun, desktop
+  soubor, build.py a offline self-test. Deno 2.9.0 a appimagetool stahuje
+  builder z oficiálních vydání a ověří připnuté SHA-256. Mutable URL pro
+  appimagetool při změně obsahu bezpečně selže, checksum se nesmí obcházet.
+- Pluginy GStreameru se sbírají výběrově; offline self-test kontroluje jejich
+  skutečnou cestu uvnitř balíku. Registry je v uživatelské cache, ne v read-only
+  AppImage. Qt/QML, překlady, Python metadata a Deno se ověří před zabalením.
+- host_process zachytí prostředí před runtime hooky Qt/GI a pro systémový
+  prohlížeč/nástroje obnoví původní PATH a LD_LIBRARY_PATH. Aplikace ani její
+  Deno o přibalené knihovny nepřijdou. Běžný ZIP používá současné prostředí.
+- 799 testů bez selhání, 3 D-Bus přeskočené; nové 3 testy ověřují prostředí
+  externích procesů. Syntaxe Python/spec/AppRun a git diff --check prošly.
+- Přenosový archiv dist/FelisMusic-1.0.2-appimage-build-files.tar.gz obsahuje
+  pouze nové balicí podklady a potřebné desktopové změny pro checkout v1.0.2.
+  Sestavení na Debian1 i následné částečné ověření čistého Debian2 jsou
+  uvedeny výše. Nejde o veřejně vydaný AppImage.
+  Před publikací dokončit kontrolu licencí/zdrojů přibalených závislostí.
+  SFOS zůstává beze změn, verze aplikace zůstává 1.0.2.
+
 ## Desktop 1.0.2 – oprava detailů interpretů (2026-11-14)
 
 - Po hlášení Bruna Marse porovnána desktopová cesta s ověřenou SFOS opravou

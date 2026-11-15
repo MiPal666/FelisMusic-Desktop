@@ -1,6 +1,7 @@
 # Local Python environments and generated files
 /env/
 /.venv/
+/.appimage-env/
 /venv/
 __pycache__/
 *.py[cod]

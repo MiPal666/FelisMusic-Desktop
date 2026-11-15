@@ -404,7 +404,7 @@ ApplicationWindow {
             spacing: 14
             Label {
                 Layout.fillWidth: true
-                text: qsTr("Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic. Odhlásí se také CLI.")
+                text: qsTr("Poslech se zastaví a fronta se vyprázdní. Odstraní se uložené přihlášení i samostatné přihlašovací profily FelisMusic.")
                 color: "#eeeeee"
                 wrapMode: Text.WordWrap
             }
@@ -473,14 +473,6 @@ ApplicationWindow {
                 visible: backend.loginState.phase === "choose" || backend.loginState.phase === "error"
                 enabled: loginBrowserChoice.currentIndex >= 0
                 onClicked: backend.startLogin(loginBrowserChoice.currentValue)
-            }
-            Button {
-                objectName: "loginFinishButton"
-                Layout.fillWidth: true
-                text: qsTr("Převzít přihlášení")
-                visible: backend.loginState.phase === "browser"
-                enabled: backend.loginState.canFinish || false
-                onClicked: backend.finishLogin()
             }
             Button {
                 objectName: "loginCancelButton"

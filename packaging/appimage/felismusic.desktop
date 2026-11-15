@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=FelisMusic
+GenericName=YouTube Music player
+Comment=Chromecast Audio and Google Cast speaker groups · YouTube Music player for Linux
+Exec=felismusic
+Icon=felismusic
+Categories=AudioVideo;Audio;Player;
+Terminal=false

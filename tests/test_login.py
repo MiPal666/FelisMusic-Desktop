@@ -21,11 +21,17 @@ class Manager:
         Path(self.profiles_dir).mkdir()
         (Path(self.profiles_dir)/'profile-cookie').write_text('ISOLATED_BROWSER_SECRET')
         self.slow=False;self.missing=False;self.none=False
+        self.close_file = root/'browser-closed'
     def detect_browsers(self):return [] if self.none else [dict(BROWSER)]
     def _ensure_profile_permissions(self,browser):pass
     def _launch_command(self,browser):
         if self.missing:return ['/nonexistent/felis-test-browser']
-        return [sys.executable,'-c','import time; time.sleep(20)' if self.slow else 'pass']
+        self.close_file.unlink(missing_ok=True)
+        code = 'import time; time.sleep(20)' if self.slow else (
+            'import time\n'
+            f'from pathlib import Path\np=Path({str(self.close_file)!r})\n'
+            'while not p.exists(): time.sleep(0.01)\n')
+        return [sys.executable, '-c', code]
     def _extract_cookies(self,browser):Path(self.cookie_file).write_text('NEW_COOKIE_SECRET')
     def _write_json_private(self,path,value):Path(path).write_text(json.dumps(value));os.chmod(path,0o600)
     def _user_agent(self,browser=None):return 'Test agent'
@@ -53,7 +59,7 @@ class LoginTests(support.AudioPlaybackTestCase):
     def browser(self):
         self.assertTrue(self.b.openLogin());self.until(lambda:self.b.loginState['phase'] in ('choose','error'))
         self.assertEqual(self.b.loginState['browsers'],[{'id':'test','name':'Test browser'}])
-        self.assertTrue(self.b.startLogin('test'));self.until(lambda:self.b.loginState.get('canFinish',False))
+        self.assertTrue(self.b.startLogin('test'));self.until(lambda:self.b._login_process.state()==support.backend.QProcess.ProcessState.Running)
 
     def test_login_publishes_only_verified_account_and_resets_old_views(self):
         self.b._library_items_model.set_items([dict(kind='playlist',playlistId='PLold')])
@@ -62,7 +68,8 @@ class LoginTests(support.AudioPlaybackTestCase):
         initialized=[];self.b.initialized.connect(lambda:initialized.append(not self.b.busy))
         self.browser();self.unchanged();self.api.get_account_info.assert_not_called()
         self.assertFalse(self.b.openLogin());self.assertFalse(self.b.startLogin('test'))
-        self.assertTrue(self.b.finishLogin());self.assertFalse(self.b.finishLogin())
+        self.assertFalse(self.b.finishLogin())
+        self.manager.close_file.touch()
         self.until(lambda:self.b.loginState['phase']=='success')
         self.assertEqual(Path(self.manager.cookie_file).read_text(),'NEW_COOKIE_SECRET')
         self.assertEqual(Path(self.manager.cookie_file).stat().st_mode&0o777,0o600)
@@ -85,18 +92,53 @@ class LoginTests(support.AudioPlaybackTestCase):
         self.assertFalse(self.b.busy);self.assertEqual(self.b.loginState['phase'],'closed')
         self.api.get_account_info.assert_not_called()
 
+    def test_abnormal_browser_exit_does_not_verify_or_replace_credentials(self):
+        self.browser()
+        self.b._login_browser_finished(self.b._login_generation, 1, support.backend.QProcess.ExitStatus.NormalExit)
+        self.assertEqual(self.b.loginState['phase'], 'error')
+        self.api.get_account_info.assert_not_called()
+        self.unchanged();self.b.cancelLogin()
+
+    def test_duplicate_finished_notification_does_not_start_verification_twice(self):
+        self.browser();entered=Event()
+        def blocked(**kwargs):entered.set();self.release.wait(3);return []
+        self.api.get_library_playlists.side_effect=blocked
+        self.manager.close_file.touch();self.until(entered.is_set)
+        self.b._login_browser_finished(self.b._login_generation, 0, support.backend.QProcess.ExitStatus.NormalExit)
+        self.assertFalse(self.b.finishLogin())
+        self.release.set();self.until(lambda:self.b.loginState['phase']=='success')
+        self.api.get_library_playlists.assert_called_once()
+        self.api.get_account_info.assert_called_once()
+
+    def test_all_native_and_flatpak_browser_commands_use_google_and_isolated_profile(self):
+        from urllib.parse import urlsplit,parse_qs
+        manager=object.__new__(support.core.AuthManager)
+        manager.profiles_dir=str(self.root/'isolated')
+        for config in manager.BROWSER_BACKENDS:
+            for launcher in ('native','flatpak'):
+                with self.subTest(browser=config['id'],launcher=launcher):
+                    browser=dict(config,launcher=launcher,executable='/browser',flatpak_id=config['flatpak_ids'][0])
+                    command=manager._launch_command(browser)
+                    url=urlsplit(command[-1])
+                    self.assertEqual((url.scheme,url.netloc,url.path),('https','accounts.google.com','/ServiceLogin'))
+                    self.assertEqual(parse_qs(url.query)['continue'],['https://music.youtube.com/'])
+                    self.assertIn(str(self.root/'isolated'/config['id']), ' '.join(command))
+                    if launcher=='flatpak':self.assertIn(config['flatpak_ids'][0],command)
+                    if config['engine']=='firefox':self.assertIn('--no-remote',command)
+                    else:self.assertIn('--password-store=basic',command)
+
     def test_cancel_during_verification_ignores_late_result_and_removes_staging(self):
         self.browser();entered=Event()
         def blocked(**kwargs):entered.set();self.release.wait(3);return []
         self.api.get_library_playlists.side_effect=blocked
-        self.b.finishLogin();self.until(entered.is_set);self.b.cancelLogin();self.release.set()
+        self.manager.close_file.touch();self.until(entered.is_set);self.b.cancelLogin();self.release.set()
         self.until(lambda:not list(self.root.glob('.gui-login-*')))
         self.unchanged();self.assertIs(self.b._ytmusic,self.old);self.assertFalse(self.b.busy)
         self.assertEqual(self.b.loginState['phase'],'closed')
 
     def test_verification_error_keeps_old_credentials_and_never_displays_secret_exception(self):
         self.browser();self.api.get_library_playlists.side_effect=RuntimeError('PRIVATE_COOKIE_RESPONSE')
-        self.b.finishLogin();self.until(lambda:self.b.loginState['phase']=='error')
+        self.manager.close_file.touch();self.until(lambda:self.b.loginState['phase']=='error')
         self.unchanged();self.assertNotIn('PRIVATE',self.b.loginState['message'])
         self.assertIs(self.b._ytmusic,self.old);self.assertTrue(self.b.connected)
         self.assertFalse(list(self.root.glob('.gui-login-*')));self.b.cancelLogin()
@@ -107,7 +149,7 @@ class LoginTests(support.AudioPlaybackTestCase):
         self.manager.missing=True;self.b.openLogin();self.until(lambda:self.b.loginState['phase']=='choose')
         self.b.startLogin('test');self.until(lambda:self.b.loginState['phase']=='error');self.unchanged()
         self.manager.missing=False;self.assertTrue(self.b.startLogin('test'))
-        self.until(lambda:self.b.loginState.get('canFinish',False));self.b.cancelLogin()
+        self.until(lambda:self.b._login_process.state()==support.backend.QProcess.ProcessState.Running);self.b.cancelLogin()
 
     def test_publish_failure_rolls_back_both_files(self):
         candidate=login.LoginCandidate(self.manager,BROWSER);self.addCleanup(candidate.close);candidate.verify()
@@ -124,7 +166,7 @@ class LoginTests(support.AudioPlaybackTestCase):
         Path(self.manager.cookie_file).unlink();Path(self.manager.state_file).unlink()
         self.b._ytmusic=None;self.b._set_connected(False)
         self.browser();self.assertFalse(Path(self.manager.cookie_file).exists())
-        self.b.finishLogin();self.until(lambda:self.b.loginState['phase']=='success')
+        self.manager.close_file.touch();self.until(lambda:self.b.loginState['phase']=='success')
         self.assertTrue(self.b.connected);self.assertEqual(self.b.accountName,'Verified account')
         self.assertEqual(Path(self.manager.cookie_file).read_text(),'NEW_COOKIE_SECRET')
 
@@ -150,8 +192,8 @@ class LoginTests(support.AudioPlaybackTestCase):
         self.api.get_account_info.assert_not_called();self.assertFalse(self.b.connected)
         self.b.cancelLogin();self.assertFalse(self.b.busy);self.assertEqual(self.played,played)
         self.b.initialize();self.until(lambda:self.b.loginState['phase']=='choose')
-        self.b.startLogin('test');self.until(lambda:self.b.loginState.get('canFinish',False))
-        self.b.finishLogin();self.until(lambda:self.b.loginState['phase']=='success')
+        self.b.startLogin('test');self.until(lambda:self.b._login_process.state()==support.backend.QProcess.ProcessState.Running)
+        self.manager.close_file.touch();self.until(lambda:self.b.loginState['phase']=='success')
         self.assertTrue(self.b.connected);self.assertEqual(self.played,played)
 
     def test_partial_logout_failure_is_reported_and_can_be_retried(self):

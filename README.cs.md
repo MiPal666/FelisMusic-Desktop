@@ -152,7 +152,7 @@ source env/bin/activate
 ./run-gui.sh
 ```
 
-Pokud přihlášení chybí nebo není platné, použij **Účet → Přihlásit / obnovit přihlášení**. Vyber prohlížeč, otevři přihlašovací okno, přihlas se do YouTube Music, ověř knihovnu a celé okno zavři. Potom stiskni **Převzít přihlášení**. Aplikace ověří účet před uložením. Před změnou přihlášení zastav poslech tlačítkem Stop a nech dokončit načítání; při zrušení nebo chybě ověření se dosavadní přihlášení nepřepíše. Samostatný profil prohlížeče sdílí dosavadní mechanismus CLI; při běžném poslechu prohlížeč neběží.
+Pokud přihlášení chybí nebo není platné, použij **Účet → Přihlásit / obnovit přihlášení**. Vyber prohlížeč a otevři přihlašovací okno přímo na stránce Googlu. Přihlas se a celé přihlašovací okno zavři. FelisMusic potom účet automaticky ověří a uloží, bez dalšího potvrzení. Před změnou přihlášení zastav poslech tlačítkem Stop a nech dokončit načítání; při zrušení nebo chybě ověření se dosavadní přihlášení nepřepíše. Samostatný profil prohlížeče sdílí dosavadní mechanismus CLI; při běžném poslechu prohlížeč neběží.
 
 ## 0.3.1-dev
 
