@@ -52,9 +52,9 @@ does not sign in, contact YTM, or play sound. This is not a complete runtime tes
 Test on the clean Debian VM and openSUSE:
 
 ```sh
-chmod +x FelisMusic-1.0.2-experimental-x86_64.AppImage
-QT_QPA_PLATFORM=offscreen ./FelisMusic-1.0.2-experimental-x86_64.AppImage --appimage-self-test
-./FelisMusic-1.0.2-experimental-x86_64.AppImage --debug
+chmod +x FelisMusic-1.0.3-experimental-x86_64.AppImage
+QT_QPA_PLATFORM=offscreen ./FelisMusic-1.0.3-experimental-x86_64.AppImage --appimage-self-test
+./FelisMusic-1.0.3-experimental-x86_64.AppImage --debug
 ```
 
 If FUSE mounts are unavailable, add `--appimage-extract-and-run` before app

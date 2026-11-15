@@ -1,5 +1,21 @@
 # FelisMusic Desktop – aktuální stav
 
+## Desktop 1.0.3 – příprava vydání (2026-11-15)
+
+- Michal uložil a odeslal implementaci v commitu 1b97e44 a požádal o release.
+  Verze GUI a jádra změněná na 1.0.3, oba návody aktualizované.
+- Zjednodušené přihlášení a odstranění hlášky CLI uživatelsky přijato.
+  Poslední funkční sada: 807 testů bez selhání, 3 přeskočené; QML CS/EN
+  při 1280×800 a 900×600 ověřeno. Samotné verzování ověřeno syntakticky.
+- Připraven dist/FelisMusic-1.0.3-linux-installer.zip; obsah a integrita
+  ověřeny. Samostatná instalace tohoto ZIPu dosud neotestovaná.
+- AppImage zůstává experimentální. Podklady
+  dist/FelisMusic-1.0.3-appimage-build-files.tar.gz pro Debian1 zahrnují
+  aktuální desktop a packaging, bez env/cache/session. Binární AppImage
+  1.0.3 musí být znovu sestaven na Debian1; starý balík 1.0.2 nepřejmenovávat.
+  Cast, openSUSE/BT a úplné přenosové/licenční ověření zatím neuzavřené.
+- Commit verzování, tag v1.0.3 a publikace čekají na Michala. SFOS beze změn.
+
 ## Zjednodušené přihlášení – uživatelsky přijato (2026-11-15)
 
 - Na Michalovu žádost odstraněna zmínka o odhlášení CLI z potvrzovacího
