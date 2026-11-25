@@ -900,7 +900,7 @@ ApplicationWindow {
         modal: true
         anchors.centerIn: parent
         width: Math.min(root.width - 48, 520)
-        height: Math.min(root.height - 48, 350)
+        height: Math.min(root.height - 48, 520)
         padding: 18
         background: Rectangle { color: "#181818"; border.color: "#494949"; radius: 8 }
         header: Label {
@@ -960,7 +960,39 @@ ApplicationWindow {
                     Layout.fillWidth: true
                 }
                 Label {
+                    text: qsTr("Vytvořil Michal Kasík (MiPal) s pomocí Kláry (AI).")
+                    color: "#bbbbbb"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
                     text: qsTr("Licence GPL verze 3 nebo novější (GPL-3.0-or-later).")
+                    color: "#bbbbbb"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                Label {
+                    text: qsTr("Používaná verze yt-dlp: %1").arg(backend.ytdlpUpdater.version)
+                    color: "#bbbbbb"
+                    wrapMode: Text.Wrap
+                    Layout.fillWidth: true
+                }
+                PlayerTextButton {
+                    objectName: "updateYtdlpButton"
+                    visible: backend.ytdlpUpdater.available
+                    enabled: backend.ytdlpUpdater.phase !== "updating" && backend.ytdlpUpdater.phase !== "restart"
+                    text: qsTr("Aktualizovat yt-dlp")
+                    implicitWidth: contentItem.implicitWidth + 24
+                    onClicked: backend.ytdlpUpdater.update()
+                }
+                Label {
+                    visible: backend.ytdlpUpdater.phase !== "idle"
+                    text: backend.ytdlpUpdater.phase === "updating"
+                        ? qsTr("Aktualizuji yt-dlp… Nech aplikaci otevřenou.")
+                        : backend.ytdlpUpdater.phase === "restart"
+                        ? qsTr("Aktualizace dokončena. Zavři a znovu spusť FelisMusic.")
+                        : backend.ytdlpUpdater.phase === "failed"
+                        ? qsTr("Aktualizace se nezdařila. Zkontroluj připojení a zkus to znovu. Pokud přehrávání nefunguje, restartuj aplikaci.") : ""
                     color: "#bbbbbb"
                     wrapMode: Text.Wrap
                     Layout.fillWidth: true

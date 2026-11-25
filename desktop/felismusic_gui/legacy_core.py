@@ -51,7 +51,7 @@ except Exception as exc:
     GST_IMPORT_ERROR = exc
 
 
-VERSION = "1.0.3"
+VERSION = "1.0.4"
 
 BASE_DIR = os.path.dirname(
     os.path.abspath(__file__)

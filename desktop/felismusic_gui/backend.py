@@ -32,6 +32,7 @@ from .uploads import load_upload_album
 from .album_library import load_catalog_album
 from .artist_compat import get_artist
 from .host_process import host_environment
+from .ytdlp_update import YtdlpUpdater
 from .playlist_library import load_library_playlist
 from .public_links import public_link, valid_public_link
 from .login import LoginCandidate, remove_login
@@ -251,6 +252,7 @@ class BackendBridge(QObject):
             thread_name_prefix="felismusic-playback",
         )
         self._closing = Event()
+        self._ytdlp_updater = YtdlpUpdater(self)
         self._transport_lock = Lock()
         self._cast_commands = set()
         self._prefetch_future = None
@@ -439,6 +441,10 @@ class BackendBridge(QObject):
     # ------------------------------------------------------------------
     # Qt properties
     # ------------------------------------------------------------------
+
+    @Property(QObject, constant=True)
+    def ytdlpUpdater(self):
+        return self._ytdlp_updater
 
     @Property(str, notify=statusChanged)
     def status(self):
@@ -6668,6 +6674,7 @@ class BackendBridge(QObject):
     def shutdown(self):
         if self._closing.is_set():
             return
+        self._ytdlp_updater.shutdown()
         self.cancelLogin()
         if self._login_process and self._login_process.state() != QProcess.ProcessState.NotRunning:
             self._login_process.kill()

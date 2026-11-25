@@ -4,7 +4,7 @@
 <context>
     <name>BackendBridge</name>
     <message>
-        <location filename="../felismusic_gui/backend.py" line="+272"/>
+        <location filename="../felismusic_gui/backend.py" line="+274"/>
         <source>Připravuji backend…</source>
         <translation>Starting up…</translation>
     </message>
@@ -14,7 +14,7 @@
         <translation>Select Find devices to start searching.</translation>
     </message>
     <message>
-        <location line="+190"/>
+        <location line="+194"/>
         <source>Spojení s Castem bylo přerušeno. Vyber výstup a potom spusť přehrávání.</source>
         <translation>The Cast connection was lost. Select an output, then start playback.</translation>
     </message>
@@ -1472,56 +1472,56 @@ Create the virtual environment with --system-site-packages so it can access the 
         <location filename="../Main.qml" line="+19"/>
         <location line="+122"/>
         <location line="+103"/>
-        <location line="+1962"/>
+        <location line="+1994"/>
         <location line="+154"/>
         <location line="+3"/>
         <source>Playlisty</source>
         <translation>Playlists</translation>
     </message>
     <message>
-        <location line="-2246"/>
-        <location line="+2338"/>
+        <location line="-2278"/>
+        <location line="+2370"/>
         <source>Nahraná alba</source>
         <translation>Uploaded albums</translation>
     </message>
     <message>
-        <location line="-2338"/>
-        <location line="+2345"/>
+        <location line="-2370"/>
+        <location line="+2377"/>
         <source>Nahraní interpreti</source>
         <translation>Uploaded artists</translation>
     </message>
     <message>
-        <location line="-2344"/>
-        <location line="+2351"/>
+        <location line="-2376"/>
+        <location line="+2383"/>
         <source>Nahrané skladby</source>
         <translation>Uploaded tracks</translation>
     </message>
     <message>
-        <location line="-2345"/>
-        <location line="+3136"/>
+        <location line="-2377"/>
+        <location line="+3168"/>
         <source>Výchozí YTM</source>
         <translation>YouTube Music default</translation>
     </message>
     <message>
-        <location line="-3136"/>
+        <location line="-3168"/>
         <location line="+1"/>
-        <location line="+2172"/>
+        <location line="+2204"/>
         <location line="+2"/>
         <location line="+961"/>
         <source>A–Z</source>
         <translation>A–Z</translation>
     </message>
     <message>
-        <location line="-3136"/>
+        <location line="-3168"/>
         <location line="+1"/>
-        <location line="+2172"/>
+        <location line="+2204"/>
         <location line="+2"/>
         <location line="+961"/>
         <source>Z–A</source>
         <translation>Z–A</translation>
     </message>
     <message>
-        <location line="-3135"/>
+        <location line="-3167"/>
         <source>Nedávno přidané</source>
         <translation>Recently added</translation>
     </message>
@@ -1535,7 +1535,7 @@ Create the virtual environment with --system-site-packages so it can access the 
     <message>
         <location line="-2"/>
         <location line="+2"/>
-        <location line="+2117"/>
+        <location line="+2149"/>
         <location line="+6"/>
         <location line="+103"/>
         <location line="+3"/>
@@ -1544,9 +1544,9 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Tracks</translation>
     </message>
     <message>
-        <location line="-2328"/>
+        <location line="-2360"/>
         <location line="+2"/>
-        <location line="+2124"/>
+        <location line="+2156"/>
         <location line="+108"/>
         <location line="+3"/>
         <location line="+77"/>
@@ -1554,36 +1554,36 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Albums</translation>
     </message>
     <message>
-        <location line="-2314"/>
+        <location line="-2346"/>
         <location line="+2"/>
-        <location line="+2238"/>
+        <location line="+2270"/>
         <location line="+3"/>
         <location line="+78"/>
         <source>Interpreti</source>
         <translation>Artists</translation>
     </message>
     <message>
-        <location line="-2319"/>
-        <location line="+2066"/>
+        <location line="-2351"/>
+        <location line="+2098"/>
         <source>Videa</source>
         <translation>Videos</translation>
     </message>
     <message>
-        <location line="-2065"/>
-        <location line="+2243"/>
+        <location line="-2097"/>
+        <location line="+2275"/>
         <location line="+3"/>
         <source>Profily</source>
         <translation>Profiles</translation>
     </message>
     <message>
-        <location line="-2246"/>
-        <location line="+2249"/>
+        <location line="-2278"/>
+        <location line="+2281"/>
         <location line="+3"/>
         <source>Podcasty</source>
         <translation>Podcasts</translation>
     </message>
     <message>
-        <location line="-2252"/>
+        <location line="-2284"/>
         <source>Epizody</source>
         <translation>Episodes</translation>
     </message>
@@ -1658,12 +1658,12 @@ Create the virtual environment with --system-site-packages so it can access the 
         <location line="+74"/>
         <location line="+150"/>
         <location line="+48"/>
-        <location line="+102"/>
+        <location line="+134"/>
         <source>Zavřít</source>
         <translation>Close</translation>
     </message>
     <message>
-        <location line="-621"/>
+        <location line="-653"/>
         <source>Odhlásit FelisMusic?</source>
         <translation>Sign out of FelisMusic?</translation>
     </message>
@@ -1869,7 +1869,37 @@ Create the virtual environment with --system-site-packages so it can access the 
         <translation>Remove the selected tracks from “%2”? Tracks selected: %1.</translation>
     </message>
     <message>
-        <location line="+110"/>
+        <location line="+76"/>
+        <source>Vytvořil Michal Kasík (MiPal) s pomocí Kláry (AI).</source>
+        <translation>Created by Michal Kasík (MiPal) with help from Klára (AI).</translation>
+    </message>
+    <message>
+        <location line="+12"/>
+        <source>Používaná verze yt-dlp: %1</source>
+        <translation>yt-dlp version in use: %1</translation>
+    </message>
+    <message>
+        <location line="+9"/>
+        <source>Aktualizovat yt-dlp</source>
+        <translation>Update yt-dlp</translation>
+    </message>
+    <message>
+        <location line="+7"/>
+        <source>Aktualizuji yt-dlp… Nech aplikaci otevřenou.</source>
+        <translation>Updating yt-dlp… Keep the application open.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Aktualizace dokončena. Zavři a znovu spusť FelisMusic.</source>
+        <translation>Update completed. Close and restart FelisMusic.</translation>
+    </message>
+    <message>
+        <location line="+2"/>
+        <source>Aktualizace se nezdařila. Zkontroluj připojení a zkus to znovu. Pokud přehrávání nefunguje, restartuj aplikaci.</source>
+        <translation>Update failed. Check your connection and try again. If playback does not work, restart the application.</translation>
+    </message>
+    <message>
+        <location line="+34"/>
         <location line="+1923"/>
         <source>Informace o skladbě</source>
         <translation>Track information</translation>
@@ -2652,13 +2682,13 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>Output: %1</translation>
     </message>
     <message>
-        <location line="-2963"/>
-        <location line="+2027"/>
+        <location line="-2995"/>
+        <location line="+2059"/>
         <source>O aplikaci</source>
         <translation>About</translation>
     </message>
     <message>
-        <location line="-1975"/>
+        <location line="-2007"/>
         <source>Verze %1</source>
         <translation>Version %1</translation>
     </message>
@@ -2668,12 +2698,12 @@ Double-click to play a track now. More tracks will be added to the queue as they
         <translation>A YouTube Music player for Linux with support for Chromecast Audio and Google Cast speaker groups.</translation>
     </message>
     <message>
-        <location line="+6"/>
+        <location line="+12"/>
         <source>Licence GPL verze 3 nebo novější (GPL-3.0-or-later).</source>
         <translation>Licensed under GPL version 3 or later (GPL-3.0-or-later).</translation>
     </message>
     <message>
-        <location line="+9"/>
+        <location line="+35"/>
         <source>Projekt na GitHubu</source>
         <translation>Project on GitHub</translation>
     </message>

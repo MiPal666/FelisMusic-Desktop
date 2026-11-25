@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Experimental Debian 13 x86_64 builder. Never installs system packages."""
+"""Debian 13 x86_64 AppImage builder. Never installs system packages."""
 import ast
 import hashlib
 import os
@@ -37,13 +37,13 @@ def main():
     if os.geteuid() == 0:
         raise SystemExit("Run as your regular user, without sudo")
     if platform.machine() != "x86_64":
-        raise SystemExit("This prototype supports only x86_64")
+        raise SystemExit("This builder supports only x86_64")
     system = platform.freedesktop_os_release()
     if system.get("ID") != "debian" or system.get("VERSION_ID") != "13":
         raise SystemExit("Build on Debian 13; test the result on other distributions")
     from importlib.metadata import version
     for name, wanted in (("PyInstaller", "6.22.3"), ("PySide6", "6.12.0"),
-                         ("ytmusicapi", "1.12.3"), ("yt-dlp", "2026.10.26"),
+                         ("ytmusicapi", "1.12.3"), ("yt-dlp", "2026.11.23"),
                          ("PyChromecast", "14.0.10")):
         if version(name) != wanted:
             raise SystemExit(name + " must be " + wanted)
@@ -108,15 +108,15 @@ def main():
     module = ast.parse((ROOT / "desktop/main.py").read_text())
     appversion = next(ast.literal_eval(n.value) for n in module.body
         if isinstance(n, ast.Assign) and any(isinstance(t, ast.Name) and t.id == "VERSION" for t in n.targets))
-    target = OUT / ("FelisMusic-" + appversion + "-experimental-x86_64.AppImage")
+    target = OUT / ("FelisMusic-" + appversion + "-x86_64.AppImage")
     # Extract-and-run supports builders where FUSE mounts are unavailable.
     run([appimagetool, "--appimage-extract-and-run", appdir, target],
         env=dict(os.environ, ARCH="x86_64", VERSION=appversion))
     target.chmod(0o755)
     checksum = hashlib.sha256(target.read_bytes()).hexdigest()
     target.with_suffix(target.suffix + ".sha256").write_text(checksum + "  " + target.name + "\n")
-    print("EXPERIMENTAL APPIMAGE:", target)
-    print("Not yet verified on the clean VM or openSUSE. ZIP distribution is unchanged.")
+    print("APPIMAGE:", target)
+    print("ZIP distribution remains supported alongside AppImage.")
 
 
 if __name__ == "__main__":

@@ -1,5 +1,44 @@
 # FelisMusic Desktop – aktuální stav
 
+## Desktop 1.0.4 – uživatelsky přijato, připravené k vydání (2026-11-25)
+
+- Kočička používala yt-dlp 2026.10.26, funkční čerstvá instalace Debianu
+  2026.11.23. Starší verze selhávala na JS výzvě přehrávače b485e332
+  (`a.addOnDisposeCallback is not a function`). Po aktualizaci Michal potvrdil
+  problémový playlist v běžné instalaci i v testovacím AppImage 1.0.3.
+- AppImage má připnuté yt-dlp 2026.11.23. GUI a jádro připravené jako 1.0.4.
+- O aplikaci ukazuje používanou verzi yt-dlp a u běžné instalace ve venv
+  nabízí ruční aktualizaci přes vlastní Python/pip z PyPI. QProcess neblokuje
+  GUI, brání dvojímu spuštění, hlásí chyby a po úspěchu vyžaduje restart.
+  AppImage ani systémový Python aktualizaci nespustí.
+- Doplněné poděkování Kláře (AI), CS/EN překlady a návody.
+- Ověření: 814 testů OK, 3 D-Bus přeskočeny při ytmusicapi 1.12.3
+  načteném pouze pro testy z /tmp. Hostitelské ytmusicapi 1.12.4 má čtyři
+  nekompatibilní starší parserové testy; jejich fixtures zde nejsou měněné.
+  Sedm nových testů ověřuje updater bez sítě nebo skutečné instalace balíčků.
+  QML CS/EN při 900×600 i 1280×800 bez varování; viditelnost a stavy tlačítka
+  ověřené i se simulovaným frozen režimem. Překlady znovu sestavené.
+- Michal potvrdil nové O aplikaci i funkční AppImage 1.0.4. V běžné instalaci
+  skutečně spustil aktualizaci tlačítkem, viděl výzvu k restartu a po novém
+  spuštění se zobrazila nová používaná verze yt-dlp.
+- ZIP instalátor navíc výslovně aktualizuje yt-dlp po instalaci požadavků,
+  aby starší systémový balíček viditelný přes --system-site-packages nemohl
+  pouze uspokojit nepřipnutý požadavek. CS/EN návody uvádějí přesný postup
+  aktualizace přes uninstall/install se zachováním konfigurace.
+- Commit, tag v1.0.4 a publikaci ZIPu a AppImage provede Michal. SFOS beze změn.
+
+## AppImage 1.0.3 – přijatý pro vydání (2026-11-15)
+
+- Michal potvrdil funkční AppImage 1.0.3 na Debianu a openSUSE, včetně
+  zjednodušeného přihlášení a přehrávání. Následně ověřil Cast na Debianu
+  a sluchátka s ovládáním přes Bluetooth na openSUSE. MPRIS příkazy byly
+  ověřené již dříve. AppImage uživatelsky přijatý jako finální release.
+- Builder nyní vytváří FelisMusic-1.0.3-x86_64.AppImage bez experimental;
+  aktualizované návody CS/EN. Již otestovaný soubor lze pouze přejmenovat
+  a přegenerovat jeho soubor SHA-256, bez změny binárního obsahu.
+- Publikaci souboru do GitHub release provede Michal. ZIP zůstává podporovaný.
+  Starší zápisy níže zachycují průběh přípravy, nikoli aktuální stav.
+
 ## Desktop 1.0.3 – příprava vydání (2026-11-15)
 
 - Michal uložil a odeslal implementaci v commitu 1b97e44 a požádal o release.

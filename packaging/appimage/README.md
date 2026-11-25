@@ -1,7 +1,7 @@
-# Experimental FelisMusic AppImage (Debian 13, x86_64)
+# FelisMusic AppImage (Debian 13, x86_64)
 
-The maintained ZIP installer is unchanged. This is an additional experimental
-distribution, not a replacement and not a published AppImage release.
+AppImage is an additional supported distribution. The ZIP installer remains
+maintained alongside it.
 
 Build as a regular user on Debian 13 with Python 3.13. The `.appimage-env`
 virtualenv must use `--system-site-packages` for Debian's PyGObject/dbus-python.
@@ -21,11 +21,12 @@ collects it. The Quick3D QML modules remain excluded. Self-test startup prints
 flushed stages and enables faulthandler to help diagnose native crashes.
 The first Debian build crashed in QtTextToSpeech during QGuiApplication creation;
 its Qt libraries all came from the same PySide6 wheel. The restricted bundle is
-a targeted diagnostic build. After allowing its auxiliary Quick3DUtils library,
-the build and offline self-test succeeded on Debian1. The user confirmed startup,
-Firefox sign-in, audio playback, and MPRIS PlaybackStatus/PlayPause/Next on a clean
-Debian VM, then also confirmed the simplified sign-in workflow. Cast and
-openSUSE tests remain pending; no public AppImage release has been made.
+the working release configuration. The build and offline self-test succeeded
+on Debian1. Version 1.0.3 passed user testing on clean Debian 13.7 with GNOME
+and openSUSE Tumbleweed with KDE: startup, Firefox sign-in and audio playback.
+MPRIS PlaybackStatus/PlayPause/Next and Cast were verified on Debian; headphones
+and Bluetooth playback controls were verified on openSUSE. The user accepted
+this AppImage for release on 2026-11-15.
 
 From the project root:
 
@@ -39,7 +40,7 @@ their pinned SHA-256 digests before executing them. The appimagetool continuous
 URL is mutable: if the checksum changes, the builder stops. Reassess the tool
 and update the pinned checksum explicitly; never skip verification.
 
-Build output is isolated under build/appimage. The final experimental AppImage
+Build output is isolated under build/appimage. The final AppImage
 and checksum go to dist/. No installation into the home directory or application
 menu is performed. Source login/configuration is not packaged. Run-time user
 settings remain in the normal XDG config directory. AppImage is not a sandbox.
@@ -52,9 +53,9 @@ does not sign in, contact YTM, or play sound. This is not a complete runtime tes
 Test on the clean Debian VM and openSUSE:
 
 ```sh
-chmod +x FelisMusic-1.0.3-experimental-x86_64.AppImage
-QT_QPA_PLATFORM=offscreen ./FelisMusic-1.0.3-experimental-x86_64.AppImage --appimage-self-test
-./FelisMusic-1.0.3-experimental-x86_64.AppImage --debug
+chmod +x FelisMusic-1.0.4-x86_64.AppImage
+QT_QPA_PLATFORM=offscreen ./FelisMusic-1.0.4-x86_64.AppImage --appimage-self-test
+./FelisMusic-1.0.4-x86_64.AppImage --debug
 ```
 
 If FUSE mounts are unavailable, add `--appimage-extract-and-run` before app
@@ -66,8 +67,7 @@ yt-dlp fallback (uploaded tracks). Test both GUI launch and terminal launch.
 Do not install Python packages, Deno or codecs into the clean test VM to make the
 AppImage work: report missing dependencies so the bundle can be corrected.
 
-Before public release: finish the clean-system tests, verify notices and source
-availability for bundled dependencies, record their versions, and check that no
-system-only paths were used. Package inventories and Debian copyright notices
-are included under usr/share/doc/felismusic. Current minimum target is Debian 13;
+For future releases, repeat the clean-system tests and review notices and source
+availability when changing bundled dependencies. Package inventories and Debian
+copyright notices are included under usr/share/doc/felismusic. Current minimum target is Debian 13;
 compatibility with older glibc systems has not been established.

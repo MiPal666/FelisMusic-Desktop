@@ -44,6 +44,9 @@ cp -R -- "$source_dir/desktop" "$source_dir/run-gui.sh" "$source_dir/requirement
 chmod +x -- "$install_dir/run-gui.sh"
 python3 -m venv --system-site-packages "$install_dir/env"
 "$install_dir/env/bin/python" -m pip --disable-pip-version-check install -r "$install_dir/requirements-gui.txt"
+# Upgrade explicitly: --system-site-packages may expose an older system yt-dlp
+# that would otherwise satisfy the unpinned requirement without downloading it.
+"$install_dir/env/bin/python" -m pip --disable-pip-version-check install --upgrade 'yt-dlp[default]'
 "$install_dir/env/bin/python" -c 'import PySide6.QtQuick, ytmusicapi, yt_dlp, pychromecast, dbus'
 
 launcher_tmp="$(mktemp "$applications_dir/.felismusic.XXXXXX")"
